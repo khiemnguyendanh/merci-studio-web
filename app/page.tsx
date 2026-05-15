@@ -11,7 +11,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
-// Cấu hình Firebase đọc từ .env.local
+// Cấu hình Firebase
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -38,7 +38,7 @@ const FacebookIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-// Component Icon Instagram tùy chỉnh để tránh lỗi build
+// Component Icon Instagram tùy chỉnh
 const InstagramIcon = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
@@ -63,7 +63,7 @@ export default function Home() {
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
     const [loadedImages, setLoadedImages] = useState<any[]>([]);
-    const [selectedImages, setSelectedImages] = useState(new Set());
+    const [selectedImages, setSelectedImages] = useState(new Set<string>());
     
     // Albums
     const [albums, setAlbums] = useState<any[]>([]);
@@ -75,7 +75,6 @@ export default function Home() {
     const [filterText, setFilterText] = useState('');
     const [sourceHandle, setSourceHandle] = useState<any>(null);
     const [destHandle, setDestHandle] = useState<any>(null);
-    const [matchedFiles, setMatchedFiles] = useState<any[]>([]);
     const [filterLogs, setFilterLogs] = useState<string[]>([]);
 
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0 });
@@ -86,8 +85,9 @@ export default function Home() {
     useEffect(() => {
         if (!mounted || !auth) return;
         signInAnonymously(auth).catch(() => {});
-        onAuthStateChanged(auth, setUser);
+        const unsubAuth = onAuthStateChanged(auth, setUser);
         if (localStorage.getItem('merci_admin_logged_in') === 'true') setIsAdmin(true);
+        return () => unsubAuth();
     }, [mounted]);
 
     useEffect(() => {
@@ -167,9 +167,9 @@ export default function Home() {
         setIsLoading(false);
     };
 
-    const handleLocalFileUpload = async (e: any) => {
-        if (!activeAlbumId) return;
-        const files = Array.from(e.target.files) as File[];
+    const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (!activeAlbumId || !e.target.files) return;
+        const files = Array.from(e.target.files);
         if (files.length === 0) return;
         
         setIsLoading(true);
@@ -190,12 +190,10 @@ export default function Home() {
 
             const current = albums.find(a => a.id === activeAlbumId);
             const updated = { ...current, images: [...newImgs, ...(current.images || [])] };
-            if (newImgs.length > 0 && updated.coverUrl === '3.jpg') updated.coverUrl = newImgs[0].url;
+            if (newImgs.length > 0 && (updated.coverUrl === '3.jpg' || !updated.coverUrl)) updated.coverUrl = newImgs[0].url;
             
             await saveAlbumData(updated);
-            alert(`Đã tải lên thành công ${newImgs.length} ảnh!`);
         } catch (error) {
-            console.error(error);
             alert("Lỗi xử lý ảnh.");
         } finally {
             setIsLoading(false);
@@ -253,7 +251,7 @@ export default function Home() {
                     const fileName = entry.name.toLowerCase();
                     const nameNoExt = entry.name.replace(/\.[^/.]+$/, "").toLowerCase();
                     if (names.includes(fileName) || names.includes(nameNoExt)) {
-                        const file = await entry.getFile();
+                        const file = await (entry as any).getFile();
                         const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
                         const writable = await newFileHandle.createWritable();
                         await writable.write(file);
@@ -268,7 +266,7 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
-    if (!mounted) return null;
+    if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
@@ -299,7 +297,7 @@ export default function Home() {
                             {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
                             <input type="text" placeholder="Username" className="w-full border p-3 rounded-xl outline-none" onChange={e => setLoginData({...loginData, username: e.target.value})} />
                             <input type="password" placeholder="Password" className="w-full border p-3 rounded-xl outline-none" onChange={e => setLoginData({...loginData, password: e.target.value})} />
-                            <button className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Vào hệ thống</button>
+                            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Vào hệ thống</button>
                         </form>
                     </div>
                 </div>
@@ -311,7 +309,7 @@ export default function Home() {
                     <div className="bg-white p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl">
                         <h3 className="font-bold text-2xl">Tạo Album Mới</h3>
                         <input type="text" placeholder="Tên Album (*)" className="w-full border p-3 rounded-xl outline-none" onChange={e => setNewAlbum({...newAlbum, title: e.target.value})} />
-                        <select className="w-full border p-3 rounded-xl outline-none bg-slate-50" onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
+                        <select className="w-full border p-3 rounded-xl outline-none bg-slate-50" value={newAlbum.category} onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
                             {['Váy cưới', 'Ảnh cưới', 'Ảnh concept', 'Gia đình', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <div className="flex justify-end gap-3">
@@ -352,15 +350,13 @@ export default function Home() {
             <main className="flex-grow w-full">
                 <div key={activeTab} className="max-w-7xl mx-auto p-6 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     
-                    {/* --- TAB: HOME --- */}
                     {activeTab === 'home' && (
                         <div className="space-y-16">
                             <div className="relative h-[60vh] rounded-[3rem] overflow-hidden shadow-2xl group">
-                                <img src="3.jpg" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" />
+                                <img src="3.jpg" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" />
                                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-6 text-center">
                                     <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
                                     <h2 className="text-5xl md:text-8xl font-bold font-serif mb-6 drop-shadow-lg">Merci Wedding</h2>
-                                    <p className="max-w-2xl text-lg md:text-xl opacity-90 mb-10 font-light">Nơi những rung động được lưu giữ trọn vẹn trong từng khung hình nghệ thuật.</p>
                                     <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">Khám phá ngay</button>
                                 </div>
                             </div>
@@ -380,17 +376,12 @@ export default function Home() {
                         </div>
                     )}
 
-                    {/* --- TAB: TẠO TRANG --- */}
                     {activeTab === 'create' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                             <div className="space-y-8">
                                 <h2 className="text-5xl md:text-6xl font-bold leading-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
-                                <p className="text-slate-500 text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
                                 <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-6">
-                                    <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase ml-1">Link folder Google Drive</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-blue-500 transition-colors" />
-                                    </div>
+                                    <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="Dán link folder Google Drive..." className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-blue-500 transition-colors" />
                                     <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
                                     </button>
@@ -402,11 +393,10 @@ export default function Home() {
                                     </div>
                                 )}
                             </div>
-                            <img src="3.jpg" className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full" alt="Merci Wedding Photo" />
+                            <img src="3.jpg" className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full" alt="Promo" />
                         </div>
                     )}
 
-                    {/* --- TAB: BỘ SƯU TẬP --- */}
                     {activeTab === 'collection' && (
                         <div className="space-y-12">
                             {!activeAlbumId ? (
@@ -423,7 +413,7 @@ export default function Home() {
                                         {albums.map(a => (
                                             <div key={a.id} onClick={() => setActiveAlbumId(a.id)} className="group cursor-pointer">
                                                 <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
-                                                    <img src={a.coverUrl || '3.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                                                    <img src={a.coverUrl || '3.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                                                     <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900">{a.category}</div>
                                                     <div className="absolute bottom-8 left-8 right-8 text-white">
@@ -450,12 +440,11 @@ export default function Home() {
                                     </div>
                                     <div className="text-center space-y-2">
                                         <h2 className="text-5xl font-bold font-serif">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
-                                        <p className="text-slate-400 font-medium">{albums.find(a => a.id === activeAlbumId)?.sub}</p>
                                     </div>
                                     <div className="masonry-grid">
                                         {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => (
                                             <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i})}>
-                                                <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                                                <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
                                                 <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all">
                                                     <button onClick={(e) => { e.stopPropagation(); window.open(img.originalUrl, '_blank'); }} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl">
                                                         <Download size={20}/>
@@ -469,71 +458,44 @@ export default function Home() {
                         </div>
                     )}
 
-                    {/* --- TAB: LỌC ẢNH --- */}
                     {activeTab === 'filter' && (
                         <div className="max-w-4xl mx-auto space-y-10">
                             <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 space-y-10">
-                                <div className="space-y-4">
-                                    <span className="px-4 py-1 bg-blue-50 text-blue-600 text-xs font-bold rounded-full border border-blue-100 uppercase tracking-widest">Công cụ Studio</span>
-                                    <h2 className="text-4xl font-bold text-slate-900 leading-tight">Chép ảnh đã chọn sang thư mục mới</h2>
-                                </div>
-
+                                <h2 className="text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div onClick={async () => { /* @ts-ignore */ setSourceHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${sourceHandle ? 'bg-blue-500 text-white' : 'bg-blue-100 text-blue-600'}`}><Folder size={28} /></div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest">NGUỒN</p>
-                                            <p className="font-bold text-slate-700 truncate">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
-                                        </div>
+                                        <Folder className="text-blue-600" size={28} />
+                                        <p className="font-bold truncate">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
                                     </div>
                                     <div onClick={async () => { /* @ts-ignore */ setDestHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
-                                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${destHandle ? 'bg-green-500 text-white' : 'bg-green-100 text-green-600'}`}><FolderDown size={28} /></div>
-                                        <div className="flex-1 overflow-hidden">
-                                            <p className="text-[10px] font-black text-green-600 uppercase tracking-widest">ĐÍCH</p>
-                                            <p className="font-bold text-slate-700 truncate">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
-                                        </div>
+                                        <FolderDown className="text-green-600" size={28} />
+                                        <p className="font-bold truncate">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
                                     </div>
                                 </div>
-
-                                <div className="space-y-3">
-                                    <label className="text-sm font-black text-slate-400 uppercase tracking-wider ml-1">Danh sách tên ảnh (Copy từ trang chọn ảnh)</label>
-                                    <textarea className="w-full h-64 border-2 border-slate-100 p-6 rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-sm leading-relaxed" placeholder="Ví dụ:&#10;MERCI_001.jpg&#10;MERCI_005.jpg&#10;..." value={filterText} onChange={e => setFilterText(e.target.value)} />
-                                </div>
-
+                                <textarea className="w-full h-64 border-2 border-slate-100 p-6 rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
                                 <button onClick={handleCopyFiles} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
                                     <Zap size={22} /> Bắt đầu lọc và sao chép
                                 </button>
                             </div>
-
                             {filterLogs.length > 0 && (
-                                <div className="bg-slate-900 text-green-400 p-8 rounded-[2rem] font-mono text-xs h-64 overflow-y-auto no-scrollbar shadow-2xl border border-slate-800 animate-in fade-in duration-500">
-                                    <p className="text-slate-500 mb-4 border-b border-slate-800 pb-2 uppercase font-black tracking-widest text-[10px]">Tiến trình hệ thống</p>
+                                <div className="bg-slate-900 text-green-400 p-8 rounded-[2rem] font-mono text-xs h-64 overflow-y-auto no-scrollbar border border-slate-800 animate-in fade-in duration-500">
                                     {filterLogs.map((log, idx) => <div key={idx} className="mb-1">{log}</div>)}
                                 </div>
                             )}
-
-                            <div className="p-6 rounded-2xl bg-orange-50 border border-orange-100 flex gap-4">
-                                <AlertCircle className="text-orange-500 shrink-0" />
-                                <p className="text-xs text-orange-700 leading-relaxed font-medium">Lưu ý: Tính năng tương tác file trực tiếp yêu cầu trình duyệt Chrome hoặc Edge bản Desktop để đảm bảo quyền riêng tư và bảo mật (File System Access API).</p>
-                            </div>
                         </div>
                     )}
 
-                    {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'gallery' && (
                         <div className="space-y-10">
                             {loadedImages.length > 0 ? (
                                 <>
                                     <div className="sticky top-24 z-30 bg-white/90 backdrop-blur-xl p-5 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
                                         <div className="flex items-center gap-3 font-bold text-xl text-pink-500 bg-pink-50 px-6 py-2 rounded-2xl"><Heart className="fill-current"/> <span>{selectedImages.size}</span> ảnh đã chọn</div>
-                                        <div className="flex gap-3 w-full md:w-auto">
-                                            <button onClick={() => {
-                                                const ns = Array.from(selectedImages).map(id => loadedImages.find(i => i.id === id).name);
-                                                navigator.clipboard.writeText(ns.join('\n'));
-                                                alert("Đã copy danh sách tên file!");
-                                            }} className="flex-1 md:flex-none bg-slate-100 hover:bg-slate-200 px-8 py-3 rounded-2xl text-sm font-bold transition-all">Copy tên</button>
-                                            <button onClick={() => alert("Chức năng tải ZIP yêu cầu cấu hình Firebase Storage hoặc xử lý Blob nâng cao.")} className="flex-1 md:flex-none bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-2xl text-sm font-bold shadow-lg shadow-blue-500/20 transition-all">Tải xuống ZIP</button>
-                                        </div>
+                                        <button onClick={() => {
+                                            const ns = Array.from(selectedImages).map(id => loadedImages.find(i => i.id === id).name);
+                                            navigator.clipboard.writeText(ns.join('\n'));
+                                            alert("Đã copy danh sách tên file!");
+                                        }} className="bg-slate-100 hover:bg-slate-200 px-8 py-3 rounded-2xl text-sm font-bold transition-all">Copy danh sách tên</button>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         {loadedImages.map(img => (
@@ -542,7 +504,7 @@ export default function Home() {
                                                 if (next.has(img.id)) next.delete(img.id); else next.add(img.id);
                                                 setSelectedImages(next);
                                             }} className={`aspect-[3/4] rounded-[2rem] overflow-hidden relative cursor-pointer border-4 transition-all duration-300 ${selectedImages.has(img.id) ? 'border-pink-500 scale-95 shadow-xl' : 'border-transparent hover:shadow-lg'}`}>
-                                                <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" />
+                                                <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" alt="Gallery" />
                                                 <div className={`absolute top-4 right-4 p-2 rounded-full transition-all ${selectedImages.has(img.id) ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/20 text-white/50 backdrop-blur-sm'}`}>
                                                     <Heart size={16} className={selectedImages.has(img.id) ? 'fill-current' : ''}/>
                                                 </div>
@@ -553,7 +515,7 @@ export default function Home() {
                             ) : (
                                 <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200">
                                     <ImageIcon size={48} className="mx-auto text-slate-300 mb-4" />
-                                    <p className="text-slate-500 font-medium">Chưa có ảnh nào được tải lên hoặc link Drive chưa hợp lệ.</p>
+                                    <p className="text-slate-500 font-medium">Dán link Drive vào mục "Tạo trang" để bắt đầu.</p>
                                 </div>
                             )}
                         </div>
@@ -561,7 +523,6 @@ export default function Home() {
                 </div>
             </main>
 
-            {/* LIGHTBOX */}
             {lightboxData.isOpen && activeAlbumId && (
                 <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
                     <button onClick={() => setLightboxData({isOpen: false, index: 0})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full"><X size={32}/></button>
@@ -569,6 +530,7 @@ export default function Home() {
                         key={lightboxData.index}
                         src={albums.find(a => a.id === activeAlbumId)?.images[lightboxData.index].originalUrl} 
                         className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500" 
+                        alt="Zoomed"
                     />
                     <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block" onClick={prevImg}><ArrowLeft size={56} /></button>
                     <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block" onClick={nextImg}><ArrowRight size={56} /></button>
