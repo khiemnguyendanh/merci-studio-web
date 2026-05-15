@@ -1,18 +1,18 @@
-// Cập nhật cuối: Sửa lỗi Type Check Vercel và hoàn thiện chức năng
+// Cập nhật: Lưu lựa chọn ảnh của khách, xem ảnh đã chọn, tạo link chia sẻ kết quả
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
-    Camera, Wand2, Copy, ArrowRight, CloudUpload, Heart, 
+    Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
-    MapPin, Phone, Mail, Plus, X, Folder, FolderDown, AlertCircle, User
+    MapPin, Phone, Mail, Plus, X, Folder, FolderDown, AlertCircle, User, CheckCircle2
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot } from 'firebase/firestore';
 
-// Cấu hình Firebase - Đảm bảo bạn đã nhập đủ các biến này trên Vercel Environment Variables
+// Cấu hình Firebase
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -22,7 +22,7 @@ const firebaseConfig = {
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-// Khởi tạo Firebase an toàn cho Next.js
+// Khởi tạo Firebase
 let app, auth: any, db: any;
 if (typeof window !== 'undefined') {
     app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -32,14 +32,14 @@ if (typeof window !== 'undefined') {
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
-// Component Icon Facebook tùy chỉnh
+// Component Icon Facebook
 const FacebookIcon = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
     </svg>
 );
 
-// Component Icon Instagram tùy chỉnh (Thay thế cho import Instagram từ lucide-react để tránh lỗi build)
+// Component Icon Instagram
 const InstagramIcon = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
@@ -47,6 +47,10 @@ const InstagramIcon = ({ className }: { className?: string }) => (
         <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
     </svg>
 );
+
+const DEFAULT_HERO = "https://images.unsplash.com/photo-1606800052052-a08af7148866?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
+const DEFAULT_PROMO = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
+const DEFAULT_COVER = "https://images.unsplash.com/photo-1519741497674-611481863552?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
 
 export default function Home() {
     // === STATES ===
@@ -60,17 +64,21 @@ export default function Home() {
     const [loginData, setLoginData] = useState({ username: '', password: '' });
     const [loginError, setLoginError] = useState('');
     
-    // Gallery & Drive
+    // Gallery & Drive (Khách hàng)
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
     const [loadedImages, setLoadedImages] = useState<any[]>([]);
     const [selectedImages, setSelectedImages] = useState(new Set<string>());
+    const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+    const [showOnlySelected, setShowOnlySelected] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     
-    // Albums
+    // Albums (Admin)
     const [albums, setAlbums] = useState<any[]>([]);
     const [activeAlbumId, setActiveAlbumId] = useState<string | null>(null);
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Váy cưới' });
+    const [albumDriveLink, setAlbumDriveLink] = useState(''); 
 
     // Filter Tool
     const [filterText, setFilterText] = useState('');
@@ -78,10 +86,19 @@ export default function Home() {
     const [destHandle, setDestHandle] = useState<any>(null);
     const [filterLogs, setFilterLogs] = useState<string[]>([]);
 
-    const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0 });
+    const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] as any[] });
 
     // === EFFECTS ===
-    useEffect(() => { setMounted(true); }, []);
+    useEffect(() => { 
+        setMounted(true); 
+        // Load JSZip dynamically for downloading files
+        if (!document.getElementById('jszip-script')) {
+            const script = document.createElement('script');
+            script.id = 'jszip-script';
+            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+            document.head.appendChild(script);
+        }
+    }, []);
 
     useEffect(() => {
         if (!mounted || !auth) return;
@@ -102,164 +119,230 @@ export default function Home() {
         return () => unsubscribe();
     }, [mounted, user]);
 
+    // Nhận diện Link Khách Hàng tự động
+    useEffect(() => {
+        if (!mounted) return;
+        const urlParams = new URLSearchParams(window.location.search);
+        const folderId = urlParams.get('folder');
+        const viewMode = urlParams.get('view'); // Chế độ xem: ?view=selected
+        
+        if (folderId) {
+            setActiveTab('gallery');
+            setCurrentFolderId(folderId);
+            if (viewMode === 'selected') setShowOnlySelected(true);
+            fetchDrive(folderId); 
+        }
+    }, [mounted]);
+
     // Keyboard Lightbox Navigation
     const nextImg = useCallback(() => {
-        const currentAlbum = albums.find(a => a.id === activeAlbumId);
-        const imgs = currentAlbum?.images || [];
+        const imgs = lightboxData.images || [];
         if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index + 1) % imgs.length }));
-    }, [albums, activeAlbumId]);
+    }, [lightboxData.images]);
 
     const prevImg = useCallback(() => {
-        const currentAlbum = albums.find(a => a.id === activeAlbumId);
-        const imgs = currentAlbum?.images || [];
+        const imgs = lightboxData.images || [];
         if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index - 1 + imgs.length) % imgs.length }));
-    }, [albums, activeAlbumId]);
+    }, [lightboxData.images]);
 
     useEffect(() => {
         if (!lightboxData.isOpen) return;
         const handleKey = (e: KeyboardEvent) => {
             if (e.key === 'ArrowRight') nextImg();
             if (e.key === 'ArrowLeft') prevImg();
-            if (e.key === 'Escape') setLightboxData({ isOpen: false, index: 0 });
+            if (e.key === 'Escape') setLightboxData({ isOpen: false, index: 0, images: [] });
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [lightboxData.isOpen, nextImg, prevImg]);
 
-    // === HELPERS ===
-    const resizeImage = (file: File, maxW: number): Promise<string> => {
-        return new Promise((res) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (e) => {
-                const img = new Image();
-                img.src = e.target?.result as string;
-                img.onload = () => {
-                    const canvas = document.createElement('canvas');
-                    const ratio = Math.min(maxW / img.width, 1);
-                    canvas.width = img.width * ratio;
-                    canvas.height = img.height * ratio;
-                    const ctx = canvas.getContext('2d');
-                    ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-                    res(canvas.toDataURL('image/jpeg', 0.8));
-                };
-            };
-        });
-    };
-
+    // === HELPERS (Admin Albums) ===
     const saveAlbumData = async (data: any) => {
         if (!db) return;
-        try {
-            await setDoc(doc(db, 'merci_albums', data.id), data);
-        } catch (e) {
-            console.error("Lỗi lưu Firebase:", e);
-        }
+        try { await setDoc(doc(db, 'merci_albums', data.id), data); } catch (e) { console.error(e); }
     };
 
     const handleCreateAlbum = async () => {
         if (!newAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
-        const data = { 
-            id: `album_${Date.now()}`, 
-            ...newAlbum, 
-            images: [], 
-            coverUrl: '3.jpg'
-        };
+        const data = { id: `album_${Date.now()}`, ...newAlbum, images: [], coverUrl: DEFAULT_COVER };
         await saveAlbumData(data);
         setIsCreatingAlbum(false);
         setIsLoading(false);
     };
 
-    const handleLocalFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        if (!activeAlbumId || !e.target.files) return;
-        const files = Array.from(e.target.files);
-        if (files.length === 0) return;
+    const handleSyncDriveToAlbum = async () => {
+        if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
+        if (!albumDriveLink.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
         
         setIsLoading(true);
-        setLoadingMessage('Đang nén và tối ưu hóa ảnh...');
+        setLoadingMessage('Đang lấy ảnh từ Google Drive...');
+        
+        let folderId = albumDriveLink.trim();
+        if (folderId.includes('folders/')) folderId = folderId.split('folders/')[1].split('?')[0];
 
-        try {
-            const newImgs = await Promise.all(files.map(async (file) => {
-                const previewUrl = await resizeImage(file, 800);
-                const originalUrl = await resizeImage(file, 1600);
-                return {
-                    id: `img_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-                    name: file.name, 
-                    url: previewUrl, 
-                    originalUrl: originalUrl, 
-                    downloadUrl: originalUrl
-                };
-            }));
-
-            const current = albums.find(a => a.id === activeAlbumId);
-            const updated = { ...current, images: [...newImgs, ...(current.images || [])] };
-            if (newImgs.length > 0 && (updated.coverUrl === '3.jpg' || !updated.coverUrl)) updated.coverUrl = newImgs[0].url;
-            
-            await saveAlbumData(updated);
-        } catch (error) {
-            alert("Lỗi xử lý ảnh.");
-        } finally {
-            setIsLoading(false);
-            e.target.value = '';
-        }
-    };
-
-    const handleLogin = (e: React.FormEvent) => {
-        e.preventDefault();
-        if (loginData.username === 'khiemnguyendanh' && loginData.password === 'Merci@2026') {
-            setIsAdmin(true);
-            setShowLoginModal(false);
-            localStorage.setItem('merci_admin_logged_in', 'true');
-        } else {
-            setLoginError('Sai tài khoản hoặc mật khẩu!');
-        }
-    };
-
-    const fetchDrive = async (id: string) => {
-        if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
-        setIsLoading(true);
-        setLoadingMessage('Đang tải ảnh từ Google Drive...');
-        const folderId = id.includes('folders/') ? id.split('folders/')[1].split('?')[0] : id;
         const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&key=${GOOGLE_API_KEY}&fields=files(id,name,thumbnailLink,webContentLink)&pageSize=100&orderBy=name`;
         
         try {
             const res = await fetch(url);
             const data = await res.json();
-            if (data.files) {
+            if (data.files && data.files.length > 0) {
+                const newImgs = data.files.map((f: any) => ({
+                    id: f.id, name: f.name,
+                    url: f.thumbnailLink?.replace('=s220', '=w600'),
+                    originalUrl: f.thumbnailLink?.replace('=s220', '=s0'),
+                    downloadUrl: f.webContentLink
+                }));
+                
+                const currentAlbum = albums.find(a => a.id === activeAlbumId);
+                const updated = { ...currentAlbum, images: [...newImgs, ...(currentAlbum.images || [])] };
+                if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) updated.coverUrl = newImgs[0].url;
+                
+                await saveAlbumData(updated);
+                setAlbumDriveLink('');
+                alert(`Đã thêm thành công ${newImgs.length} ảnh vào Album!`);
+            } else { alert("Thư mục trống hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết)!"); }
+        } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
+        finally { setIsLoading(false); }
+    };
+
+    const handleLogin = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (loginData.username === 'khiemnguyendanh' && loginData.password === 'Merci@2026') {
+            setIsAdmin(true); setShowLoginModal(false); localStorage.setItem('merci_admin_logged_in', 'true');
+        } else { setLoginError('Sai tài khoản hoặc mật khẩu!'); }
+    };
+
+    // === CLIENT GALLERY HELPERS ===
+
+    // Lưu danh sách thả tim lên Firebase
+    const saveClientSelectionToDB = async (folderId: string, newSelectedSet: Set<string>) => {
+        if (!db || !folderId) return;
+        setIsSaving(true);
+        try {
+            await setDoc(doc(db, 'client_selections', folderId), {
+                selectedIds: Array.from(newSelectedSet),
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+        } catch(e) { console.error("Error saving selection", e); }
+        setTimeout(() => setIsSaving(false), 500); // Tạo độ trễ UI cho đẹp
+    };
+
+    // Tải danh sách thả tim từ Firebase
+    const loadClientSelectionFromDB = async (folderId: string) => {
+        if (!db || !folderId) return new Set<string>();
+        try {
+            const docSnap = await getDoc(doc(db, 'client_selections', folderId));
+            if (docSnap.exists() && docSnap.data().selectedIds) {
+                return new Set<string>(docSnap.data().selectedIds);
+            }
+        } catch(e) { console.error(e); }
+        return new Set<string>();
+    };
+
+    const fetchDrive = async (id: string) => {
+        if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
+        setIsLoading(true);
+        setLoadingMessage('Đang lấy dữ liệu album...');
+        
+        let folderId = id;
+        if (id.includes('folders/')) folderId = id.split('folders/')[1].split('?')[0];
+        
+        setCurrentFolderId(folderId);
+
+        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&key=${GOOGLE_API_KEY}&fields=files(id,name,thumbnailLink,webContentLink)&pageSize=100&orderBy=name`;
+        
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.files && data.files.length > 0) {
                 setLoadedImages(data.files.map((f: any) => ({
                     id: f.id, name: f.name,
                     url: f.thumbnailLink?.replace('=s220', '=w600'),
                     originalUrl: f.thumbnailLink?.replace('=s220', '=s0')
                 })));
                 setClientLink(`${window.location.origin}?folder=${folderId}`);
+                
+                // Khôi phục dữ liệu đã chọn từ Database
+                const savedSelections = await loadClientSelectionFromDB(folderId);
+                setSelectedImages(savedSelections);
+
+            } else {
+                alert("Thư mục không có ảnh hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết) trên Google Drive.");
             }
         } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
         finally { setIsLoading(false); }
     };
 
-    // Hàm chọn thư mục an toàn với TypeScript
-    const selectSourceFolder = async () => {
-        try {
-            const handle = await (window as any).showDirectoryPicker();
-            setSourceHandle(handle);
-        } catch (e) {}
+    const toggleImageSelect = (id: string, event: any) => {
+        if(event) event.stopPropagation();
+        setSelectedImages(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
+            
+            // Tự động lưu ngầm lên cơ sở dữ liệu
+            if (currentFolderId) {
+                saveClientSelectionToDB(currentFolderId, newSet);
+            }
+            return newSet;
+        });
     };
 
-    const selectDestFolder = async () => {
-        try {
-            const handle = await (window as any).showDirectoryPicker();
-            setDestHandle(handle);
-        } catch (e) {}
+    const generateSelectedImagesLink = () => {
+        if (!currentFolderId) return;
+        let baseUrl = window.location.href.split('?')[0];
+        const newLink = `${baseUrl}?folder=${currentFolderId}&view=selected`;
+        navigator.clipboard.writeText(newLink);
+        alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh, hoặc xem lại danh sách những ảnh đã thả tim.");
     };
+
+    const handleDownloadSelected = async () => {
+        if (selectedImages.size === 0) return alert("Bạn chưa chọn ảnh nào!");
+        if (!(window as any).JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
+
+        setIsLoading(true);
+        setLoadingMessage('Đang nén các ảnh đã chọn thành file ZIP...');
+        try {
+            const JSZip = (window as any).JSZip;
+            const zip = new JSZip();
+            const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0,10);
+            const imgFolder = zip.folder(folderName);
+
+            const promises = Array.from(selectedImages).map(id => {
+                const img = loadedImages.find(i => i.id === id);
+                if (img) {
+                    return fetch(img.originalUrl)
+                        .then(res => res.blob())
+                        .then(blob => imgFolder?.file(img.name, blob));
+                }
+                return Promise.resolve();
+            });
+
+            await Promise.all(promises);
+            const content = await zip.generateAsync({ type: "blob" });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(content);
+            a.download = folderName + ".zip";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (error) {
+            console.error(error);
+            alert("Đã xảy ra lỗi trong quá trình gom file ZIP. Bạn hãy thử lại sau nhé.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Filter Tool Logic
+    const selectSourceFolder = async () => { try { setSourceHandle(await (window as any).showDirectoryPicker()); } catch (e) {} };
+    const selectDestFolder = async () => { try { setDestHandle(await (window as any).showDirectoryPicker()); } catch (e) {} };
 
     const handleCopyFiles = async () => {
         if (!sourceHandle || !destHandle) return alert("Vui lòng chọn đủ thư mục nguồn và đích!");
         if (!filterText.trim()) return alert("Vui lòng dán danh sách tên file!");
 
-        setIsLoading(true);
-        setLoadingMessage('Đang xử lý lọc và chép ảnh...');
-        setFilterLogs([]);
-
+        setIsLoading(true); setLoadingMessage('Đang xử lý lọc và chép ảnh...'); setFilterLogs([]);
         const names = filterText.split('\n').map(n => n.trim().toLowerCase()).filter(n => n);
         let count = 0;
 
@@ -272,8 +355,7 @@ export default function Home() {
                         const file = await (entry as any).getFile();
                         const newFileHandle = await (destHandle as any).getFileHandle(entry.name, { create: true });
                         const writable = await (newFileHandle as any).createWritable();
-                        await writable.write(file);
-                        await writable.close();
+                        await writable.write(file); await writable.close();
                         count++;
                         setFilterLogs(prev => [...prev, `✅ Đã chép: ${entry.name}`]);
                     }
@@ -283,6 +365,11 @@ export default function Home() {
         } catch (e) { alert("Lỗi chép file. Hãy kiểm tra quyền truy cập thư mục."); } 
         finally { setIsLoading(false); }
     };
+
+    // Images Display Logic for Gallery
+    const displayedImages = showOnlySelected 
+        ? loadedImages.filter(img => selectedImages.has(img.id)) 
+        : loadedImages;
 
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
@@ -340,7 +427,10 @@ export default function Home() {
 
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setActiveTab('home')}>
+                    <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
+                        setActiveTab('home');
+                        window.history.replaceState({}, document.title, window.location.pathname);
+                    }}>
                         <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                             <Camera className="text-white" size={20} />
                         </div>
@@ -372,7 +462,7 @@ export default function Home() {
                     {activeTab === 'home' && (
                         <div className="space-y-16">
                             <div className="relative h-[60vh] rounded-[3rem] overflow-hidden shadow-2xl group">
-                                <img src="3.jpg" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" />
+                                <img src={DEFAULT_HERO} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" />
                                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-6 text-center">
                                     <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
                                     <h2 className="text-5xl md:text-8xl font-bold font-serif mb-6 drop-shadow-lg text-white">Merci Wedding</h2>
@@ -412,13 +502,18 @@ export default function Home() {
                                     </button>
                                 </div>
                                 {clientLink && (
-                                    <div className="bg-blue-50 p-6 rounded-2xl flex items-center justify-between border border-blue-100 animate-in zoom-in-95">
-                                        <span className="text-xs font-mono font-medium text-blue-700 truncate mr-4">{clientLink}</span>
-                                        <button onClick={() => {navigator.clipboard.writeText(clientLink); alert("Đã copy!");}} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 transition-colors">Copy Link</button>
+                                    <div className="bg-blue-50 p-6 rounded-2xl flex flex-col gap-4 border border-blue-100 animate-in zoom-in-95">
+                                        <div>
+                                            <span className="text-xs font-bold text-blue-700 block mb-1">LINK CHỌN ẢNH (Gửi khách hàng):</span>
+                                            <div className="flex justify-between items-center gap-2">
+                                                <span className="text-sm font-mono text-blue-800 truncate bg-white px-3 py-2 rounded-lg border border-blue-200 flex-1">{clientLink}</span>
+                                                <button onClick={() => {navigator.clipboard.writeText(clientLink); alert("Đã copy!");}} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">Copy</button>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
-                            <img src="3.jpg" className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" />
+                            <img src={DEFAULT_PROMO} className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" />
                         </div>
                     )}
 
@@ -437,9 +532,9 @@ export default function Home() {
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
                                         {albums.map(a => (
-                                            <div key={a.id} onClick={() => setActiveAlbumId(a.id)} className="group cursor-pointer">
+                                            <div key={a.id} onClick={() => {setActiveAlbumId(a.id); setLightboxData(p => ({...p, images: a.images||[]}));}} className="group cursor-pointer">
                                                 <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
-                                                    <img src={a.coverUrl || '3.jpg'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} />
+                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
                                                     <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900">{a.category}</div>
                                                     <div className="absolute bottom-8 left-8 right-8 text-white">
@@ -456,10 +551,16 @@ export default function Home() {
                                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-slate-100 pb-8">
                                         <button onClick={() => setActiveAlbumId(null)} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-5 py-2.5 rounded-2xl border shadow-sm transition-all active:scale-95"><ArrowLeft size={18}/> Quay lại</button>
                                         {isAdmin && (
-                                            <div className="flex items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100 shadow-inner">
-                                                <input type="file" id="up" hidden multiple onChange={handleLocalFileUpload} />
-                                                <button onClick={() => document.getElementById('up')?.click()} className="bg-white hover:bg-blue-50 text-blue-600 px-6 py-2.5 rounded-xl text-sm font-bold border border-blue-100 shadow-sm transition-all flex items-center gap-2">
-                                                    <CloudUpload size={18}/> Tải lên máy
+                                            <div className="flex flex-wrap items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Dán link Drive vào đây..." 
+                                                    value={albumDriveLink} 
+                                                    onChange={e => setAlbumDriveLink(e.target.value)} 
+                                                    className="flex-1 md:w-64 px-4 py-2 border border-slate-200 rounded-xl outline-none text-sm focus:border-blue-500"
+                                                />
+                                                <button onClick={handleSyncDriveToAlbum} className="bg-white hover:bg-blue-600 hover:text-white text-blue-600 px-6 py-2 rounded-xl text-sm font-bold border border-blue-200 shadow-sm transition-all flex items-center gap-2">
+                                                    <RefreshCcw size={16}/> Lấy ảnh
                                                 </button>
                                             </div>
                                         )}
@@ -469,13 +570,8 @@ export default function Home() {
                                     </div>
                                     <div className="masonry-grid">
                                         {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => (
-                                            <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i})}>
+                                            <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: albums.find(a => a.id === activeAlbumId)?.images})}>
                                                 <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
-                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                                                    <button onClick={(e) => { e.stopPropagation(); window.open(img.originalUrl, '_blank'); }} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl">
-                                                        <Download size={20}/>
-                                                    </button>
-                                                </div>
                                             </div>
                                         ))}
                                     </div>
@@ -509,10 +605,6 @@ export default function Home() {
                                     {filterLogs.map((log, idx) => <div key={idx} className="mb-1">{log}</div>)}
                                 </div>
                             )}
-                            <div className="p-6 rounded-2xl bg-orange-50 border border-orange-100 flex gap-4">
-                                <AlertCircle className="text-orange-500 shrink-0" />
-                                <p className="text-xs text-orange-700 leading-relaxed font-medium">Lưu ý: Tính năng tương tác file trực tiếp yêu cầu trình duyệt Chrome hoặc Edge bản Desktop để đảm bảo quyền riêng tư và bảo mật (File System Access API).</p>
-                            </div>
                         </div>
                     )}
 
@@ -521,28 +613,78 @@ export default function Home() {
                         <div className="space-y-10 animate-in zoom-in-95 duration-500">
                             {loadedImages.length > 0 ? (
                                 <>
-                                    <div className="sticky top-24 z-30 bg-white/90 backdrop-blur-xl p-5 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
-                                        <div className="flex items-center gap-3 font-bold text-xl text-pink-500 bg-pink-50 px-6 py-2 rounded-2xl"><Heart className="fill-current"/> <span>{selectedImages.size}</span> ảnh đã chọn</div>
-                                        <button onClick={() => {
-                                            const ns = Array.from(selectedImages).map(id => loadedImages.find(i => i.id === id).name);
-                                            navigator.clipboard.writeText(ns.join('\n'));
-                                            alert("Đã copy danh sách tên file!");
-                                        }} className="bg-slate-100 hover:bg-slate-200 px-8 py-3 rounded-2xl text-sm font-bold transition-all text-slate-700 shadow-sm">Copy danh sách tên</button>
-                                    </div>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                                        {loadedImages.map(img => (
-                                            <div key={img.id} onClick={() => {
-                                                const next = new Set(selectedImages);
-                                                if (next.has(img.id)) next.delete(img.id); else next.add(img.id);
-                                                setSelectedImages(next);
-                                            }} className={`aspect-[3/4] rounded-[2rem] overflow-hidden relative cursor-pointer border-4 transition-all duration-300 ${selectedImages.has(img.id) ? 'border-pink-500 scale-95 shadow-xl shadow-pink-500/10' : 'border-transparent hover:shadow-lg'}`}>
-                                                <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" alt="Gallery" />
-                                                <div className={`absolute top-4 right-4 p-2 rounded-full transition-all ${selectedImages.has(img.id) ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/20 text-white/50 backdrop-blur-sm'}`}>
-                                                    <Heart size={16} className={selectedImages.has(img.id) ? 'fill-current' : ''}/>
-                                                </div>
+                                    {/* Control Bar */}
+                                    <div className="sticky top-20 z-30 bg-white/90 backdrop-blur-xl p-4 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
+                                        <div className="flex items-center gap-4 pl-2 w-full md:w-auto">
+                                            <div className="flex items-center gap-2 text-pink-500 font-bold bg-pink-50 px-4 py-2 rounded-xl whitespace-nowrap">
+                                                <Heart className="w-5 h-5 fill-current" /> <span>{selectedImages.size}</span> ảnh
                                             </div>
-                                        ))}
+                                            {isSaving && <span className="text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin"/> Đang lưu...</span>}
+                                            {!isSaving && <span className="text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircle2 className="w-4 h-4"/> Đã lưu</span>}
+                                        </div>
+
+                                        {/* Toggle View Mode */}
+                                        <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
+                                            <button onClick={() => setShowOnlySelected(false)} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Tất cả ảnh</button>
+                                            <button onClick={() => setShowOnlySelected(true)} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${showOnlySelected ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500'}`}>Chỉ ảnh đã chọn</button>
+                                        </div>
+
+                                        {/* Actions */}
+                                        <div className="flex gap-2 w-full md:w-auto justify-end flex-wrap">
+                                            <button onClick={() => {
+                                                const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
+                                                navigator.clipboard.writeText(names.join('\n'));
+                                                alert("Đã copy danh sách tên file!");
+                                            }} className="bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <Copy className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Copy Tên</span>
+                                            </button>
+                                            
+                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <LinkIcon className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Link Đã Chọn</span>
+                                            </button>
+
+                                            <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <Download className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Tải Ảnh ZIP</span>
+                                            </button>
+                                        </div>
                                     </div>
+
+                                    {/* Grid Ảnh */}
+                                    {displayedImages.length > 0 ? (
+                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                            {displayedImages.map((img, idx) => {
+                                                const isSelected = selectedImages.has(img.id);
+                                                return (
+                                                    <div key={img.id} className={`aspect-[3/4] relative group rounded-2xl overflow-hidden border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
+                                                        <img 
+                                                            src={img.url} 
+                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
+                                                            alt="Gallery" 
+                                                            onClick={() => { setLightboxData({isOpen: true, index: idx, images: displayedImages}); }}
+                                                        />
+                                                        
+                                                        {/* Nút thả tim to */}
+                                                        <div 
+                                                            onClick={(e) => toggleImageSelect(img.id, e)}
+                                                            className={`absolute bottom-3 right-3 w-12 h-12 cursor-pointer rounded-full flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/40 text-white/80 hover:bg-pink-500/80 hover:text-white hover:scale-110'}`}
+                                                        >
+                                                            <Heart className={`w-6 h-6 ${isSelected ? 'fill-current' : ''}`}/>
+                                                        </div>
+
+                                                        {/* Tên ảnh */}
+                                                        <div className="absolute top-2 left-2 right-2 flex justify-between pointer-events-none">
+                                                            <span className="bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm truncate">{img.name}</span>
+                                                        </div>
+                                                    </div>
+                                                )
+                                            })}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
+                                            <Heart className="w-16 h-16 mx-auto text-pink-200 mb-4" />
+                                            <p className="text-slate-500 font-medium">Bạn chưa chọn bức ảnh nào.</p>
+                                        </div>
+                                    )}
                                 </>
                             ) : (
                                 <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200 shadow-sm">
@@ -555,18 +697,24 @@ export default function Home() {
                 </div>
             </main>
 
-            {/* LIGHTBOX */}
-            {lightboxData.isOpen && activeAlbumId && (
+            {/* LIGHTBOX FOR GALLERY & ALBUMS */}
+            {lightboxData.isOpen && lightboxData.images.length > 0 && (
                 <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <button onClick={() => setLightboxData({isOpen: false, index: 0})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X size={32}/></button>
+                    <div className="absolute top-6 left-6 text-white/50 font-mono text-sm tracking-widest pointer-events-none z-[210]">
+                        {lightboxData.index + 1} / {lightboxData.images.length}
+                    </div>
+
+                    <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X size={32}/></button>
+                    
                     <img 
                         key={lightboxData.index}
-                        src={albums.find(a => a.id === activeAlbumId)?.images[lightboxData.index].originalUrl} 
-                        className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500" 
+                        src={lightboxData.images[lightboxData.index].originalUrl || lightboxData.images[lightboxData.index].url} 
+                        className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
                         alt="Zoomed"
                     />
-                    <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all" onClick={prevImg}><ArrowLeft size={56} /></button>
-                    <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all" onClick={nextImg}><ArrowRight size={56} /></button>
+                    
+                    <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft size={56} /></button>
+                    <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all z-[210]" onClick={nextImg}><ArrowRight size={56} /></button>
                 </div>
             )}
         </div>
