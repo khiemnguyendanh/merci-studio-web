@@ -3,7 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Camera, Wand2, Copy, ArrowRight, CloudUpload, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
-    MapPin, Phone, Instagram, Plus, X, Folder, FolderDown, AlertCircle, User
+    MapPin, Phone, Mail, Plus, X, Folder, FolderDown, AlertCircle, User
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -31,10 +31,19 @@ if (typeof window !== 'undefined') {
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
-// Component Icon Facebook tùy chỉnh để tránh lỗi thư viện
+// Component Icon Facebook tùy chỉnh
 const FacebookIcon = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    </svg>
+);
+
+// Component Icon Instagram tùy chỉnh để tránh lỗi build
+const InstagramIcon = ({ className }: { className?: string }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
     </svg>
 );
 
@@ -115,8 +124,6 @@ export default function Home() {
     }, [lightboxData.isOpen, nextImg, prevImg]);
 
     // === HELPERS ===
-    
-    // Hàm nén ảnh tối ưu cho Preview
     const resizeImage = (file: File, maxW: number): Promise<string> => {
         return new Promise((res) => {
             const reader = new FileReader();
