@@ -6,7 +6,7 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2, Star, PlayCircle
+    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -37,14 +37,13 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 // Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
 
-// Component Icon Facebook (Tránh lỗi thư viện)
+// Component Icon Facebook 
 const FacebookIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
     </svg>
 );
 
-// Component Icon Check Circle
 const CheckCircleIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
@@ -55,6 +54,24 @@ const CheckCircleIcon = ({ className }) => (
 const DEFAULT_HERO = "https://images.unsplash.com/photo-1606800052052-a08af7148866?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
 const DEFAULT_PROMO = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1519741497674-611481863552?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+
+// --- HÀM TẠO SLUG (Link đẹp) TỪ TÊN ALBUM ---
+const createSlug = (str) => {
+    if (!str) return '';
+    return str.toString().toLowerCase()
+        .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ặ|ẵ|â|ấ|ầ|ẩ|ậ|ẫ/g, 'a')
+        .replace(/é|è|ẻ|ẹ|ẽ|ê|ế|ề|ể|ệ|ễ/g, 'e')
+        .replace(/i|í|ì|ỉ|ị|ĩ/g, 'i')
+        .replace(/ó|ò|ỏ|ọ|õ|ô|ố|ồ|ổ|ộ|ỗ|ơ|ớ|ờ|ở|ợ|ỡ/g, 'o')
+        .replace(/ú|ù|ủ|ụ|ũ|ư|ứ|ừ|ử|ự|ữ/g, 'u')
+        .replace(/ý|ỳ|ỷ|ỵ|ỹ/g, 'y')
+        .replace(/đ/g, 'd')
+        .replace(/\s+/g, '-')           
+        .replace(/[^\w\-]+/g, '')       
+        .replace(/\-\-+/g, '-')         
+        .replace(/^-+/, '')             
+        .replace(/-+$/, '');            
+};
 
 export default function Home() {
     // === STATES ===
@@ -68,7 +85,7 @@ export default function Home() {
     const [loginData, setLoginData] = useState({ username: '', password: '' });
     const [loginError, setLoginError] = useState('');
     
-    // Gallery & Drive (Khách hàng)
+    // Khách hàng & Filter
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
     const [loadedImages, setLoadedImages] = useState([]);
@@ -85,6 +102,7 @@ export default function Home() {
     const [editingAlbum, setEditingAlbum] = useState(null); 
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
+    const [pendingSlug, setPendingSlug] = useState(null); // Lưu trữ link chờ xử lý
 
     // Videos
     const [videos, setVideos] = useState([]);
@@ -116,55 +134,77 @@ export default function Home() {
     useEffect(() => {
         if (!mounted || !auth) return;
         signInAnonymously(auth).catch(() => {});
-        const unsubAuth = onAuthStateChanged(auth, (u) => {
-            setUser(u);
-        });
+        const unsubAuth = onAuthStateChanged(auth, setUser);
         if (localStorage.getItem('merci_admin_logged_in') === 'true') setIsAdmin(true);
         return () => unsubAuth();
     }, [mounted]);
 
-    useEffect(() => {
-        if (!mounted || !user || !db) return;
-        
-        // Listener cho Albums
-        const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
-            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            fetched.sort((a, b) => b.id.localeCompare(a.id));
-            setAlbums(fetched);
-        });
-
-        // Listener cho Videos
-        const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
-            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            fetched.sort((a, b) => b.id.localeCompare(a.id));
-            setVideos(fetched);
-        });
-
-        return () => { unsubAlbums(); unsubVideos(); };
-    }, [mounted, user]);
-
-    // Nhận diện URL Params (Share Link)
+    // Nhận diện URL Pathname (Link Đẹp dạng /ten-album)
     useEffect(() => {
         if (!mounted) return;
         try {
             const urlParams = new URLSearchParams(window.location.search);
             const folderId = urlParams.get('folder');
             const viewMode = urlParams.get('view');
-            const albumIdParam = urlParams.get('album'); 
+            
+            // Lấy đoạn text đằng sau dấu / (Ví dụ: mercistudio.net/vay-cuoi -> lấy chữ 'vay-cuoi')
+            const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
             
             if (folderId) {
                 setActiveTab('gallery');
                 setCurrentFolderId(folderId);
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(folderId); 
-            } else if (albumIdParam) {
-                setActiveTab('collection');
-                setActiveAlbumId(albumIdParam);
+            } else if (pathname && pathname !== '') {
+                // Nếu có chữ đằng sau dấu /, lưu lại để lát so sánh với dữ liệu Album tải về
+                setPendingSlug(pathname);
             }
         } catch (e) { console.warn("URL Parsing bypass"); }
     }, [mounted]);
 
-    // Keyboard Lightbox Navigation
+    useEffect(() => {
+        if (!mounted || !user || !db) return;
+        
+        const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
+            const fetched = snapshot.docs.map(d => {
+                const data = d.data();
+                return {
+                    id: d.id,
+                    ...data,
+                    order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0)
+                };
+            });
+            fetched.sort((a, b) => b.order - a.order);
+            setAlbums(fetched);
+        });
+
+        const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
+            const fetched = snapshot.docs.map(d => {
+                const data = d.data();
+                return {
+                    id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0)
+                };
+            });
+            fetched.sort((a, b) => b.order - a.order);
+            setVideos(fetched);
+        });
+
+        return () => { unsubAlbums(); unsubVideos(); };
+    }, [mounted, user]);
+
+    // Hiển thị Album dựa trên Link URL đẹp
+    useEffect(() => {
+        if (pendingSlug && albums.length > 0) {
+            // Tìm album có slug khớp, hoặc id khớp
+            const foundAlbum = albums.find(a => a.slug === pendingSlug || a.id === pendingSlug);
+            if (foundAlbum) {
+                setActiveTab('collection');
+                setActiveAlbumId(foundAlbum.id);
+                setPendingSlug(null); // Xóa để không bị lặp
+            }
+        }
+    }, [albums, pendingSlug]);
+
     const nextImg = useCallback(() => {
         const imgs = lightboxData.images || [];
         if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index + 1) % imgs.length }));
@@ -196,7 +236,16 @@ export default function Home() {
     const handleCreateAlbum = async () => {
         if (!newAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
-        const data = { id: `album_${Date.now()}`, ...newAlbum, images: [], coverUrl: DEFAULT_COVER };
+        const data = { 
+            id: `album_${Date.now()}`, 
+            title: newAlbum.title,
+            slug: createSlug(newAlbum.title) || `album-${Date.now()}`, // Tạo link tự động
+            sub: newAlbum.sub,
+            category: newAlbum.category,
+            images: [], 
+            coverUrl: DEFAULT_COVER,
+            order: Date.now() 
+        };
         await saveAlbumData(data);
         setIsCreatingAlbum(false);
         setIsLoading(false);
@@ -209,6 +258,7 @@ export default function Home() {
         try {
             await updateDoc(doc(db, 'merci_albums', editingAlbum.id), {
                 title: editingAlbum.title,
+                slug: createSlug(editingAlbum.title) || editingAlbum.slug, // Cập nhật lại link nếu đổi tên
                 sub: editingAlbum.sub,
                 category: editingAlbum.category,
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER
@@ -240,6 +290,30 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
+    const handleMoveAlbum = async (id, direction, e) => {
+        e.stopPropagation();
+        const index = albums.findIndex(a => a.id === id);
+        if (index === -1) return;
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === albums.length - 1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        const currentItem = albums[index];
+        const targetItem = albums[targetIndex];
+
+        let order1 = currentItem.order;
+        let order2 = targetItem.order;
+
+        if (order1 === order2) order1 += (direction === 'up' ? -1 : 1);
+
+        setIsLoading(true);
+        try {
+            await updateDoc(doc(db, 'merci_albums', currentItem.id), { order: order2 });
+            await updateDoc(doc(db, 'merci_albums', targetItem.id), { order: order1 });
+        } catch (err) { alert("Lỗi khi đổi vị trí."); } 
+        finally { setIsLoading(false); }
+    };
+
     // === HELPERS (Admin Videos) ===
     const extractYoutubeId = (url) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -257,7 +331,8 @@ export default function Home() {
             id: `video_${Date.now()}`,
             title: newVideo.title,
             youtubeId: yId,
-            createdAt: new Date().toISOString()
+            createdAt: new Date().toISOString(),
+            order: Date.now()
         };
         try {
             await setDoc(doc(db, 'merci_videos', data.id), data);
@@ -271,6 +346,30 @@ export default function Home() {
         e.stopPropagation();
         if (!confirm("Xóa video này?")) return;
         try { await deleteDoc(doc(db, 'merci_videos', id)); } catch(e) { alert("Lỗi xóa video."); }
+    };
+
+    const handleMoveVideo = async (id, direction, e) => {
+        e.stopPropagation();
+        const index = videos.findIndex(v => v.id === id);
+        if (index === -1) return;
+        if (direction === 'up' && index === 0) return;
+        if (direction === 'down' && index === videos.length - 1) return;
+
+        const targetIndex = direction === 'up' ? index - 1 : index + 1;
+        const currentItem = videos[index];
+        const targetItem = videos[targetIndex];
+
+        let order1 = currentItem.order;
+        let order2 = targetItem.order;
+
+        if (order1 === order2) order1 += (direction === 'up' ? -1 : 1);
+
+        setIsLoading(true);
+        try {
+            await updateDoc(doc(db, 'merci_videos', currentItem.id), { order: order2 });
+            await updateDoc(doc(db, 'merci_videos', targetItem.id), { order: order1 });
+        } catch (err) { alert("Lỗi khi đổi vị trí."); } 
+        finally { setIsLoading(false); }
     };
 
     // Tải ảnh đơn có watermark
@@ -542,7 +641,6 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
-    // Tối ưu hóa việc tìm album hiện tại để chống lag/sập trang
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
     const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
@@ -683,6 +781,7 @@ export default function Home() {
                         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                             setActiveTab('home');
                             setActiveAlbumId(null);
+                            window.history.pushState({}, document.title, '/'); // Xóa link ảo
                         }}>
                             <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                                 <Camera className="text-white" size={20} />
@@ -703,11 +802,15 @@ export default function Home() {
                                 { id: 'home', label: 'Trang chủ' },
                                 { id: 'create', label: 'Tạo trang' },
                                 { id: 'collection', label: 'Bộ sưu tập' },
-                                { id: 'videos', label: 'Video' }, // Thêm tab Video
+                                { id: 'videos', label: 'Video' },
                                 { id: 'gallery', label: 'Chọn ảnh' },
                                 { id: 'filter', label: 'Lọc ảnh' }
                             ].map(t => (
-                                <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveAlbumId(null); }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                <button key={t.id} onClick={() => { 
+                                    setActiveTab(t.id); 
+                                    setActiveAlbumId(null); 
+                                    window.history.pushState({}, document.title, '/'); // Xóa link ảo khi chuyển tab
+                                }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                     {t.label}
                                 </button>
                             ))}
@@ -762,7 +865,7 @@ export default function Home() {
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
+                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
                                     </div>
                                     <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
@@ -812,10 +915,19 @@ export default function Home() {
                                         <div className="absolute bottom-6 left-6 right-6 text-white">
                                             <h3 className="text-xl md:text-2xl font-bold font-serif leading-tight drop-shadow-md">{vid.title}</h3>
                                         </div>
+                                        {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
-                                            <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="absolute top-4 right-4 z-20 bg-white/90 p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:scale-110" title="Xóa Video">
-                                                <Trash2 className="w-4 h-4" />
-                                            </button>
+                                            <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
+                                                    <ArrowUp className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
+                                                    <ArrowDown className="w-4 h-4" />
+                                                </button>
+                                                <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110" title="Xóa Video">
+                                                    <Trash2 className="w-4 h-4" />
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                 )) : (
@@ -863,15 +975,24 @@ export default function Home() {
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
-                                                    {/* Nút Edit */}
+                                                    {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
-                                                        <button 
-                                                            onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} 
-                                                            className="absolute top-4 md:top-6 right-4 md:right-6 z-20 bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all md:hover:scale-110"
-                                                            title="Sửa Album"
-                                                        >
-                                                            <Edit className="w-4 h-4" />
-                                                        </button>
+                                                        <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                            {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
+                                                            {activeCategory === 'Tất cả' && (
+                                                                <>
+                                                                    <button onClick={(e) => handleMoveAlbum(a.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
+                                                                        <ArrowUp className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button onClick={(e) => handleMoveAlbum(a.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
+                                                                        <ArrowDown className="w-4 h-4" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                            <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                     )}
 
                                                     <div className="absolute bottom-6 md:bottom-8 left-6 md:left-8 right-6 md:right-8 text-white">
@@ -897,13 +1018,15 @@ export default function Home() {
                                         <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
+                                                window.history.pushState({}, document.title, '/'); // Xóa link ảo khi Back
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18}/> Quay lại
                                             </button>
                                             
-                                            {/* Link Album */}
+                                            {/* Link Album MỚI (Dạng Slug đẹp) */}
                                             <button onClick={() => {
-                                                const link = `${window.location.origin}${window.location.pathname}?album=${activeAlbumId}`;
+                                                const slugToUse = currentViewAlbum?.slug || currentViewAlbum?.id;
+                                                const link = `${window.location.origin}/${slugToUse}`;
                                                 if(navigator.clipboard && window.isSecureContext) {
                                                     navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
                                                 } else {
