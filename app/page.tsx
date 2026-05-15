@@ -1,10 +1,11 @@
-// Cập nhật: Lưu lựa chọn ảnh của khách, xem ảnh đã chọn, tạo link chia sẻ kết quả
+// Cập nhật: Thêm tính năng tải ZIP và fix lỗi thiếu icon LinkIcon
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
-    MapPin, Phone, Mail, Plus, X, Folder, FolderDown, AlertCircle, User, CheckCircle2
+    MapPin, Phone, Mail, Plus, X, Folder, FolderDown, AlertCircle, User, CheckCircle2,
+    Link as LinkIcon // Đã bổ sung LinkIcon
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
