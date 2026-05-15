@@ -234,6 +234,69 @@ export default function Home() {
         }
     };
 
+    // Tải ảnh đơn có watermark
+    const handleDownloadWithWatermark = async (imageUrl, imageName, event) => {
+        event.stopPropagation(); // Ngăn Lightbox mở lên
+        setIsLoading(true);
+        setLoadingMessage('Đang đóng dấu bản quyền...');
+        
+        try {
+            // Tải ảnh thành blob qua fetch để tránh vấn đề Tainted Canvas
+            const response = await fetch(imageUrl);
+            const blob = await response.blob();
+            const localUrl = URL.createObjectURL(blob);
+
+            const img = new Image();
+            img.crossOrigin = "Anonymous"; // Hỗ trợ CORS
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext('2d');
+                
+                // Vẽ ảnh gốc lên canvas
+                ctx.drawImage(img, 0, 0);
+                
+                // Cài đặt Watermark "© MERCI STUDIO"
+                const fontSize = Math.max(30, img.width / 25);
+                ctx.font = `bold ${fontSize}px serif`;
+                ctx.textAlign = 'right';
+                ctx.textBaseline = 'bottom';
+                
+                // Tạo shadow cho text nổi bật trên nền sáng/tối
+                ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                ctx.shadowBlur = Math.max(5, fontSize / 4);
+                ctx.shadowOffsetX = 2;
+                ctx.shadowOffsetY = 2;
+                ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                
+                // Padding bằng fontSize để không sát lề
+                ctx.fillText('© MERCI STUDIO', canvas.width - (fontSize / 2), canvas.height - (fontSize / 2));
+
+                // Chuyển canvas thành file và tải
+                const a = document.createElement('a');
+                a.href = canvas.toDataURL('image/jpeg', 0.95);
+                a.download = `${imageName ? imageName.replace(/\.[^/.]+$/, "") : 'image'}_merci.jpg`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                
+                // Xóa URL tạm
+                URL.revokeObjectURL(localUrl);
+                setIsLoading(false);
+            };
+            img.onerror = () => {
+                setIsLoading(false);
+                alert("Lỗi khi xử lý ảnh để đóng dấu bản quyền.");
+            };
+            img.src = localUrl;
+        } catch (error) {
+            console.error(error);
+            setIsLoading(false);
+            alert("Không thể tải ảnh gốc. Có thể do lỗi kết nối hoặc phân quyền.");
+        }
+    };
+
     const handleSyncDriveToAlbum = async () => {
         if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
         if (!albumDriveLink.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
@@ -738,9 +801,9 @@ export default function Home() {
                                                 <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentAlbum?.images})}>
                                                     <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
                                                     
-                                                    {/* Nút Tải xuống */}
+                                                    {/* Nút Tải xuống có chứa Watermark */}
                                                     <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-20">
-                                                        <button onClick={(e) => { e.stopPropagation(); window.open(img.originalUrl, '_blank'); }} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
+                                                        <button onClick={(e) => handleDownloadWithWatermark(img.originalUrl, img.name, e)} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
                                                             <Download size={20}/>
                                                         </button>
                                                     </div>
