@@ -234,66 +234,79 @@ export default function Home() {
         }
     };
 
-    // Tải ảnh đơn có watermark
+    // Tải ảnh đơn có watermark - Đã tối ưu hóa chống lỗi CORS
     const handleDownloadWithWatermark = async (imageUrl, imageName, event) => {
         event.stopPropagation(); // Ngăn Lightbox mở lên
         setIsLoading(true);
         setLoadingMessage('Đang đóng dấu bản quyền...');
         
-        try {
-            // Tải ảnh thành blob qua fetch để tránh vấn đề Tainted Canvas
-            const response = await fetch(imageUrl);
-            const blob = await response.blob();
-            const localUrl = URL.createObjectURL(blob);
-
+        const addWatermarkAndDownload = (srcUrl) => {
             const img = new Image();
-            img.crossOrigin = "Anonymous"; // Hỗ trợ CORS
+            img.crossOrigin = "Anonymous"; // Cố gắng lấy quyền CORS
             img.onload = () => {
-                const canvas = document.createElement('canvas');
-                canvas.width = img.width;
-                canvas.height = img.height;
-                const ctx = canvas.getContext('2d');
-                
-                // Vẽ ảnh gốc lên canvas
-                ctx.drawImage(img, 0, 0);
-                
-                // Cài đặt Watermark "© MERCI STUDIO"
-                const fontSize = Math.max(30, img.width / 25);
-                ctx.font = `bold ${fontSize}px serif`;
-                ctx.textAlign = 'right';
-                ctx.textBaseline = 'bottom';
-                
-                // Tạo shadow cho text nổi bật trên nền sáng/tối
-                ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                ctx.shadowBlur = Math.max(5, fontSize / 4);
-                ctx.shadowOffsetX = 2;
-                ctx.shadowOffsetY = 2;
-                ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                
-                // Padding bằng fontSize để không sát lề
-                ctx.fillText('© MERCI STUDIO', canvas.width - (fontSize / 2), canvas.height - (fontSize / 2));
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Vẽ ảnh gốc lên canvas
+                    ctx.drawImage(img, 0, 0);
+                    
+                    // Cài đặt Watermark "© MERCI STUDIO"
+                    const fontSize = Math.max(30, img.width / 25);
+                    ctx.font = `bold ${fontSize}px serif`;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+                    
+                    // Tạo shadow cho text nổi bật trên nền sáng/tối
+                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
+                    ctx.shadowBlur = Math.max(5, fontSize / 4);
+                    ctx.shadowOffsetX = 2;
+                    ctx.shadowOffsetY = 2;
+                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                    
+                    // Vẽ chữ lên góc dưới phải
+                    ctx.fillText('© MERCI STUDIO', canvas.width - (fontSize / 2), canvas.height - (fontSize / 2));
 
-                // Chuyển canvas thành file và tải
-                const a = document.createElement('a');
-                a.href = canvas.toDataURL('image/jpeg', 0.95);
-                a.download = `${imageName ? imageName.replace(/\.[^/.]+$/, "") : 'image'}_merci.jpg`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                
-                // Xóa URL tạm
-                URL.revokeObjectURL(localUrl);
+                    // Chuyển canvas thành file và tải
+                    const a = document.createElement('a');
+                    a.href = canvas.toDataURL('image/jpeg', 0.95);
+                    a.download = `${imageName ? imageName.replace(/\.[^/.]+$/, "") : 'image'}_merci.jpg`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                } catch (e) {
+                    console.error("Lỗi Tainted Canvas:", e);
+                    alert("Trình duyệt chặn vẽ logo vì lý do bảo mật. Hệ thống đang tải ảnh gốc cho bạn...");
+                    window.open(imageUrl, '_blank');
+                }
                 setIsLoading(false);
             };
             img.onerror = () => {
+                console.error("Lỗi khi tải ảnh qua thẻ img");
+                alert("Lỗi tải ảnh do bảo mật trình duyệt. Đang mở liên kết gốc...");
+                window.open(imageUrl, '_blank');
                 setIsLoading(false);
-                alert("Lỗi khi xử lý ảnh để đóng dấu bản quyền.");
             };
-            img.src = localUrl;
-        } catch (error) {
-            console.error(error);
-            setIsLoading(false);
-            alert("Không thể tải ảnh gốc. Có thể do lỗi kết nối hoặc phân quyền.");
+            img.src = srcUrl;
+        };
+
+        // Nếu là data URI (ảnh upload từ máy), vẽ luôn
+        if (imageUrl.startsWith('data:')) {
+            addWatermarkAndDownload(imageUrl);
+        } else {
+            try {
+                // Thử fetch để lấy blob, cách này vượt qua CORS tốt nhất cho Google Drive
+                const response = await fetch(imageUrl);
+                const blob = await response.blob();
+                const objectUrl = URL.createObjectURL(blob);
+                addWatermarkAndDownload(objectUrl);
+            } catch (err) {
+                console.warn("Fetch thất bại, thử gán link trực tiếp:", err);
+                // Fallback nếu fetch lỗi
+                addWatermarkAndDownload(imageUrl);
+            }
         }
     };
 
