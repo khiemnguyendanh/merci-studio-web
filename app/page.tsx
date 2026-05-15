@@ -1,3 +1,4 @@
+// Cập nhật cuối: Sửa lỗi Type Check Vercel và hoàn thiện chức năng
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
 import { 
@@ -236,6 +237,21 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
+    // Hàm chọn thư mục an toàn với TypeScript
+    const selectSourceFolder = async () => {
+        try {
+            const handle = await (window as any).showDirectoryPicker();
+            setSourceHandle(handle);
+        } catch (e) {}
+    };
+
+    const selectDestFolder = async () => {
+        try {
+            const handle = await (window as any).showDirectoryPicker();
+            setDestHandle(handle);
+        } catch (e) {}
+    };
+
     const handleCopyFiles = async () => {
         if (!sourceHandle || !destHandle) return alert("Vui lòng chọn đủ thư mục nguồn và đích!");
         if (!filterText.trim()) return alert("Vui lòng dán danh sách tên file!");
@@ -254,8 +270,8 @@ export default function Home() {
                     const nameNoExt = entry.name.replace(/\.[^/.]+$/, "").toLowerCase();
                     if (names.includes(fileName) || names.includes(nameNoExt)) {
                         const file = await (entry as any).getFile();
-                        const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
-                        const writable = await newFileHandle.createWritable();
+                        const newFileHandle = await (destHandle as any).getFileHandle(entry.name, { create: true });
+                        const writable = await (newFileHandle as any).createWritable();
                         await writable.write(file);
                         await writable.close();
                         count++;
@@ -474,11 +490,11 @@ export default function Home() {
                             <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 space-y-10">
                                 <h2 className="text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div onClick={async () => { /* @ts-ignore */ setSourceHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
+                                    <div onClick={selectSourceFolder} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
                                         <Folder className="text-blue-600" size={28} />
                                         <p className="font-bold truncate text-slate-700">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
                                     </div>
-                                    <div onClick={async () => { /* @ts-ignore */ setDestHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
+                                    <div onClick={selectDestFolder} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
                                         <FolderDown className="text-green-600" size={28} />
                                         <p className="font-bold truncate text-slate-700">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
                                     </div>
