@@ -34,6 +34,9 @@ if (typeof window !== 'undefined') {
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
+// Danh mục Album (Hashtags)
+const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
+
 // Component Icon Facebook (Tránh lỗi thư viện)
 const FacebookIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -74,12 +77,13 @@ export default function Home() {
     const [showOnlySelected, setShowOnlySelected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
-    // Albums (Admin)
+    // Albums (Admin & Khách)
     const [albums, setAlbums] = useState([]);
     const [activeAlbumId, setActiveAlbumId] = useState(null);
+    const [activeCategory, setActiveCategory] = useState('Tất cả'); // State cho bộ lọc
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(null); 
-    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Váy cưới' });
+    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
 
     // Filter Tool
@@ -121,17 +125,23 @@ export default function Home() {
         return () => unsubscribe();
     }, [mounted, user]);
 
+    // Nhận diện URL Params (Share Link)
     useEffect(() => {
         if (!mounted) return;
         const urlParams = new URLSearchParams(window.location.search);
         const folderId = urlParams.get('folder');
         const viewMode = urlParams.get('view');
+        const albumIdParam = urlParams.get('album'); // Đọc ID Album từ link chia sẻ
         
         if (folderId) {
             setActiveTab('gallery');
             setCurrentFolderId(folderId);
             if (viewMode === 'selected') setShowOnlySelected(true);
             fetchDrive(folderId); 
+        } else if (albumIdParam) {
+            // Tự động mở tab Bộ Sưu Tập và nhảy vào đúng Album
+            setActiveTab('collection');
+            setActiveAlbumId(albumIdParam);
         }
     }, [mounted]);
 
@@ -169,7 +179,7 @@ export default function Home() {
         await saveAlbumData(data);
         setIsCreatingAlbum(false);
         setIsLoading(false);
-        setNewAlbum({ title: '', sub: '', category: 'Váy cưới' });
+        setNewAlbum({ title: '', sub: '', category: 'Wedding' });
     };
 
     const handleUpdateAlbum = async () => {
@@ -410,6 +420,9 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
+    // Lọc Album theo Hashtag
+    const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
+
     const displayedImages = showOnlySelected 
         ? loadedImages.filter(img => selectedImages.has(img.id)) 
         : loadedImages;
@@ -463,7 +476,7 @@ export default function Home() {
                         <div className="grid grid-cols-2 gap-4">
                             <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({...newAlbum, sub: e.target.value})} />
                             <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={newAlbum.category} onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
-                                {['Váy cưới', 'Ảnh cưới', 'Ảnh concept', 'Gia đình', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
+                                {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -497,7 +510,7 @@ export default function Home() {
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 ml-1">DANH MỤC</label>
                                     <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={editingAlbum.category} onChange={e => setEditingAlbum({...editingAlbum, category: e.target.value})}>
-                                        {['Váy cưới', 'Ảnh cưới', 'Ảnh concept', 'Gia đình', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
+                                        {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
                             </div>
@@ -626,13 +639,27 @@ export default function Home() {
                                             </button>
                                         )}
                                     </div>
+                                    
+                                    {/* THANH LỌC HASHTAG */}
+                                    <div className="flex overflow-x-auto gap-3 mb-8 no-scrollbar pb-2">
+                                        {ALBUM_CATEGORIES.map(cat => (
+                                            <button 
+                                                key={cat} 
+                                                onClick={() => setActiveCategory(cat)} 
+                                                className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
+                                            >
+                                                {cat === 'Tất cả' ? cat : `#${cat}`}
+                                            </button>
+                                        ))}
+                                    </div>
+
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-                                        {albums.map(a => (
+                                        {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div key={a.id} onClick={() => {setActiveAlbumId(a.id); setLightboxData(p => ({...p, images: a.images||[]}));}} className="group cursor-pointer relative">
                                                 <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity"></div>
-                                                    <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900">{a.category}</div>
+                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
+                                                    <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
                                                     {/* Nút Edit (Chỉ hiển thị cho Admin) */}
                                                     {isAdmin && (
@@ -646,18 +673,43 @@ export default function Home() {
                                                     )}
 
                                                     <div className="absolute bottom-8 left-8 right-8 text-white">
-                                                        <h3 className="text-2xl font-bold font-serif mb-1">{a.title}</h3>
-                                                        <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                        <h3 className="text-3xl font-bold font-serif mb-2 leading-tight">{a.title}</h3>
+                                                        <div className="flex items-center justify-between">
+                                                            <p className="text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                            {a.sub && <p className="text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        ))}
+                                        )) : (
+                                            <div className="col-span-full text-center py-20 text-slate-400">
+                                                <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                                <p>Chưa có album nào trong danh mục này.</p>
+                                            </div>
+                                        )}
                                     </div>
                                 </>
                             ) : (
                                 <div className="space-y-10 animate-in slide-in-from-right duration-500">
                                     <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-slate-100 pb-8">
-                                        <button onClick={() => setActiveAlbumId(null)} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-5 py-2.5 rounded-2xl border shadow-sm transition-all active:scale-95"><ArrowLeft size={18}/> Quay lại</button>
+                                        <div className="flex items-center gap-3 w-full md:w-auto">
+                                            <button onClick={() => {
+                                                setActiveAlbumId(null);
+                                                window.history.replaceState({}, document.title, window.location.pathname);
+                                            }} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-2xl border shadow-sm transition-all active:scale-95">
+                                                <ArrowLeft size={18}/> <span className="hidden sm:inline">Quay lại</span>
+                                            </button>
+                                            
+                                            {/* Nút Tạo link riêng cho Album */}
+                                            <button onClick={() => {
+                                                const link = `${window.location.origin}${window.location.pathname}?album=${activeAlbumId}`;
+                                                navigator.clipboard.writeText(link);
+                                                alert("Đã copy link Album này! Bạn có thể gửi trực tiếp cho khách hàng.");
+                                            }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none justify-center">
+                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link Album</span>
+                                            </button>
+                                        </div>
+
                                         {isAdmin && (
                                             <div className="flex flex-wrap items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
                                                 <input 
@@ -674,7 +726,8 @@ export default function Home() {
                                         )}
                                     </div>
                                     <div className="text-center">
-                                        <h2 className="text-5xl font-bold font-serif text-slate-900">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
+                                        <h2 className="text-5xl font-bold font-serif text-slate-900 mb-2">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
+                                        <p className="text-slate-500">{albums.find(a => a.id === activeAlbumId)?.sub}</p>
                                     </div>
                                     <div className="masonry-grid">
                                         {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => {
