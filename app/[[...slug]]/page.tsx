@@ -102,7 +102,7 @@ export default function Home() {
     const [editingAlbum, setEditingAlbum] = useState(null); 
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
-    const [pendingSlug, setPendingSlug] = useState(null); // Lưu trữ link chờ xử lý
+    const [pendingSlug, setPendingSlug] = useState(null);
 
     // Videos
     const [videos, setVideos] = useState([]);
@@ -147,7 +147,6 @@ export default function Home() {
             const folderId = urlParams.get('folder');
             const viewMode = urlParams.get('view');
             
-            // Lấy đoạn text đằng sau dấu / (Ví dụ: mercistudio.net/vay-cuoi -> lấy chữ 'vay-cuoi')
             const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
             
             if (folderId) {
@@ -156,7 +155,6 @@ export default function Home() {
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(folderId); 
             } else if (pathname && pathname !== '') {
-                // Nếu có chữ đằng sau dấu /, lưu lại để lát so sánh với dữ liệu Album tải về
                 setPendingSlug(pathname);
             }
         } catch (e) { console.warn("URL Parsing bypass"); }
@@ -195,12 +193,15 @@ export default function Home() {
     // Hiển thị Album dựa trên Link URL đẹp
     useEffect(() => {
         if (pendingSlug && albums.length > 0) {
-            // Tìm album có slug khớp, hoặc id khớp
-            const foundAlbum = albums.find(a => a.slug === pendingSlug || a.id === pendingSlug);
+            const foundAlbum = albums.find(a => 
+                a.slug === pendingSlug || 
+                createSlug(a.title) === pendingSlug || 
+                a.id === pendingSlug
+            );
             if (foundAlbum) {
                 setActiveTab('collection');
                 setActiveAlbumId(foundAlbum.id);
-                setPendingSlug(null); // Xóa để không bị lặp
+                setPendingSlug(null);
             }
         }
     }, [albums, pendingSlug]);
@@ -239,7 +240,7 @@ export default function Home() {
         const data = { 
             id: `album_${Date.now()}`, 
             title: newAlbum.title,
-            slug: createSlug(newAlbum.title) || `album-${Date.now()}`, // Tạo link tự động
+            slug: createSlug(newAlbum.title) || `album-${Date.now()}`, 
             sub: newAlbum.sub,
             category: newAlbum.category,
             images: [], 
@@ -258,7 +259,7 @@ export default function Home() {
         try {
             await updateDoc(doc(db, 'merci_albums', editingAlbum.id), {
                 title: editingAlbum.title,
-                slug: createSlug(editingAlbum.title) || editingAlbum.slug, // Cập nhật lại link nếu đổi tên
+                slug: createSlug(editingAlbum.title) || editingAlbum.slug, 
                 sub: editingAlbum.sub,
                 category: editingAlbum.category,
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER
@@ -522,7 +523,7 @@ export default function Home() {
                     url: f.thumbnailLink?.replace('=s220', '=w600'),
                     originalUrl: f.thumbnailLink?.replace('=s220', '=s0')
                 })));
-                setClientLink(`${window.location.href.split('?')[0]}?folder=${folderId}`);
+                setClientLink(`${window.location.origin}?folder=${folderId}`);
                 
                 const savedSelections = await loadClientSelectionFromDB(folderId);
                 setSelectedImages(savedSelections);
@@ -546,8 +547,7 @@ export default function Home() {
 
     const generateSelectedImagesLink = () => {
         if (!currentFolderId) return;
-        let baseUrl = window.location.href.split('?')[0];
-        const newLink = `${baseUrl}?folder=${currentFolderId}&view=selected`;
+        const newLink = `${window.location.origin}?folder=${currentFolderId}&view=selected`;
         
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(newLink).then(() => alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh."));
@@ -772,30 +772,25 @@ export default function Home() {
                 </div>
             )}
 
-            {/* Menu Header (Responsive Mobile & Desktop) */}
+            {/* Menu Header */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
-                    
-                    {/* Hàng 1 trên Mobile: Logo & Nút Đăng nhập */}
                     <div className="flex justify-between items-center w-full md:w-auto">
                         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                             setActiveTab('home');
                             setActiveAlbumId(null);
-                            window.history.pushState({}, document.title, '/'); // Xóa link ảo
+                            window.history.pushState({}, document.title, '/'); 
                         }}>
                             <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                                 <Camera className="text-white" size={20} />
                             </div>
                             <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                         </div>
-
-                        {/* Nút Đăng nhập/Admin (Chỉ hiện trên Mobile ở hàng này) */}
                         <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                             <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
                         </button>
                     </div>
 
-                    {/* Hàng 2 trên Mobile (Trượt ngang): Navigation Tabs */}
                     <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
                         <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
                             {[
@@ -809,7 +804,7 @@ export default function Home() {
                                 <button key={t.id} onClick={() => { 
                                     setActiveTab(t.id); 
                                     setActiveAlbumId(null); 
-                                    window.history.pushState({}, document.title, '/'); // Xóa link ảo khi chuyển tab
+                                    window.history.pushState({}, document.title, '/'); 
                                 }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                     {t.label}
                                 </button>
@@ -817,14 +812,13 @@ export default function Home() {
                         </nav>
                     </div>
 
-                    {/* Nút Đăng nhập/Admin (Chỉ hiện trên Desktop) */}
                     <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                         <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
                     </button>
-
                 </div>
             </header>
 
+            {/* Main Content (One unified switch logic for tabs) */}
             <main className="flex-grow w-full">
                 <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
                     
@@ -865,7 +859,7 @@ export default function Home() {
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
+                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
                                     </div>
                                     <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
@@ -969,7 +963,13 @@ export default function Home() {
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
-                                            <div key={a.id} onClick={() => {setActiveAlbumId(a.id); setLightboxData(p => ({...p, images: a.images||[]}));}} className="group cursor-pointer relative">
+                                            <div key={a.id} onClick={() => {
+                                                setActiveAlbumId(a.id); 
+                                                setLightboxData(p => ({...p, images: a.images||[]}));
+                                                // Thay đổi URL trình duyệt cho ĐẸP
+                                                const slugToUse = a.slug || createSlug(a.title) || a.id;
+                                                window.history.pushState({}, '', `/${slugToUse}`);
+                                            }} className="group cursor-pointer relative">
                                                 <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
@@ -978,7 +978,6 @@ export default function Home() {
                                                     {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                            {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
                                                             {activeCategory === 'Tất cả' && (
                                                                 <>
                                                                     <button onClick={(e) => handleMoveAlbum(a.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
@@ -1023,9 +1022,9 @@ export default function Home() {
                                                 <ArrowLeft size={18}/> Quay lại
                                             </button>
                                             
-                                            {/* Link Album MỚI (Dạng Slug đẹp) */}
+                                            {/* Nút copy được tự động ẩn bớt đi vì trên thanh URL đã có sẵn link để copy */}
                                             <button onClick={() => {
-                                                const slugToUse = currentViewAlbum?.slug || currentViewAlbum?.id;
+                                                const slugToUse = currentViewAlbum?.slug || createSlug(currentViewAlbum?.title) || currentViewAlbum?.id;
                                                 const link = `${window.location.origin}/${slugToUse}`;
                                                 if(navigator.clipboard && window.isSecureContext) {
                                                     navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
