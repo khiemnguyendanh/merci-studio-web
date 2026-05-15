@@ -92,7 +92,10 @@ export default function Home() {
     const [destHandle, setDestHandle] = useState(null);
     const [filterLogs, setFilterLogs] = useState([]);
 
+    // Lightbox & Swiping States
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] });
+    const [touchStart, setTouchStart] = useState(null);
+    const [touchEnd, setTouchEnd] = useState(null);
 
     // === EFFECTS ===
     useEffect(() => { 
@@ -496,9 +499,6 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
-    // Lọc Album theo Hashtag
-    const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
-
     const displayedImages = showOnlySelected 
         ? loadedImages.filter(img => selectedImages.has(img.id)) 
         : loadedImages;
@@ -610,33 +610,50 @@ export default function Home() {
                 </div>
             )}
 
+            {/* Menu Header (Responsive Mobile & Desktop) */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
-                        setActiveTab('home');
-                        window.history.replaceState({}, document.title, window.location.pathname);
-                    }}>
-                        <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
-                            <Camera className="text-white" size={20} />
+                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
+                    
+                    {/* Hàng 1 trên Mobile: Logo & Nút Đăng nhập */}
+                    <div className="flex justify-between items-center w-full md:w-auto">
+                        <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
+                            setActiveTab('home');
+                            window.history.replaceState({}, document.title, window.location.pathname);
+                        }}>
+                            <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
+                                <Camera className="text-white" size={20} />
+                            </div>
+                            <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                         </div>
-                        <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
+
+                        {/* Nút Đăng nhập/Admin (Chỉ hiện trên Mobile ở hàng này) */}
+                        <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
+                        </button>
                     </div>
-                    <nav className="flex bg-slate-100/50 p-1 rounded-full overflow-x-auto no-scrollbar border border-slate-200/50">
-                        {[
-                            { id: 'home', label: 'Trang chủ' },
-                            { id: 'create', label: 'Tạo trang' },
-                            { id: 'collection', label: 'Bộ sưu tập' },
-                            { id: 'gallery', label: 'Chọn ảnh' },
-                            { id: 'filter', label: 'Lọc ảnh' }
-                        ].map(t => (
-                            <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveAlbumId(null); }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
-                                {t.label}
-                            </button>
-                        ))}
-                    </nav>
-                    <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+
+                    {/* Hàng 2 trên Mobile (Trượt ngang): Navigation Tabs */}
+                    <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                        <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
+                            {[
+                                { id: 'home', label: 'Trang chủ' },
+                                { id: 'create', label: 'Tạo trang' },
+                                { id: 'collection', label: 'Bộ sưu tập' },
+                                { id: 'gallery', label: 'Chọn ảnh' },
+                                { id: 'filter', label: 'Lọc ảnh' }
+                            ].map(t => (
+                                <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveAlbumId(null); }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                    {t.label}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+
+                    {/* Nút Đăng nhập/Admin (Chỉ hiện trên Desktop) */}
+                    <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                         <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
                     </button>
+
                 </div>
             </header>
 
@@ -961,7 +978,22 @@ export default function Home() {
 
             {/* LIGHTBOX FOR GALLERY & ALBUMS */}
             {lightboxData.isOpen && lightboxData.images.length > 0 && (
-                <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div 
+                    className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300"
+                    onTouchStart={(e) => {
+                        setTouchEnd(null);
+                        setTouchStart(e.targetTouches[0].clientX);
+                    }}
+                    onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
+                    onTouchEnd={() => {
+                        if (!touchStart || !touchEnd) return;
+                        const distance = touchStart - touchEnd;
+                        const isLeftSwipe = distance > 50;
+                        const isRightSwipe = distance < -50;
+                        if (isLeftSwipe) nextImg();
+                        if (isRightSwipe) prevImg();
+                    }}
+                >
                     <div className="absolute top-6 left-6 text-white/50 font-mono text-sm tracking-widest pointer-events-none z-[210]">
                         {lightboxData.index + 1} / {lightboxData.images.length}
                     </div>
@@ -971,8 +1003,9 @@ export default function Home() {
                     <img 
                         key={lightboxData.index}
                         src={lightboxData.images[lightboxData.index].originalUrl || lightboxData.images[lightboxData.index].url} 
-                        className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-300" 
+                        className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-300 select-none pointer-events-none" 
                         alt="Zoomed"
+                        draggable={false}
                     />
                     
                     <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft size={56} /></button>
