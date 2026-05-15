@@ -6,13 +6,13 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2 // Thêm icon Sửa và Xóa
+    Link as LinkIcon, Edit, Trash2, Star
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore'; // Import thêm updateDoc, deleteDoc
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -78,7 +78,7 @@ export default function Home() {
     const [albums, setAlbums] = useState([]);
     const [activeAlbumId, setActiveAlbumId] = useState(null);
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
-    const [editingAlbum, setEditingAlbum] = useState(null); // State quản lý modal Sửa Album
+    const [editingAlbum, setEditingAlbum] = useState(null); 
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Váy cưới' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
 
@@ -115,7 +115,6 @@ export default function Home() {
         if (!mounted || !user || !db) return;
         const unsubscribe = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            // Sắp xếp giảm dần theo ID (mới nhất lên đầu)
             fetched.sort((a, b) => b.id.localeCompare(a.id));
             setAlbums(fetched);
         });
@@ -173,7 +172,6 @@ export default function Home() {
         setNewAlbum({ title: '', sub: '', category: 'Váy cưới' });
     };
 
-    // Helper: Cập nhật Album
     const handleUpdateAlbum = async () => {
         if (!editingAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
@@ -186,14 +184,13 @@ export default function Home() {
             });
             setEditingAlbum(null);
         } catch (e) {
-            console.error("Lỗi cập nhật album:", e);
+            console.error(e);
             alert("Đã xảy ra lỗi khi cập nhật album.");
         } finally {
             setIsLoading(false);
         }
     };
 
-    // Helper: Xóa Album
     const handleDeleteAlbum = async (id) => {
         if (!confirm("Bạn có chắc chắn muốn xóa album này? Toàn bộ ảnh bên trong sẽ bị mất vĩnh viễn!")) return;
         setIsLoading(true);
@@ -202,8 +199,26 @@ export default function Home() {
             setEditingAlbum(null);
             if (activeAlbumId === id) setActiveAlbumId(null);
         } catch (e) {
-            console.error("Lỗi xóa album:", e);
+            console.error(e);
             alert("Lỗi khi xóa album.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Hàm chọn ảnh bìa mới
+    const handleSetCover = async (e, imageUrl) => {
+        e.stopPropagation(); 
+        if (!activeAlbumId) return;
+        setIsLoading(true);
+        try {
+            await updateDoc(doc(db, 'merci_albums', activeAlbumId), {
+                coverUrl: imageUrl
+            });
+            alert("Đã đặt ảnh này làm Ảnh Bìa thành công!");
+        } catch (error) {
+            console.error(error);
+            alert("Lỗi khi cập nhật ảnh bìa.");
         } finally {
             setIsLoading(false);
         }
@@ -662,11 +677,36 @@ export default function Home() {
                                         <h2 className="text-5xl font-bold font-serif text-slate-900">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
                                     </div>
                                     <div className="masonry-grid">
-                                        {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => (
-                                            <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: albums.find(a => a.id === activeAlbumId)?.images})}>
-                                                <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
-                                            </div>
-                                        ))}
+                                        {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => {
+                                            const currentAlbum = albums.find(a => a.id === activeAlbumId);
+                                            const isCover = currentAlbum?.coverUrl === img.url;
+                                            
+                                            return (
+                                                <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentAlbum?.images})}>
+                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
+                                                    
+                                                    {/* Nút Tải xuống */}
+                                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-20">
+                                                        <button onClick={(e) => { e.stopPropagation(); window.open(img.originalUrl, '_blank'); }} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
+                                                            <Download size={20}/>
+                                                        </button>
+                                                    </div>
+
+                                                    {/* Nút Đặt làm Ảnh Bìa (Chỉ hiện với Admin) */}
+                                                    {isAdmin && (
+                                                        <div className={`absolute top-4 left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                                            <button 
+                                                                onClick={(e) => handleSetCover(e, img.url)} 
+                                                                className={`p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
+                                                                title={isCover ? "Đây là ảnh bìa hiện tại" : "Đặt làm ảnh bìa"}
+                                                            >
+                                                                <Star size={20} className={isCover ? "fill-current" : ""} />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
                                     </div>
                                 </div>
                             )}
