@@ -11,7 +11,7 @@ import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, onSnapshot } from 'firebase/firestore';
 
-// Cấu hình Firebase
+// Cấu hình Firebase - Đảm bảo bạn đã nhập đủ các biến này trên Vercel Environment Variables
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
@@ -38,7 +38,7 @@ const FacebookIcon = ({ className }: { className?: string }) => (
     </svg>
 );
 
-// Component Icon Instagram tùy chỉnh
+// Component Icon Instagram tùy chỉnh (Thay thế cho import Instagram từ lucide-react để tránh lỗi build)
 const InstagramIcon = ({ className }: { className?: string }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
@@ -85,7 +85,9 @@ export default function Home() {
     useEffect(() => {
         if (!mounted || !auth) return;
         signInAnonymously(auth).catch(() => {});
-        const unsubAuth = onAuthStateChanged(auth, setUser);
+        const unsubAuth = onAuthStateChanged(auth, (u) => {
+            setUser(u);
+        });
         if (localStorage.getItem('merci_admin_logged_in') === 'true') setIsAdmin(true);
         return () => unsubAuth();
     }, [mounted]);
@@ -269,7 +271,7 @@ export default function Home() {
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900">
+        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500">
             <style dangerouslySetInnerHTML={{__html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -294,10 +296,10 @@ export default function Home() {
                             <button onClick={() => setShowLoginModal(false)}><X /></button>
                         </div>
                         <form onSubmit={handleLogin} className="space-y-4">
-                            {loginError && <p className="text-red-500 text-sm">{loginError}</p>}
-                            <input type="text" placeholder="Username" className="w-full border p-3 rounded-xl outline-none" onChange={e => setLoginData({...loginData, username: e.target.value})} />
-                            <input type="password" placeholder="Password" className="w-full border p-3 rounded-xl outline-none" onChange={e => setLoginData({...loginData, password: e.target.value})} />
-                            <button type="submit" className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold">Vào hệ thống</button>
+                            {loginError && <p className="text-red-500 text-sm font-medium">{loginError}</p>}
+                            <input type="text" placeholder="Username" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setLoginData({...loginData, username: e.target.value})} />
+                            <input type="password" placeholder="Password" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setLoginData({...loginData, password: e.target.value})} />
+                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Vào hệ thống</button>
                         </form>
                     </div>
                 </div>
@@ -308,27 +310,27 @@ export default function Home() {
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
                     <div className="bg-white p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl">
                         <h3 className="font-bold text-2xl">Tạo Album Mới</h3>
-                        <input type="text" placeholder="Tên Album (*)" className="w-full border p-3 rounded-xl outline-none" onChange={e => setNewAlbum({...newAlbum, title: e.target.value})} />
-                        <select className="w-full border p-3 rounded-xl outline-none bg-slate-50" value={newAlbum.category} onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
+                        <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({...newAlbum, title: e.target.value})} />
+                        <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={newAlbum.category} onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
                             {['Váy cưới', 'Ảnh cưới', 'Ảnh concept', 'Gia đình', 'Khác'].map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                         <div className="flex justify-end gap-3">
-                            <button onClick={() => setIsCreatingAlbum(false)} className="px-6 py-3">Hủy</button>
-                            <button onClick={handleCreateAlbum} className="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold">Khởi tạo</button>
+                            <button onClick={() => setIsCreatingAlbum(false)} className="px-6 py-3 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
+                            <button onClick={handleCreateAlbum} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold shadow-lg transition-all">Khởi tạo</button>
                         </div>
                     </div>
                 </div>
             )}
 
-            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b p-4 shadow-sm">
+            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex items-center gap-2 cursor-pointer group" onClick={() => setActiveTab('home')}>
                         <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                             <Camera className="text-white" size={20} />
                         </div>
-                        <h1 className="text-xl font-bold font-serif">Merci Studio</h1>
+                        <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                     </div>
-                    <nav className="flex bg-slate-100 p-1 rounded-full overflow-x-auto no-scrollbar">
+                    <nav className="flex bg-slate-100/50 p-1 rounded-full overflow-x-auto no-scrollbar border border-slate-200/50">
                         {[
                             { id: 'home', label: 'Trang chủ' },
                             { id: 'create', label: 'Tạo trang' },
@@ -336,27 +338,29 @@ export default function Home() {
                             { id: 'gallery', label: 'Chọn ảnh' },
                             { id: 'filter', label: 'Lọc ảnh' }
                         ].map(t => (
-                            <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveAlbumId(null); }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow text-blue-600' : 'text-slate-500'}`}>
+                            <button key={t.id} onClick={() => { setActiveTab(t.id); setActiveAlbumId(null); }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                 {t.label}
                             </button>
                         ))}
                     </nav>
-                    <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200">
+                    <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                         <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
                     </button>
                 </div>
             </header>
 
             <main className="flex-grow w-full">
-                <div key={activeTab} className="max-w-7xl mx-auto p-6 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div key={activeTab} className="max-w-7xl mx-auto p-6 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
                     
+                    {/* --- TAB: HOME --- */}
                     {activeTab === 'home' && (
                         <div className="space-y-16">
                             <div className="relative h-[60vh] rounded-[3rem] overflow-hidden shadow-2xl group">
                                 <img src="3.jpg" className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" />
                                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-6 text-center">
                                     <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
-                                    <h2 className="text-5xl md:text-8xl font-bold font-serif mb-6 drop-shadow-lg">Merci Wedding</h2>
+                                    <h2 className="text-5xl md:text-8xl font-bold font-serif mb-6 drop-shadow-lg text-white">Merci Wedding</h2>
+                                    <p className="max-w-2xl text-lg md:text-xl opacity-90 mb-10 font-light">Nơi những rung động được lưu giữ trọn vẹn trong từng khung hình nghệ thuật.</p>
                                     <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">Khám phá ngay</button>
                                 </div>
                             </div>
@@ -366,22 +370,27 @@ export default function Home() {
                                     { icon: <Phone className="text-green-600" />, title: "Hotline", desc: "0888.999.545" },
                                     { icon: <FacebookIcon className="text-blue-800 w-6 h-6" />, title: "Fanpage", desc: "Merci Wedding VN" }
                                 ].map((item, i) => (
-                                    <div key={i} className="p-10 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 text-center hover:shadow-xl hover:-translate-y-2 transition-all">
-                                        <div className="mx-auto mb-6 bg-slate-50 w-16 h-16 rounded-2xl flex items-center justify-center">{item.icon}</div>
+                                    <div key={i} className="p-10 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 text-center hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                                        <div className="mx-auto mb-6 bg-slate-50 w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
                                         <h4 className="font-bold text-xl mb-2">{item.title}</h4>
-                                        <p className="text-slate-500">{item.desc}</p>
+                                        <p className="text-slate-500 font-medium">{item.desc}</p>
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
 
+                    {/* --- TAB: TẠO TRANG --- */}
                     {activeTab === 'create' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                            <div className="space-y-8">
-                                <h2 className="text-5xl md:text-6xl font-bold leading-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
+                            <div className="space-y-8 animate-in slide-in-from-left duration-500">
+                                <h2 className="text-5xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
+                                <p className="text-slate-500 text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
                                 <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-6">
-                                    <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="Dán link folder Google Drive..." className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-blue-500 transition-colors" />
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
+                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-blue-500 transition-colors" />
+                                    </div>
                                     <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
                                     </button>
@@ -389,22 +398,23 @@ export default function Home() {
                                 {clientLink && (
                                     <div className="bg-blue-50 p-6 rounded-2xl flex items-center justify-between border border-blue-100 animate-in zoom-in-95">
                                         <span className="text-xs font-mono font-medium text-blue-700 truncate mr-4">{clientLink}</span>
-                                        <button onClick={() => {navigator.clipboard.writeText(clientLink); alert("Đã copy!");}} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-md">Copy Link</button>
+                                        <button onClick={() => {navigator.clipboard.writeText(clientLink); alert("Đã copy!");}} className="bg-blue-600 text-white px-6 py-2 rounded-xl text-xs font-bold shadow-md hover:bg-blue-700 transition-colors">Copy Link</button>
                                     </div>
                                 )}
                             </div>
-                            <img src="3.jpg" className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full" alt="Promo" />
+                            <img src="3.jpg" className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" />
                         </div>
                     )}
 
+                    {/* --- TAB: BỘ SƯU TẬP --- */}
                     {activeTab === 'collection' && (
                         <div className="space-y-12">
                             {!activeAlbumId ? (
                                 <>
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-4xl font-bold font-serif">Bộ Sưu Tập</h2>
+                                        <h2 className="text-4xl font-bold font-serif text-slate-900">Bộ Sưu Tập</h2>
                                         {isAdmin && (
-                                            <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all">
+                                            <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700">
                                                 <Plus size={20}/> Album mới
                                             </button>
                                         )}
@@ -418,7 +428,7 @@ export default function Home() {
                                                     <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900">{a.category}</div>
                                                     <div className="absolute bottom-8 left-8 right-8 text-white">
                                                         <h3 className="text-2xl font-bold font-serif mb-1">{a.title}</h3>
-                                                        <p className="text-xs font-medium opacity-80 uppercase tracking-tighter">{a.images?.length || 0} tác phẩm</p>
+                                                        <p className="text-xs font-medium opacity-80 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -426,11 +436,11 @@ export default function Home() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="space-y-10">
-                                    <div className="flex justify-between items-center border-b border-slate-100 pb-8">
-                                        <button onClick={() => setActiveAlbumId(null)} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-5 py-2.5 rounded-2xl border shadow-sm transition-all"><ArrowLeft size={18}/> Quay lại</button>
+                                <div className="space-y-10 animate-in slide-in-from-right duration-500">
+                                    <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-slate-100 pb-8">
+                                        <button onClick={() => setActiveAlbumId(null)} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-5 py-2.5 rounded-2xl border shadow-sm transition-all active:scale-95"><ArrowLeft size={18}/> Quay lại</button>
                                         {isAdmin && (
-                                            <div className="flex items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100">
+                                            <div className="flex items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100 shadow-inner">
                                                 <input type="file" id="up" hidden multiple onChange={handleLocalFileUpload} />
                                                 <button onClick={() => document.getElementById('up')?.click()} className="bg-white hover:bg-blue-50 text-blue-600 px-6 py-2.5 rounded-xl text-sm font-bold border border-blue-100 shadow-sm transition-all flex items-center gap-2">
                                                     <CloudUpload size={18}/> Tải lên máy
@@ -438,14 +448,14 @@ export default function Home() {
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-center space-y-2">
-                                        <h2 className="text-5xl font-bold font-serif">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
+                                    <div className="text-center">
+                                        <h2 className="text-5xl font-bold font-serif text-slate-900">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
                                     </div>
                                     <div className="masonry-grid">
                                         {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => (
                                             <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i})}>
                                                 <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
-                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all">
+                                                <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
                                                     <button onClick={(e) => { e.stopPropagation(); window.open(img.originalUrl, '_blank'); }} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl">
                                                         <Download size={20}/>
                                                     </button>
@@ -458,21 +468,22 @@ export default function Home() {
                         </div>
                     )}
 
+                    {/* --- TAB: LỌC ẢNH --- */}
                     {activeTab === 'filter' && (
-                        <div className="max-w-4xl mx-auto space-y-10">
+                        <div className="max-w-4xl mx-auto space-y-10 animate-in zoom-in-95 duration-500">
                             <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 space-y-10">
                                 <h2 className="text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div onClick={async () => { /* @ts-ignore */ setSourceHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
                                         <Folder className="text-blue-600" size={28} />
-                                        <p className="font-bold truncate">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
+                                        <p className="font-bold truncate text-slate-700">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
                                     </div>
                                     <div onClick={async () => { /* @ts-ignore */ setDestHandle(await window.showDirectoryPicker()); }} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
                                         <FolderDown className="text-green-600" size={28} />
-                                        <p className="font-bold truncate">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
+                                        <p className="font-bold truncate text-slate-700">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
                                     </div>
                                 </div>
-                                <textarea className="w-full h-64 border-2 border-slate-100 p-6 rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
+                                <textarea className="w-full h-64 border-2 border-slate-100 p-6 rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
                                 <button onClick={handleCopyFiles} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
                                     <Zap size={22} /> Bắt đầu lọc và sao chép
                                 </button>
@@ -482,11 +493,16 @@ export default function Home() {
                                     {filterLogs.map((log, idx) => <div key={idx} className="mb-1">{log}</div>)}
                                 </div>
                             )}
+                            <div className="p-6 rounded-2xl bg-orange-50 border border-orange-100 flex gap-4">
+                                <AlertCircle className="text-orange-500 shrink-0" />
+                                <p className="text-xs text-orange-700 leading-relaxed font-medium">Lưu ý: Tính năng tương tác file trực tiếp yêu cầu trình duyệt Chrome hoặc Edge bản Desktop để đảm bảo quyền riêng tư và bảo mật (File System Access API).</p>
+                            </div>
                         </div>
                     )}
 
+                    {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'gallery' && (
-                        <div className="space-y-10">
+                        <div className="space-y-10 animate-in zoom-in-95 duration-500">
                             {loadedImages.length > 0 ? (
                                 <>
                                     <div className="sticky top-24 z-30 bg-white/90 backdrop-blur-xl p-5 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
@@ -495,7 +511,7 @@ export default function Home() {
                                             const ns = Array.from(selectedImages).map(id => loadedImages.find(i => i.id === id).name);
                                             navigator.clipboard.writeText(ns.join('\n'));
                                             alert("Đã copy danh sách tên file!");
-                                        }} className="bg-slate-100 hover:bg-slate-200 px-8 py-3 rounded-2xl text-sm font-bold transition-all">Copy danh sách tên</button>
+                                        }} className="bg-slate-100 hover:bg-slate-200 px-8 py-3 rounded-2xl text-sm font-bold transition-all text-slate-700 shadow-sm">Copy danh sách tên</button>
                                     </div>
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                                         {loadedImages.map(img => (
@@ -503,7 +519,7 @@ export default function Home() {
                                                 const next = new Set(selectedImages);
                                                 if (next.has(img.id)) next.delete(img.id); else next.add(img.id);
                                                 setSelectedImages(next);
-                                            }} className={`aspect-[3/4] rounded-[2rem] overflow-hidden relative cursor-pointer border-4 transition-all duration-300 ${selectedImages.has(img.id) ? 'border-pink-500 scale-95 shadow-xl' : 'border-transparent hover:shadow-lg'}`}>
+                                            }} className={`aspect-[3/4] rounded-[2rem] overflow-hidden relative cursor-pointer border-4 transition-all duration-300 ${selectedImages.has(img.id) ? 'border-pink-500 scale-95 shadow-xl shadow-pink-500/10' : 'border-transparent hover:shadow-lg'}`}>
                                                 <img src={img.url} className="w-full h-full object-cover transition-transform duration-500 hover:scale-105" alt="Gallery" />
                                                 <div className={`absolute top-4 right-4 p-2 rounded-full transition-all ${selectedImages.has(img.id) ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/20 text-white/50 backdrop-blur-sm'}`}>
                                                     <Heart size={16} className={selectedImages.has(img.id) ? 'fill-current' : ''}/>
@@ -513,9 +529,9 @@ export default function Home() {
                                     </div>
                                 </>
                             ) : (
-                                <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200">
-                                    <ImageIcon size={48} className="mx-auto text-slate-300 mb-4" />
-                                    <p className="text-slate-500 font-medium">Dán link Drive vào mục "Tạo trang" để bắt đầu.</p>
+                                <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200 shadow-sm">
+                                    <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
+                                    <p className="text-slate-400 font-medium">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
                                 </div>
                             )}
                         </div>
@@ -523,17 +539,18 @@ export default function Home() {
                 </div>
             </main>
 
+            {/* LIGHTBOX */}
             {lightboxData.isOpen && activeAlbumId && (
                 <div className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <button onClick={() => setLightboxData({isOpen: false, index: 0})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full"><X size={32}/></button>
+                    <button onClick={() => setLightboxData({isOpen: false, index: 0})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X size={32}/></button>
                     <img 
                         key={lightboxData.index}
                         src={albums.find(a => a.id === activeAlbumId)?.images[lightboxData.index].originalUrl} 
                         className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-500" 
                         alt="Zoomed"
                     />
-                    <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block" onClick={prevImg}><ArrowLeft size={56} /></button>
-                    <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block" onClick={nextImg}><ArrowRight size={56} /></button>
+                    <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all" onClick={prevImg}><ArrowLeft size={56} /></button>
+                    <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all" onClick={nextImg}><ArrowRight size={56} /></button>
                 </div>
             )}
         </div>
