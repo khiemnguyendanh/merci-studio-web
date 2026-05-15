@@ -6,7 +6,7 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown
+    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -37,10 +37,24 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 // Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
 
-// Component Icon Facebook 
+// === CUSTOM ICONS (Chống lỗi Vercel) ===
 const FacebookIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+    </svg>
+);
+
+const InstagramIcon = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
+        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+    </svg>
+);
+
+const TikTokIcon = ({ className }) => (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor">
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
     </svg>
 );
 
@@ -818,7 +832,7 @@ export default function Home() {
                 </div>
             </header>
 
-            {/* Main Content (One unified switch logic for tabs) */}
+            {/* Main Content */}
             <main className="flex-grow w-full">
                 <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
                     
@@ -834,18 +848,46 @@ export default function Home() {
                                     <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-8 md:px-10 py-3 md:py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95 text-sm md:text-base">Khám phá ngay</button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
-                                {[
-                                    { icon: <MapPin className="text-blue-600" />, title: "Địa chỉ", desc: "244 Đội Cấn, Ba Đình, HN" },
-                                    { icon: <Phone className="text-green-600" />, title: "Hotline", desc: "0888.999.545" },
-                                    { icon: <FacebookIcon className="text-blue-800 w-6 h-6" />, title: "Fanpage", desc: "Merci Wedding VN" }
-                                ].map((item, i) => (
-                                    <div key={i} className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 text-center hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                                        <div className="mx-auto mb-4 md:mb-6 bg-slate-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
-                                        <h4 className="font-bold text-lg md:text-xl mb-2">{item.title}</h4>
-                                        <p className="text-slate-500 font-medium text-sm md:text-base">{item.desc}</p>
+
+                            {/* Cập nhật Giao diện Thông tin liên hệ */}
+                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
+                                {/* Địa chỉ */}
+                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
+                                    <div className="mb-4 md:mb-6 bg-blue-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-blue-600"><MapPin size={28}/></div>
+                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Hệ thống Studio</h4>
+                                    <div className="space-y-3 text-slate-600 font-medium text-sm md:text-base">
+                                        <p><strong className="text-slate-800">Cơ sở 1:</strong> 244 Đội Cấn, Ba Đình, Hà Nội</p>
+                                        <p><strong className="text-slate-800">Cơ sở 2:</strong> 650 Thân Nhân Trung, Việt Yên, Bắc Ninh</p>
                                     </div>
-                                ))}
+                                </div>
+
+                                {/* Liên hệ */}
+                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
+                                    <div className="mb-4 md:mb-6 bg-green-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-green-600"><Phone size={28}/></div>
+                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Liên hệ</h4>
+                                    <div className="space-y-3 text-slate-600 font-medium text-sm md:text-base">
+                                        <p className="flex items-center gap-3"><Phone size={18} className="text-slate-400"/> 0888.999.545</p>
+                                        <p className="flex items-center gap-3"><Phone size={18} className="text-slate-400"/> 0877.999.545</p>
+                                        <p className="flex items-center gap-3 break-all"><Mail size={18} className="text-slate-400"/> vaycuoidouyin@gmail.com</p>
+                                    </div>
+                                </div>
+
+                                {/* Mạng xã hội */}
+                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
+                                    <div className="mb-4 md:mb-6 bg-pink-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-pink-600"><Heart size={28}/></div>
+                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Kết nối</h4>
+                                    <div className="flex flex-col gap-4">
+                                        <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-blue-600 transition-colors text-sm md:text-base">
+                                            <FacebookIcon className="w-5 h-5"/> merciwedding.vn
+                                        </a>
+                                        <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-black transition-colors text-sm md:text-base">
+                                            <TikTokIcon className="w-5 h-5"/> @mercistudiovn
+                                        </a>
+                                        <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-pink-600 transition-colors text-sm md:text-base">
+                                            <InstagramIcon className="w-5 h-5"/> merciwedding.vn
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -909,7 +951,6 @@ export default function Home() {
                                         <div className="absolute bottom-6 left-6 right-6 text-white">
                                             <h3 className="text-xl md:text-2xl font-bold font-serif leading-tight drop-shadow-md">{vid.title}</h3>
                                         </div>
-                                        {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                 <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
@@ -948,7 +989,6 @@ export default function Home() {
                                         )}
                                     </div>
                                     
-                                    {/* THANH LỌC HASHTAG */}
                                     <div className="flex overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar pb-2">
                                         {ALBUM_CATEGORIES.map(cat => (
                                             <button 
@@ -975,7 +1015,6 @@ export default function Home() {
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
-                                                    {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             {activeCategory === 'Tất cả' && (
@@ -1017,22 +1056,9 @@ export default function Home() {
                                         <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
-                                                window.history.pushState({}, document.title, '/'); // Xóa link ảo khi Back
+                                                window.history.pushState({}, document.title, '/'); 
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18}/> Quay lại
-                                            </button>
-                                            
-                                            {/* Nút copy được tự động ẩn bớt đi vì trên thanh URL đã có sẵn link để copy */}
-                                            <button onClick={() => {
-                                                const slugToUse = currentViewAlbum?.slug || createSlug(currentViewAlbum?.title) || currentViewAlbum?.id;
-                                                const link = `${window.location.origin}/${slugToUse}`;
-                                                if(navigator.clipboard && window.isSecureContext) {
-                                                    navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
-                                                } else {
-                                                    prompt("Copy link:", link);
-                                                }
-                                            }} className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none text-sm md:text-base">
-                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link</span>
                                             </button>
                                         </div>
 
