@@ -787,107 +787,115 @@ export default function Home() {
             )}
 
             {/* Menu Header */}
-            <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
-                <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
-                    <div className="flex justify-between items-center w-full md:w-auto">
-                        <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
-                            setActiveTab('home');
-                            setActiveAlbumId(null);
-                            window.history.pushState({}, document.title, '/'); 
-                        }}>
-                            <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
-                                <Camera className="text-white" size={20} />
+            {activeTab !== 'home' && (
+                <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
+                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
+                        <div className="flex justify-between items-center w-full md:w-auto">
+                            <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
+                                setActiveTab('home');
+                                setActiveAlbumId(null);
+                                window.history.pushState({}, document.title, '/'); 
+                            }}>
+                                <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
+                                    <Camera className="text-white" size={20} />
+                                </div>
+                                <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
+                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                                <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
+                            </button>
                         </div>
-                        <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                            <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
+
+                        <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                            <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
+                                {[
+                                    { id: 'home', label: 'Trang chủ' },
+                                    { id: 'create', label: 'Tạo trang' },
+                                    { id: 'collection', label: 'Bộ sưu tập' },
+                                    { id: 'videos', label: 'Video' },
+                                    { id: 'gallery', label: 'Chọn ảnh' },
+                                    { id: 'filter', label: 'Lọc ảnh' }
+                                ].map(t => (
+                                    <button key={t.id} onClick={() => { 
+                                        setActiveTab(t.id); 
+                                        setActiveAlbumId(null); 
+                                        window.history.pushState({}, document.title, '/'); 
+                                    }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                        {t.label}
+                                    </button>
+                                ))}
+                            </nav>
+                        </div>
+
+                        <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
                         </button>
                     </div>
-
-                    <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                        <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
-                            {[
-                                { id: 'home', label: 'Trang chủ' },
-                                { id: 'create', label: 'Tạo trang' },
-                                { id: 'collection', label: 'Bộ sưu tập' },
-                                { id: 'videos', label: 'Video' },
-                                { id: 'gallery', label: 'Chọn ảnh' },
-                                { id: 'filter', label: 'Lọc ảnh' }
-                            ].map(t => (
-                                <button key={t.id} onClick={() => { 
-                                    setActiveTab(t.id); 
-                                    setActiveAlbumId(null); 
-                                    window.history.pushState({}, document.title, '/'); 
-                                }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
-                                    {t.label}
-                                </button>
-                            ))}
-                        </nav>
-                    </div>
-
-                    <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                        <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
-                    </button>
-                </div>
-            </header>
+                </header>
+            )}
 
             {/* Main Content */}
             <main className="flex-grow w-full">
                 <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
                     
-                    {/* --- TAB: HOME --- */}
+                    {/* --- TAB: BIO HOME TỐI GIẢN --- */}
                     {activeTab === 'home' && (
-                        <div className="space-y-10 md:space-y-16">
-                            <div className="relative h-[50vh] md:h-[60vh] rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl group">
-                                <img src={DEFAULT_HERO} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" loading="lazy" />
-                                <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-6 text-center">
-                                    <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-[10px] md:text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
-                                    <h2 className="text-4xl md:text-8xl font-bold font-serif mb-4 md:mb-6 drop-shadow-lg text-white">Merci Wedding</h2>
-                                    <p className="max-w-2xl text-sm md:text-xl opacity-90 mb-8 md:mb-10 font-light">Nơi những rung động được lưu giữ trọn vẹn trong từng khung hình nghệ thuật.</p>
-                                    <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-8 md:px-10 py-3 md:py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95 text-sm md:text-base">Khám phá ngay</button>
-                                </div>
-                            </div>
+                        <div className="min-h-[80vh] flex flex-col items-center justify-center py-10 px-4 animate-in zoom-in-95 duration-700">
+                            <div className="w-full max-w-sm space-y-8 text-center bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
+                                
+                                {/* Background Design Element */}
+                                <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-100 via-pink-50 to-white -z-10"></div>
 
-                            {/* Cập nhật Giao diện Thông tin liên hệ */}
-                            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 md:gap-8">
-                                {/* Địa chỉ */}
-                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
-                                    <div className="mb-4 md:mb-6 bg-blue-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-blue-600"><MapPin size={28}/></div>
-                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Hệ thống Studio</h4>
-                                    <div className="space-y-3 text-slate-600 font-medium text-sm md:text-base">
-                                        <p><strong className="text-slate-800">Cơ sở 1:</strong> 244 Đội Cấn, Ba Đình, Hà Nội</p>
-                                        <p><strong className="text-slate-800">Cơ sở 2:</strong> 650 Thân Nhân Trung, Việt Yên, Bắc Ninh</p>
-                                    </div>
+                                {/* Avatar */}
+                                <div className="relative w-28 h-28 mx-auto rounded-full overflow-hidden shadow-xl ring-4 ring-white mt-4">
+                                    <img src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar"/>
+                                </div>
+                                
+                                {/* Title & Bio */}
+                                <div>
+                                    <h1 className="text-3xl font-bold font-serif text-slate-900 mb-2">Merci Studio</h1>
+                                    <p className="text-slate-500 text-sm px-4">Lưu giữ khoảnh khắc vượt thời gian. Bấm vào các link bên dưới để xem thêm.</p>
                                 </div>
 
-                                {/* Liên hệ */}
-                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
-                                    <div className="mb-4 md:mb-6 bg-green-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-green-600"><Phone size={28}/></div>
-                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Liên hệ</h4>
-                                    <div className="space-y-3 text-slate-600 font-medium text-sm md:text-base">
-                                        <p className="flex items-center gap-3"><Phone size={18} className="text-slate-400"/> 0888.999.545</p>
-                                        <p className="flex items-center gap-3"><Phone size={18} className="text-slate-400"/> 0877.999.545</p>
-                                        <p className="flex items-center gap-3 break-all"><Mail size={18} className="text-slate-400"/> vaycuoidouyin@gmail.com</p>
+                                {/* Link Buttons */}
+                                <div className="space-y-4">
+                                    <button onClick={() => setActiveTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
+                                        <ImageIcon className="w-5 h-5"/> Xem Bộ Sưu Tập Ảnh
+                                    </button>
+                                    
+                                    <button onClick={() => setActiveTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
+                                        <PlayCircle className="w-5 h-5 text-red-500"/> Xem Phim Phóng Sự
+                                    </button>
+                                    
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex flex-col items-center justify-center gap-2 shadow-sm">
+                                            <FacebookIcon className="w-6 h-6"/> <span className="text-xs">Facebook</span>
+                                        </a>
+                                        
+                                        <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="py-4 px-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-black hover:text-white transition-colors flex flex-col items-center justify-center gap-2 shadow-sm">
+                                            <TikTokIcon className="w-6 h-6"/> <span className="text-xs">TikTok</span>
+                                        </a>
                                     </div>
+                                    
+                                    <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="w-full py-4 px-4 bg-pink-50 text-pink-600 rounded-2xl font-bold hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-sm">
+                                        <InstagramIcon className="w-5 h-5"/> Follow Instagram
+                                    </a>
                                 </div>
 
-                                {/* Mạng xã hội */}
-                                <div className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 hover:shadow-xl transition-all duration-300">
-                                    <div className="mb-4 md:mb-6 bg-pink-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center text-pink-600"><Heart size={28}/></div>
-                                    <h4 className="font-bold text-lg md:text-xl mb-4 text-slate-900">Kết nối</h4>
-                                    <div className="flex flex-col gap-4">
-                                        <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-blue-600 transition-colors text-sm md:text-base">
-                                            <FacebookIcon className="w-5 h-5"/> merciwedding.vn
-                                        </a>
-                                        <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-black transition-colors text-sm md:text-base">
-                                            <TikTokIcon className="w-5 h-5"/> @mercistudiovn
-                                        </a>
-                                        <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="flex items-center gap-3 text-slate-600 font-medium hover:text-pink-600 transition-colors text-sm md:text-base">
-                                            <InstagramIcon className="w-5 h-5"/> merciwedding.vn
-                                        </a>
+                                {/* Contact Footer */}
+                                <div className="pt-6 border-t border-slate-100">
+                                    <div className="text-xs text-slate-500 space-y-3 font-medium">
+                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 244 Đội Cấn, Ba Đình, HN</p>
+                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 650 Thân Nhân Trung, Việt Yên, BN</p>
+                                        <p className="flex items-center justify-center gap-2"><Phone className="w-4 h-4 text-green-500"/> 0888.999.545 - 0877.999.545</p>
+                                        <p className="flex items-center justify-center gap-2 truncate"><Mail className="w-4 h-4 text-purple-400 shrink-0"/> vaycuoidouyin@gmail.com</p>
                                     </div>
                                 </div>
+                                
+                                {/* Nút ẩn dành cho Admin */}
+                                <button onClick={() => setShowLoginModal(true)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
+                                    <User size={16} />
+                                </button>
                             </div>
                         </div>
                     )}
@@ -1059,6 +1067,19 @@ export default function Home() {
                                                 window.history.pushState({}, document.title, '/'); 
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18}/> Quay lại
+                                            </button>
+                                            
+                                            {/* Link Album */}
+                                            <button onClick={() => {
+                                                const slugToUse = currentViewAlbum?.slug || createSlug(currentViewAlbum?.title) || currentViewAlbum?.id;
+                                                const link = `${window.location.origin}/${slugToUse}`;
+                                                if(navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
+                                                } else {
+                                                    prompt("Copy link:", link);
+                                                }
+                                            }} className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none text-sm md:text-base">
+                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link</span>
                                             </button>
                                         </div>
 
