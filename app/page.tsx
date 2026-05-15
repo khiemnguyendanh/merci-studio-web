@@ -6,7 +6,7 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2, Star
+    Link as LinkIcon, Edit, Trash2, Star, PlayCircle
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -34,7 +34,7 @@ if (typeof window !== 'undefined') {
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
-// Danh mục Album (Hashtags)
+// Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
 
 // Component Icon Facebook (Tránh lỗi thư viện)
@@ -80,11 +80,17 @@ export default function Home() {
     // Albums (Admin & Khách)
     const [albums, setAlbums] = useState([]);
     const [activeAlbumId, setActiveAlbumId] = useState(null);
-    const [activeCategory, setActiveCategory] = useState('Tất cả'); // State cho bộ lọc
+    const [activeCategory, setActiveCategory] = useState('Tất cả');
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(null); 
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
+
+    // Videos
+    const [videos, setVideos] = useState([]);
+    const [isAddingVideo, setIsAddingVideo] = useState(false);
+    const [newVideo, setNewVideo] = useState({ title: '', url: '' });
+    const [videoModal, setVideoModal] = useState({ isOpen: false, youtubeId: '' });
 
     // Filter Tool
     const [filterText, setFilterText] = useState('');
@@ -92,7 +98,6 @@ export default function Home() {
     const [destHandle, setDestHandle] = useState(null);
     const [filterLogs, setFilterLogs] = useState([]);
 
-    // Lightbox & Swiping States
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] });
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
@@ -120,34 +125,46 @@ export default function Home() {
 
     useEffect(() => {
         if (!mounted || !user || !db) return;
-        const unsubscribe = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
+        
+        // Listener cho Albums
+        const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             fetched.sort((a, b) => b.id.localeCompare(a.id));
             setAlbums(fetched);
         });
-        return () => unsubscribe();
+
+        // Listener cho Videos
+        const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
+            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            fetched.sort((a, b) => b.id.localeCompare(a.id));
+            setVideos(fetched);
+        });
+
+        return () => { unsubAlbums(); unsubVideos(); };
     }, [mounted, user]);
 
     // Nhận diện URL Params (Share Link)
     useEffect(() => {
         if (!mounted) return;
-        const urlParams = new URLSearchParams(window.location.search);
-        const folderId = urlParams.get('folder');
-        const viewMode = urlParams.get('view');
-        const albumIdParam = urlParams.get('album'); // Đọc ID Album từ link chia sẻ
-        
-        if (folderId) {
-            setActiveTab('gallery');
-            setCurrentFolderId(folderId);
-            if (viewMode === 'selected') setShowOnlySelected(true);
-            fetchDrive(folderId); 
-        } else if (albumIdParam) {
-            // Tự động mở tab Bộ Sưu Tập và nhảy vào đúng Album
-            setActiveTab('collection');
-            setActiveAlbumId(albumIdParam);
-        }
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const folderId = urlParams.get('folder');
+            const viewMode = urlParams.get('view');
+            const albumIdParam = urlParams.get('album'); 
+            
+            if (folderId) {
+                setActiveTab('gallery');
+                setCurrentFolderId(folderId);
+                if (viewMode === 'selected') setShowOnlySelected(true);
+                fetchDrive(folderId); 
+            } else if (albumIdParam) {
+                setActiveTab('collection');
+                setActiveAlbumId(albumIdParam);
+            }
+        } catch (e) { console.warn("URL Parsing bypass"); }
     }, [mounted]);
 
+    // Keyboard Lightbox Navigation
     const nextImg = useCallback(() => {
         const imgs = lightboxData.images || [];
         if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index + 1) % imgs.length }));
@@ -168,6 +185,7 @@ export default function Home() {
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [lightboxData.isOpen, nextImg, prevImg]);
+
 
     // === HELPERS (Admin Albums) ===
     const saveAlbumData = async (data) => {
@@ -196,56 +214,74 @@ export default function Home() {
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER
             });
             setEditingAlbum(null);
-        } catch (e) {
-            console.error(e);
-            alert("Đã xảy ra lỗi khi cập nhật album.");
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (e) { alert("Đã xảy ra lỗi khi cập nhật album."); } 
+        finally { setIsLoading(false); }
     };
 
     const handleDeleteAlbum = async (id) => {
-        if (!confirm("Bạn có chắc chắn muốn xóa album này? Toàn bộ ảnh bên trong sẽ bị mất vĩnh viễn!")) return;
+        if (!confirm("Bạn có chắc chắn muốn xóa album này?")) return;
         setIsLoading(true);
         try {
             await deleteDoc(doc(db, 'merci_albums', id));
             setEditingAlbum(null);
             if (activeAlbumId === id) setActiveAlbumId(null);
-        } catch (e) {
-            console.error(e);
-            alert("Lỗi khi xóa album.");
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (e) { alert("Lỗi khi xóa album."); } 
+        finally { setIsLoading(false); }
     };
 
-    // Hàm chọn ảnh bìa mới
     const handleSetCover = async (e, imageUrl) => {
         e.stopPropagation(); 
         if (!activeAlbumId) return;
         setIsLoading(true);
         try {
-            await updateDoc(doc(db, 'merci_albums', activeAlbumId), {
-                coverUrl: imageUrl
-            });
+            await updateDoc(doc(db, 'merci_albums', activeAlbumId), { coverUrl: imageUrl });
             alert("Đã đặt ảnh này làm Ảnh Bìa thành công!");
-        } catch (error) {
-            console.error(error);
-            alert("Lỗi khi cập nhật ảnh bìa.");
-        } finally {
-            setIsLoading(false);
-        }
+        } catch (error) { alert("Lỗi khi cập nhật ảnh bìa."); } 
+        finally { setIsLoading(false); }
     };
 
-    // Tải ảnh đơn có watermark - Đã tối ưu hóa chống lỗi CORS
+    // === HELPERS (Admin Videos) ===
+    const extractYoutubeId = (url) => {
+        const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regExp);
+        return (match && match[2].length === 11) ? match[2] : null;
+    };
+
+    const handleAddVideo = async () => {
+        if (!newVideo.title || !newVideo.url) return alert("Vui lòng nhập đủ thông tin!");
+        const yId = extractYoutubeId(newVideo.url);
+        if (!yId) return alert("Link YouTube không hợp lệ!");
+
+        setIsLoading(true);
+        const data = {
+            id: `video_${Date.now()}`,
+            title: newVideo.title,
+            youtubeId: yId,
+            createdAt: new Date().toISOString()
+        };
+        try {
+            await setDoc(doc(db, 'merci_videos', data.id), data);
+            setIsAddingVideo(false);
+            setNewVideo({ title: '', url: '' });
+        } catch (e) { alert("Lỗi lưu video."); }
+        finally { setIsLoading(false); }
+    };
+
+    const handleDeleteVideo = async (id, e) => {
+        e.stopPropagation();
+        if (!confirm("Xóa video này?")) return;
+        try { await deleteDoc(doc(db, 'merci_videos', id)); } catch(e) { alert("Lỗi xóa video."); }
+    };
+
+    // Tải ảnh đơn có watermark
     const handleDownloadWithWatermark = async (imageUrl, imageName, event) => {
-        event.stopPropagation(); // Ngăn Lightbox mở lên
+        event.stopPropagation(); 
         setIsLoading(true);
         setLoadingMessage('Đang đóng dấu bản quyền...');
         
         const addWatermarkAndDownload = (srcUrl) => {
             const img = new Image();
-            img.crossOrigin = "Anonymous"; // Cố gắng lấy quyền CORS
+            img.crossOrigin = "Anonymous"; 
             img.onload = () => {
                 try {
                     const canvas = document.createElement('canvas');
@@ -253,26 +289,19 @@ export default function Home() {
                     canvas.height = img.height;
                     const ctx = canvas.getContext('2d');
                     
-                    // Vẽ ảnh gốc lên canvas
                     ctx.drawImage(img, 0, 0);
                     
-                    // Cài đặt Watermark "© MERCI STUDIO"
                     const fontSize = Math.max(30, img.width / 25);
                     ctx.font = `bold ${fontSize}px serif`;
                     ctx.textAlign = 'right';
                     ctx.textBaseline = 'bottom';
-                    
-                    // Tạo shadow cho text nổi bật trên nền sáng/tối
                     ctx.shadowColor = 'rgba(0,0,0,0.8)';
                     ctx.shadowBlur = Math.max(5, fontSize / 4);
                     ctx.shadowOffsetX = 2;
                     ctx.shadowOffsetY = 2;
                     ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                    
-                    // Vẽ chữ lên góc dưới phải
                     ctx.fillText('© MERCI STUDIO', canvas.width - (fontSize / 2), canvas.height - (fontSize / 2));
 
-                    // Chuyển canvas thành file và tải
                     const a = document.createElement('a');
                     a.href = canvas.toDataURL('image/jpeg', 0.95);
                     a.download = `${imageName ? imageName.replace(/\.[^/.]+$/, "") : 'image'}_merci.jpg`;
@@ -280,34 +309,28 @@ export default function Home() {
                     a.click();
                     document.body.removeChild(a);
                 } catch (e) {
-                    console.error("Lỗi Tainted Canvas:", e);
-                    alert("Trình duyệt chặn vẽ logo vì lý do bảo mật. Hệ thống đang tải ảnh gốc cho bạn...");
+                    alert("Hệ thống đang tải ảnh gốc cho bạn...");
                     window.open(imageUrl, '_blank');
                 }
                 setIsLoading(false);
             };
             img.onerror = () => {
-                console.error("Lỗi khi tải ảnh qua thẻ img");
-                alert("Lỗi tải ảnh do bảo mật trình duyệt. Đang mở liên kết gốc...");
+                alert("Đang mở liên kết tải gốc...");
                 window.open(imageUrl, '_blank');
                 setIsLoading(false);
             };
             img.src = srcUrl;
         };
 
-        // Nếu là data URI (ảnh upload từ máy), vẽ luôn
         if (imageUrl.startsWith('data:')) {
             addWatermarkAndDownload(imageUrl);
         } else {
             try {
-                // Thử fetch để lấy blob, cách này vượt qua CORS tốt nhất cho Google Drive
                 const response = await fetch(imageUrl);
                 const blob = await response.blob();
                 const objectUrl = URL.createObjectURL(blob);
                 addWatermarkAndDownload(objectUrl);
             } catch (err) {
-                console.warn("Fetch thất bại, thử gán link trực tiếp:", err);
-                // Fallback nếu fetch lỗi
                 addWatermarkAndDownload(imageUrl);
             }
         }
@@ -364,7 +387,7 @@ export default function Home() {
                 selectedIds: Array.from(newSelectedSet),
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-        } catch(e) { console.error("Error saving selection", e); }
+        } catch(e) {}
         setTimeout(() => setIsSaving(false), 500); 
     };
 
@@ -375,7 +398,7 @@ export default function Home() {
             if (docSnap.exists() && docSnap.data().selectedIds) {
                 return new Set(docSnap.data().selectedIds);
             }
-        } catch(e) { console.error(e); }
+        } catch(e) {}
         return new Set();
     };
 
@@ -426,8 +449,12 @@ export default function Home() {
         if (!currentFolderId) return;
         let baseUrl = window.location.href.split('?')[0];
         const newLink = `${baseUrl}?folder=${currentFolderId}&view=selected`;
-        navigator.clipboard.writeText(newLink);
-        alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh, hoặc xem lại danh sách những ảnh đã thả tim.");
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(newLink).then(() => alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh."));
+        } else {
+            prompt("Copy đường link sau để chia sẻ:", newLink);
+        }
     };
 
     const handleDownloadSelected = async () => {
@@ -461,15 +488,31 @@ export default function Home() {
             a.click();
             document.body.removeChild(a);
         } catch (error) {
-            console.error(error);
             alert("Đã xảy ra lỗi trong quá trình gom file ZIP. Bạn hãy thử lại sau nhé.");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const selectSourceFolder = async () => { try { setSourceHandle(await window.showDirectoryPicker()); } catch (e) {} };
-    const selectDestFolder = async () => { try { setDestHandle(await window.showDirectoryPicker()); } catch (e) {} };
+    const selectSourceFolder = async () => { 
+        try { 
+            if (window.showDirectoryPicker) {
+                setSourceHandle(await window.showDirectoryPicker()); 
+            } else {
+                alert("Trình duyệt của bạn không hỗ trợ tính năng chọn thư mục.");
+            }
+        } catch (e) { } 
+    };
+
+    const selectDestFolder = async () => { 
+        try { 
+            if (window.showDirectoryPicker) {
+                setDestHandle(await window.showDirectoryPicker()); 
+            } else {
+                alert("Trình duyệt của bạn không hỗ trợ tính năng chọn thư mục.");
+            }
+        } catch (e) { } 
+    };
 
     const handleCopyFiles = async () => {
         if (!sourceHandle || !destHandle) return alert("Vui lòng chọn đủ thư mục nguồn và đích!");
@@ -499,9 +542,10 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
-    const displayedImages = showOnlySelected 
-        ? loadedImages.filter(img => selectedImages.has(img.id)) 
-        : loadedImages;
+    // Tối ưu hóa việc tìm album hiện tại để chống lag/sập trang
+    const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
+    const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
+    const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
 
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
@@ -610,6 +654,26 @@ export default function Home() {
                 </div>
             )}
 
+            {/* Video Add Modal */}
+            {isAddingVideo && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl animate-in zoom-in-95">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-2xl">Thêm Video YouTube</h3>
+                            <button onClick={() => setIsAddingVideo(false)} className="text-slate-400 hover:text-slate-700"><X /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <input type="text" placeholder="Tiêu đề Video" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.title} onChange={e => setNewVideo({...newVideo, title: e.target.value})} />
+                            <input type="text" placeholder="Link YouTube (VD: https://youtube.com/...)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.url} onChange={e => setNewVideo({...newVideo, url: e.target.value})} />
+                        </div>
+                        <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
+                            <button onClick={() => setIsAddingVideo(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
+                            <button onClick={handleAddVideo} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2 rounded-xl font-bold shadow-lg transition-all">Thêm Video</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Menu Header (Responsive Mobile & Desktop) */}
             <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
@@ -618,7 +682,7 @@ export default function Home() {
                     <div className="flex justify-between items-center w-full md:w-auto">
                         <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                             setActiveTab('home');
-                            window.history.replaceState({}, document.title, window.location.pathname);
+                            setActiveAlbumId(null);
                         }}>
                             <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                                 <Camera className="text-white" size={20} />
@@ -639,6 +703,7 @@ export default function Home() {
                                 { id: 'home', label: 'Trang chủ' },
                                 { id: 'create', label: 'Tạo trang' },
                                 { id: 'collection', label: 'Bộ sưu tập' },
+                                { id: 'videos', label: 'Video' }, // Thêm tab Video
                                 { id: 'gallery', label: 'Chọn ảnh' },
                                 { id: 'filter', label: 'Lọc ảnh' }
                             ].map(t => (
@@ -658,30 +723,30 @@ export default function Home() {
             </header>
 
             <main className="flex-grow w-full">
-                <div key={activeTab} className="max-w-7xl mx-auto p-6 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+                <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
                     
                     {/* --- TAB: HOME --- */}
                     {activeTab === 'home' && (
-                        <div className="space-y-16">
-                            <div className="relative h-[60vh] rounded-[3rem] overflow-hidden shadow-2xl group">
-                                <img src={DEFAULT_HERO} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" />
+                        <div className="space-y-10 md:space-y-16">
+                            <div className="relative h-[50vh] md:h-[60vh] rounded-[2rem] md:rounded-[3rem] overflow-hidden shadow-2xl group">
+                                <img src={DEFAULT_HERO} className="w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105" alt="Hero" loading="lazy" />
                                 <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center text-white p-6 text-center">
-                                    <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
-                                    <h2 className="text-5xl md:text-8xl font-bold font-serif mb-6 drop-shadow-lg text-white">Merci Wedding</h2>
-                                    <p className="max-w-2xl text-lg md:text-xl opacity-90 mb-10 font-light">Nơi những rung động được lưu giữ trọn vẹn trong từng khung hình nghệ thuật.</p>
-                                    <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95">Khám phá ngay</button>
+                                    <span className="bg-blue-600/20 backdrop-blur-md border border-white/20 px-4 py-1 rounded-full text-[10px] md:text-xs font-bold tracking-widest mb-4 uppercase">Est. 2026</span>
+                                    <h2 className="text-4xl md:text-8xl font-bold font-serif mb-4 md:mb-6 drop-shadow-lg text-white">Merci Wedding</h2>
+                                    <p className="max-w-2xl text-sm md:text-xl opacity-90 mb-8 md:mb-10 font-light">Nơi những rung động được lưu giữ trọn vẹn trong từng khung hình nghệ thuật.</p>
+                                    <button onClick={() => setActiveTab('collection')} className="bg-white text-slate-900 px-8 md:px-10 py-3 md:py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-600 hover:text-white transition-all transform active:scale-95 text-sm md:text-base">Khám phá ngay</button>
                                 </div>
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 md:gap-8">
                                 {[
                                     { icon: <MapPin className="text-blue-600" />, title: "Địa chỉ", desc: "244 Đội Cấn, Ba Đình, HN" },
                                     { icon: <Phone className="text-green-600" />, title: "Hotline", desc: "0888.999.545" },
                                     { icon: <FacebookIcon className="text-blue-800 w-6 h-6" />, title: "Fanpage", desc: "Merci Wedding VN" }
                                 ].map((item, i) => (
-                                    <div key={i} className="p-10 bg-white rounded-[2.5rem] shadow-sm border border-slate-100 text-center hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
-                                        <div className="mx-auto mb-6 bg-slate-50 w-16 h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
-                                        <h4 className="font-bold text-xl mb-2">{item.title}</h4>
-                                        <p className="text-slate-500 font-medium">{item.desc}</p>
+                                    <div key={i} className="p-8 md:p-10 bg-white rounded-[2rem] md:rounded-[2.5rem] shadow-sm border border-slate-100 text-center hover:shadow-xl hover:-translate-y-2 transition-all duration-300">
+                                        <div className="mx-auto mb-4 md:mb-6 bg-slate-50 w-14 h-14 md:w-16 md:h-16 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">{item.icon}</div>
+                                        <h4 className="font-bold text-lg md:text-xl mb-2">{item.title}</h4>
+                                        <p className="text-slate-500 font-medium text-sm md:text-base">{item.desc}</p>
                                     </div>
                                 ))}
                             </div>
@@ -690,86 +755,130 @@ export default function Home() {
 
                     {/* --- TAB: TẠO TRANG --- */}
                     {activeTab === 'create' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                            <div className="space-y-8 animate-in slide-in-from-left duration-500">
-                                <h2 className="text-5xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
-                                <p className="text-slate-500 text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
-                                <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
+                            <div className="space-y-6 md:space-y-8 animate-in slide-in-from-left duration-500">
+                                <h2 className="text-4xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
+                                <p className="text-slate-500 text-base md:text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
+                                <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
-                                        <label className="text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-4 rounded-2xl outline-none focus:border-blue-500 transition-colors" />
+                                        <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
+                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
                                     </div>
-                                    <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group">
+                                    <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
                                     </button>
                                 </div>
                                 {clientLink && (
-                                    <div className="bg-blue-50 p-6 rounded-2xl flex flex-col gap-4 border border-blue-100 animate-in zoom-in-95">
+                                    <div className="bg-blue-50 p-5 md:p-6 rounded-2xl flex flex-col gap-3 md:gap-4 border border-blue-100 animate-in zoom-in-95">
                                         <div>
-                                            <span className="text-xs font-bold text-blue-700 block mb-1">LINK CHỌN ẢNH (Gửi khách hàng):</span>
+                                            <span className="text-[10px] md:text-xs font-bold text-blue-700 block mb-1">LINK CHỌN ẢNH (Gửi khách hàng):</span>
                                             <div className="flex justify-between items-center gap-2">
-                                                <span className="text-sm font-mono text-blue-800 truncate bg-white px-3 py-2 rounded-lg border border-blue-200 flex-1">{clientLink}</span>
-                                                <button onClick={() => {navigator.clipboard.writeText(clientLink); alert("Đã copy!");}} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">Copy</button>
+                                                <span className="text-xs md:text-sm font-mono text-blue-800 truncate bg-white px-3 py-2 rounded-lg border border-blue-200 flex-1">{clientLink}</span>
+                                                <button onClick={() => {
+                                                    if (navigator.clipboard) {
+                                                        navigator.clipboard.writeText(clientLink).then(()=> alert("Đã copy!"));
+                                                    } else {
+                                                        prompt("Copy link:", clientLink);
+                                                    }
+                                                }} className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs md:text-sm font-bold shadow-md hover:bg-blue-700 transition-colors whitespace-nowrap">Copy</button>
                                             </div>
                                         </div>
                                     </div>
                                 )}
                             </div>
-                            <img src={DEFAULT_PROMO} className="rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" />
+                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" />
+                        </div>
+                    )}
+
+                    {/* --- TAB: VIDEO --- */}
+                    {activeTab === 'videos' && (
+                        <div className="space-y-8 md:space-y-12 animate-in slide-in-from-right duration-500">
+                            <div className="flex justify-between items-center">
+                                <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Phim Phóng Sự & Concept</h2>
+                                {isAdmin && (
+                                    <button onClick={() => setIsAddingVideo(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
+                                        <Plus size={18}/> <span className="hidden sm:inline">Thêm Video</span>
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+                                {videos.length > 0 ? videos.map(vid => (
+                                    <div key={vid.id} onClick={() => setVideoModal({isOpen: true, youtubeId: vid.youtubeId})} className="group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900">
+                                        <img src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} />
+                                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
+                                            <PlayCircle className="w-16 h-16 text-white/80 group-hover:text-white transition-all group-hover:scale-110 drop-shadow-lg" />
+                                        </div>
+                                        <div className="absolute bottom-6 left-6 right-6 text-white">
+                                            <h3 className="text-xl md:text-2xl font-bold font-serif leading-tight drop-shadow-md">{vid.title}</h3>
+                                        </div>
+                                        {isAdmin && (
+                                            <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="absolute top-4 right-4 z-20 bg-white/90 p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all hover:scale-110" title="Xóa Video">
+                                                <Trash2 className="w-4 h-4" />
+                                            </button>
+                                        )}
+                                    </div>
+                                )) : (
+                                    <div className="col-span-full text-center py-20 text-slate-400">
+                                        <PlayCircle className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                        <p className="text-sm md:text-base">Chưa có video nào.</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     )}
 
                     {/* --- TAB: BỘ SƯU TẬP --- */}
                     {activeTab === 'collection' && (
-                        <div className="space-y-12">
+                        <div className="space-y-8 md:space-y-12">
                             {!activeAlbumId ? (
                                 <>
                                     <div className="flex justify-between items-center">
-                                        <h2 className="text-4xl font-bold font-serif text-slate-900">Bộ Sưu Tập</h2>
+                                        <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Bộ Sưu Tập</h2>
                                         {isAdmin && (
-                                            <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700">
-                                                <Plus size={20}/> Album mới
+                                            <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
+                                                <Plus size={18}/> <span className="hidden sm:inline">Album mới</span>
                                             </button>
                                         )}
                                     </div>
                                     
                                     {/* THANH LỌC HASHTAG */}
-                                    <div className="flex overflow-x-auto gap-3 mb-8 no-scrollbar pb-2">
+                                    <div className="flex overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar pb-2">
                                         {ALBUM_CATEGORIES.map(cat => (
                                             <button 
                                                 key={cat} 
                                                 onClick={() => setActiveCategory(cat)} 
-                                                className={`px-5 py-2 rounded-full text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
+                                                className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat === 'Tất cả' ? cat : `#${cat}`}
                                             </button>
                                         ))}
                                     </div>
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div key={a.id} onClick={() => {setActiveAlbumId(a.id); setLightboxData(p => ({...p, images: a.images||[]}));}} className="group cursor-pointer relative">
-                                                <div className="aspect-[4/5] rounded-[2.5rem] overflow-hidden mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
-                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} />
+                                                <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
+                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
-                                                    <div className="absolute top-6 left-6 bg-white/95 backdrop-blur-md px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
+                                                    <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
-                                                    {/* Nút Edit (Chỉ hiển thị cho Admin) */}
+                                                    {/* Nút Edit */}
                                                     {isAdmin && (
                                                         <button 
                                                             onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} 
-                                                            className="absolute top-6 right-6 z-20 bg-white/90 p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg opacity-0 group-hover:opacity-100 transition-all hover:scale-110"
+                                                            className="absolute top-4 md:top-6 right-4 md:right-6 z-20 bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all md:hover:scale-110"
                                                             title="Sửa Album"
                                                         >
                                                             <Edit className="w-4 h-4" />
                                                         </button>
                                                     )}
 
-                                                    <div className="absolute bottom-8 left-8 right-8 text-white">
-                                                        <h3 className="text-3xl font-bold font-serif mb-2 leading-tight">{a.title}</h3>
+                                                    <div className="absolute bottom-6 md:bottom-8 left-6 md:left-8 right-6 md:right-8 text-white">
+                                                        <h3 className="text-2xl md:text-3xl font-bold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
-                                                            {a.sub && <p className="text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
+                                                            <p className="text-[10px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                            {a.sub && <p className="text-[10px] md:text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -777,76 +886,77 @@ export default function Home() {
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
                                                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30"/>
-                                                <p>Chưa có album nào trong danh mục này.</p>
+                                                <p className="text-sm md:text-base">Chưa có album nào trong danh mục này.</p>
                                             </div>
                                         )}
                                     </div>
                                 </>
                             ) : (
-                                <div className="space-y-10 animate-in slide-in-from-right duration-500">
-                                    <div className="flex flex-col md:flex-row justify-between items-center gap-6 border-b border-slate-100 pb-8">
-                                        <div className="flex items-center gap-3 w-full md:w-auto">
+                                <div className="space-y-8 md:space-y-10 animate-in slide-in-from-right duration-500">
+                                    <div className="flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 border-b border-slate-100 pb-6 md:pb-8">
+                                        <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
-                                                window.history.replaceState({}, document.title, window.location.pathname);
-                                            }} className="flex items-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2.5 rounded-2xl border shadow-sm transition-all active:scale-95">
-                                                <ArrowLeft size={18}/> <span className="hidden sm:inline">Quay lại</span>
+                                            }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
+                                                <ArrowLeft size={18}/> Quay lại
                                             </button>
                                             
-                                            {/* Nút Tạo link riêng cho Album */}
+                                            {/* Link Album */}
                                             <button onClick={() => {
                                                 const link = `${window.location.origin}${window.location.pathname}?album=${activeAlbumId}`;
-                                                navigator.clipboard.writeText(link);
-                                                alert("Đã copy link Album này! Bạn có thể gửi trực tiếp cho khách hàng.");
-                                            }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2.5 rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none justify-center">
-                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link Album</span>
+                                                if(navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
+                                                } else {
+                                                    prompt("Copy link:", link);
+                                                }
+                                            }} className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none text-sm md:text-base">
+                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link</span>
                                             </button>
                                         </div>
 
                                         {isAdmin && (
-                                            <div className="flex flex-wrap items-center gap-3 bg-blue-50/50 p-2 rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
+                                            <div className="flex flex-wrap items-center gap-2 md:gap-3 bg-blue-50/50 p-2 rounded-xl md:rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
                                                 <input 
                                                     type="text" 
-                                                    placeholder="Dán link Drive vào đây..." 
+                                                    placeholder="Dán link Drive..." 
                                                     value={albumDriveLink} 
                                                     onChange={e => setAlbumDriveLink(e.target.value)} 
-                                                    className="flex-1 md:w-64 px-4 py-2 border border-slate-200 rounded-xl outline-none text-sm focus:border-blue-500"
+                                                    className="flex-1 md:w-64 px-3 md:px-4 py-2 border border-slate-200 rounded-lg md:rounded-xl outline-none text-xs md:text-sm focus:border-blue-500"
                                                 />
-                                                <button onClick={handleSyncDriveToAlbum} className="bg-white hover:bg-blue-600 hover:text-white text-blue-600 px-6 py-2 rounded-xl text-sm font-bold border border-blue-200 shadow-sm transition-all flex items-center gap-2">
+                                                <button onClick={handleSyncDriveToAlbum} className="bg-white hover:bg-blue-600 hover:text-white text-blue-600 px-4 md:px-6 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-bold border border-blue-200 shadow-sm transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
                                                     <RefreshCcw size={16}/> Lấy ảnh
                                                 </button>
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-center">
-                                        <h2 className="text-5xl font-bold font-serif text-slate-900 mb-2">{albums.find(a => a.id === activeAlbumId)?.title}</h2>
-                                        <p className="text-slate-500">{albums.find(a => a.id === activeAlbumId)?.sub}</p>
+                                    <div className="text-center px-4">
+                                        <h2 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-2">{currentViewAlbum?.title}</h2>
+                                        <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>
                                     </div>
                                     <div className="masonry-grid">
-                                        {albums.find(a => a.id === activeAlbumId)?.images?.map((img: any, i: number) => {
-                                            const currentAlbum = albums.find(a => a.id === activeAlbumId);
-                                            const isCover = currentAlbum?.coverUrl === img.url;
+                                        {currentViewAlbum?.images?.map((img: any, i: number) => {
+                                            const isCover = currentViewAlbum?.coverUrl === img.url;
                                             
                                             return (
-                                                <div key={img.id} className="mb-6 relative group rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentAlbum?.images})}>
-                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" alt="Album" />
+                                                <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentViewAlbum?.images})}>
+                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt="Album" />
                                                     
-                                                    {/* Nút Tải xuống có chứa Watermark */}
-                                                    <div className="absolute top-4 right-4 opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0 z-20">
-                                                        <button onClick={(e) => handleDownloadWithWatermark(img.originalUrl, img.name, e)} className="bg-white/90 p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
-                                                            <Download size={20}/>
+                                                    {/* Nút Tải xuống */}
+                                                    <div className="absolute top-3 right-3 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
+                                                        <button onClick={(e) => handleDownloadWithWatermark(img.originalUrl, img.name, e)} className="bg-white/90 p-2 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
+                                                            <Download size={16} className="md:w-5 md:h-5"/>
                                                         </button>
                                                     </div>
 
                                                     {/* Nút Đặt làm Ảnh Bìa (Chỉ hiện với Admin) */}
                                                     {isAdmin && (
-                                                        <div className={`absolute top-4 left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                                                        <div className={`absolute top-3 left-3 md:top-4 md:left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                                                             <button 
                                                                 onClick={(e) => handleSetCover(e, img.url)} 
-                                                                className={`p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
+                                                                className={`p-2 md:p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
                                                                 title={isCover ? "Đây là ảnh bìa hiện tại" : "Đặt làm ảnh bìa"}
                                                             >
-                                                                <Star size={20} className={isCover ? "fill-current" : ""} />
+                                                                <Star size={16} className={`md:w-5 md:h-5 ${isCover ? "fill-current" : ""}`} />
                                                             </button>
                                                         </div>
                                                     )}
@@ -861,26 +971,26 @@ export default function Home() {
 
                     {/* --- TAB: LỌC ẢNH --- */}
                     {activeTab === 'filter' && (
-                        <div className="max-w-4xl mx-auto space-y-10 animate-in zoom-in-95 duration-500">
-                            <div className="bg-white p-10 rounded-[3rem] shadow-2xl border border-slate-100 space-y-10">
-                                <h2 className="text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <div onClick={selectSourceFolder} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
-                                        <Folder className="text-blue-600" size={28} />
-                                        <p className="font-bold truncate text-slate-700">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
+                        <div className="max-w-4xl mx-auto space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
+                            <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-100 space-y-6 md:space-y-10">
+                                <h2 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+                                    <div onClick={selectSourceFolder} className={`p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
+                                        <Folder className="text-blue-600" size={24} />
+                                        <p className="font-bold truncate text-slate-700 text-sm md:text-base">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
                                     </div>
-                                    <div onClick={selectDestFolder} className={`p-8 rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
-                                        <FolderDown className="text-green-600" size={28} />
-                                        <p className="font-bold truncate text-slate-700">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
+                                    <div onClick={selectDestFolder} className={`p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
+                                        <FolderDown className="text-green-600" size={24} />
+                                        <p className="font-bold truncate text-slate-700 text-sm md:text-base">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
                                     </div>
                                 </div>
-                                <textarea className="w-full h-64 border-2 border-slate-100 p-6 rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
-                                <button onClick={handleCopyFiles} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-5 rounded-2xl font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-3">
-                                    <Zap size={22} /> Bắt đầu lọc và sao chép
+                                <textarea className="w-full h-48 md:h-64 border-2 border-slate-100 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-xs md:text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
+                                <button onClick={handleCopyFiles} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base">
+                                    <Zap size={20} className="md:w-[22px] md:h-[22px]" /> Bắt đầu lọc và sao chép
                                 </button>
                             </div>
                             {filterLogs.length > 0 && (
-                                <div className="bg-slate-900 text-green-400 p-8 rounded-[2rem] font-mono text-xs h-64 overflow-y-auto no-scrollbar border border-slate-800 animate-in fade-in duration-500">
+                                <div className="bg-slate-900 text-green-400 p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] font-mono text-[10px] md:text-xs h-48 md:h-64 overflow-y-auto no-scrollbar border border-slate-800 animate-in fade-in duration-500">
                                     {filterLogs.map((log, idx) => <div key={idx} className="mb-1">{log}</div>)}
                                 </div>
                             )}
@@ -889,86 +999,90 @@ export default function Home() {
 
                     {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'gallery' && (
-                        <div className="space-y-10 animate-in zoom-in-95 duration-500">
+                        <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
                             {loadedImages.length > 0 ? (
                                 <>
                                     {/* Control Bar */}
-                                    <div className="sticky top-20 z-30 bg-white/90 backdrop-blur-xl p-4 border border-slate-100 rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-4 shadow-xl">
-                                        <div className="flex items-center gap-4 pl-2 w-full md:w-auto">
-                                            <div className="flex items-center gap-2 text-pink-500 font-bold bg-pink-50 px-4 py-2 rounded-xl whitespace-nowrap">
-                                                <Heart className="w-5 h-5 fill-current" /> <span>{selectedImages.size}</span> ảnh
+                                    <div className="sticky top-16 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-3 md:p-4 border border-slate-100 rounded-2xl md:rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 shadow-xl">
+                                        <div className="flex items-center justify-between w-full md:w-auto px-1 md:pl-2">
+                                            <div className="flex items-center gap-2 text-pink-500 font-bold bg-pink-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl whitespace-nowrap text-sm md:text-base">
+                                                <Heart className="w-4 h-4 md:w-5 md:h-5 fill-current" /> <span>{selectedImages.size}</span> ảnh
                                             </div>
-                                            {isSaving && <span className="text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin"/> Đang lưu...</span>}
-                                            {!isSaving && <span className="text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircleIcon className="w-4 h-4"/> Đã lưu</span>}
+                                            {isSaving && <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin"/> Đang lưu...</span>}
+                                            {!isSaving && <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 md:w-4 md:h-4"/> Đã lưu</span>}
                                         </div>
 
                                         {/* Toggle View Mode */}
                                         <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
-                                            <button onClick={() => setShowOnlySelected(false)} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Tất cả ảnh</button>
-                                            <button onClick={() => setShowOnlySelected(true)} className={`flex-1 md:flex-none px-6 py-2 rounded-lg text-sm font-semibold transition-all ${showOnlySelected ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500'}`}>Chỉ ảnh đã chọn</button>
+                                            <button onClick={() => setShowOnlySelected(false)} className={`flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Tất cả ảnh</button>
+                                            <button onClick={() => setShowOnlySelected(true)} className={`flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${showOnlySelected ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500'}`}>Chỉ ảnh đã chọn</button>
                                         </div>
 
                                         {/* Actions */}
                                         <div className="flex gap-2 w-full md:w-auto justify-end flex-wrap">
                                             <button onClick={() => {
                                                 const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
-                                                navigator.clipboard.writeText(names.join('\n'));
-                                                alert("Đã copy danh sách tên file!");
-                                            }} className="bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <Copy className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Copy Tên</span>
+                                                if(navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(names.join('\n')).then(()=> alert("Đã copy danh sách tên file!"));
+                                                } else {
+                                                    prompt("Copy danh sách:", names.join('\n'));
+                                                }
+                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Copy Tên</span>
                                             </button>
                                             
-                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <LinkIcon className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Link Đã Chọn</span>
+                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Link Chốt</span>
                                             </button>
 
-                                            <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <Download className="w-4 h-4 md:mr-2"/> <span className="hidden md:inline">Tải Ảnh ZIP</span>
+                                            <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải ZIP</span>
                                             </button>
                                         </div>
                                     </div>
 
                                     {/* Grid Ảnh */}
                                     {displayedImages.length > 0 ? (
-                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4 md:gap-6">
+                                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
                                             {displayedImages.map((img, idx) => {
                                                 const isSelected = selectedImages.has(img.id);
                                                 return (
-                                                    <div key={img.id} className={`aspect-[3/4] relative group rounded-2xl overflow-hidden border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
+                                                    <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
                                                         <img 
                                                             src={img.url} 
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
                                                             alt="Gallery" 
+                                                            loading="lazy" decoding="async"
                                                             onClick={() => { setLightboxData({isOpen: true, index: idx, images: displayedImages}); }}
                                                         />
                                                         
                                                         {/* Nút thả tim to */}
                                                         <div 
                                                             onClick={(e) => toggleImageSelect(img.id, e)}
-                                                            className={`absolute bottom-3 right-3 w-12 h-12 cursor-pointer rounded-full flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/40 text-white/80 hover:bg-pink-500/80 hover:text-white hover:scale-110'}`}
+                                                            className={`absolute bottom-2 right-2 md:bottom-3 md:right-3 w-10 h-10 md:w-12 md:h-12 cursor-pointer rounded-full flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/40 text-white/80 hover:bg-pink-500/80 hover:text-white md:hover:scale-110'}`}
                                                         >
-                                                            <Heart className={`w-6 h-6 ${isSelected ? 'fill-current' : ''}`}/>
+                                                            <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isSelected ? 'fill-current' : ''}`}/>
                                                         </div>
 
                                                         {/* Tên ảnh */}
-                                                        <div className="absolute top-2 left-2 right-2 flex justify-between pointer-events-none">
-                                                            <span className="bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm truncate">{img.name}</span>
+                                                        <div className="absolute top-1 left-1 right-1 md:top-2 md:left-2 md:right-2 flex justify-between pointer-events-none">
+                                                            <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate">{img.name}</span>
                                                         </div>
                                                     </div>
                                                 )
                                             })}
                                         </div>
                                     ) : (
-                                        <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-slate-200">
-                                            <Heart className="w-16 h-16 mx-auto text-pink-200 mb-4" />
-                                            <p className="text-slate-500 font-medium">Bạn chưa chọn bức ảnh nào.</p>
+                                        <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-3xl border border-dashed border-slate-200 mx-2">
+                                            <Heart className="w-12 h-12 md:w-16 md:h-16 mx-auto text-pink-200 mb-4" />
+                                            <p className="text-slate-500 font-medium text-sm md:text-base">Bạn chưa chọn bức ảnh nào.</p>
                                         </div>
                                     )}
                                 </>
                             ) : (
-                                <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200 shadow-sm">
+                                <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-200 shadow-sm mx-2">
                                     <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
-                                    <p className="text-slate-400 font-medium">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
+                                    <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
                                 </div>
                             )}
                         </div>
@@ -979,7 +1093,7 @@ export default function Home() {
             {/* LIGHTBOX FOR GALLERY & ALBUMS */}
             {lightboxData.isOpen && lightboxData.images.length > 0 && (
                 <div 
-                    className="fixed inset-0 z-[200] bg-black/98 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300"
+                    className="fixed inset-0 z-[200] bg-black/95 md:bg-black/98 backdrop-blur-md md:backdrop-blur-xl flex items-center justify-center p-0 md:p-4 animate-in fade-in duration-300"
                     onTouchStart={(e) => {
                         setTouchEnd(null);
                         setTouchStart(e.targetTouches[0].clientX);
@@ -994,22 +1108,45 @@ export default function Home() {
                         if (isRightSwipe) prevImg();
                     }}
                 >
-                    <div className="absolute top-6 left-6 text-white/50 font-mono text-sm tracking-widest pointer-events-none z-[210]">
+                    <div className="absolute top-4 md:top-6 left-4 md:left-6 text-white/50 font-mono text-xs md:text-sm tracking-widest pointer-events-none z-[210]">
                         {lightboxData.index + 1} / {lightboxData.images.length}
                     </div>
 
-                    <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X size={32}/></button>
+                    <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-4 md:top-6 right-4 md:right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-6 h-6 md:w-8 md:h-8"/></button>
                     
                     <img 
                         key={lightboxData.index}
                         src={lightboxData.images[lightboxData.index].originalUrl || lightboxData.images[lightboxData.index].url} 
-                        className="max-w-full max-h-full object-contain shadow-2xl animate-in zoom-in-95 duration-300 select-none pointer-events-none" 
+                        className="w-full h-full md:max-w-full md:max-h-full object-contain md:shadow-2xl animate-in zoom-in-95 duration-300 select-none pointer-events-none" 
                         alt="Zoomed"
                         draggable={false}
+                        loading="lazy"
                     />
                     
-                    <button className="absolute left-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft size={56} /></button>
-                    <button className="absolute right-6 text-white/30 hover:text-white p-4 rounded-full hidden md:block hover:bg-white/10 transition-all z-[210]" onClick={nextImg}><ArrowRight size={56} /></button>
+                    <button className="absolute left-2 md:left-6 text-white/30 hover:text-white p-3 md:p-4 rounded-full hidden sm:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft className="w-8 h-8 md:w-14 md:h-14" /></button>
+                    <button className="absolute right-2 md:right-6 text-white/30 hover:text-white p-3 md:p-4 rounded-full hidden sm:block hover:bg-white/10 transition-all z-[210]" onClick={nextImg}><ArrowRight className="w-8 h-8 md:w-14 md:h-14" /></button>
+                    
+                    {/* Hướng dẫn vuốt trên Mobile */}
+                    <div className="absolute bottom-6 sm:hidden w-full flex justify-center text-white/30 text-xs tracking-widest pointer-events-none z-[210] items-center gap-2">
+                        <ArrowLeft className="w-3 h-3"/> Vuốt để chuyển ảnh <ArrowRight className="w-3 h-3"/>
+                    </div>
+                </div>
+            )}
+
+            {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
+            {videoModal.isOpen && (
+                <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
+                    <button onClick={() => setVideoModal({isOpen: false, youtubeId: ''})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[310] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-8 h-8"/></button>
+                    <div className="w-full max-w-5xl aspect-video rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 bg-black">
+                        <iframe 
+                            width="100%" 
+                            height="100%" 
+                            src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1`} 
+                            frameBorder="0" 
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                            allowFullScreen>
+                        </iframe>
+                    </div>
                 </div>
             )}
         </div>
