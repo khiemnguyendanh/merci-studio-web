@@ -12,7 +12,7 @@ import {
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
 
 // Cấu hình Firebase
@@ -34,6 +34,14 @@ if (typeof window !== 'undefined') {
 }
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+
+// Danh sách email được phép vào Admin.
+// Thêm biến môi trường NEXT_PUBLIC_ADMIN_EMAILS trên Vercel.
+// Ví dụ: admin1@gmail.com,admin2@gmail.com
+const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+    .split(',')
+    .map(email => email.trim().toLowerCase())
+    .filter(Boolean);
 
 // Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
@@ -97,7 +105,7 @@ export default function Home() {
     const [loadingMessage, setLoadingMessage] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
-    const [loginData, setLoginData] = useState({ username: '', password: '' });
+    const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [loginError, setLoginError] = useState('');
     
     // Khách hàng & Filter
@@ -155,9 +163,21 @@ export default function Home() {
 
     useEffect(() => {
         if (!mounted || !auth) return;
-        signInAnonymously(auth).catch(() => {});
-        const unsubAuth = onAuthStateChanged(auth, setUser);
-        if (localStorage.getItem('merci_admin_logged_in') === 'true') setIsAdmin(true);
+
+        const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+            setUser(currentUser);
+
+            const email = currentUser?.email?.toLowerCase() || '';
+            const isFirebaseAdmin = Boolean(
+                currentUser &&
+                !currentUser.isAnonymous &&
+                ADMIN_EMAILS.includes(email)
+            );
+
+            setIsAdmin(isFirebaseAdmin);
+        });
+
+
         return () => unsubAuth();
     }, [mounted]);
 
@@ -620,11 +640,54 @@ export default function Home() {
         }
     };
 
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
         e.preventDefault();
-        if (loginData.username === 'khiemnguyendanh' && loginData.password === 'Merci@2026') {
-            setIsAdmin(true); setShowLoginModal(false); localStorage.setItem('merci_admin_logged_in', 'true');
-        } else { setLoginError('Sai tài khoản hoặc mật khẩu!'); }
+        setLoginError('');
+
+        if (!auth) {
+            setLoginError('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
+            return;
+        }
+
+        const email = loginData.email.trim().toLowerCase();
+        const password = loginData.password;
+
+        if (!email || !password) {
+            setLoginError('Vui lòng nhập email và mật khẩu.');
+            return;
+        }
+
+        try {
+            const credential = await signInWithEmailAndPassword(auth, email, password);
+            const loggedInEmail = credential.user?.email?.toLowerCase() || '';
+
+            if (!ADMIN_EMAILS.includes(loggedInEmail)) {
+                await signOut(auth);
+                setIsAdmin(false);
+                setLoginError('Email này không có quyền Admin.');
+                return;
+            }
+
+            setIsAdmin(true);
+            setShowLoginModal(false);
+            setLoginData({ email: '', password: '' });
+        } catch (error) {
+            console.error('Admin login error:', error);
+            setLoginError('Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được bật trong Firebase Auth.');
+        }
+    };
+
+    const handleLogout = async () => {
+        setIsAdmin(false);
+        setShowLoginModal(false);
+
+        if (auth) {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+        }
     };
 
     // === CLIENT GALLERY HELPERS ===
@@ -835,8 +898,8 @@ export default function Home() {
                         </div>
                         <form onSubmit={handleLogin} className="space-y-4">
                             {loginError && <p className="text-red-500 text-sm font-medium">{loginError}</p>}
-                            <input type="text" placeholder="Username" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setLoginData({...loginData, username: e.target.value})} />
-                            <input type="password" placeholder="Password" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setLoginData({...loginData, password: e.target.value})} />
+                            <input type="email" placeholder="Email Admin" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} />
+                            <input type="password" placeholder="Mật khẩu Firebase" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} />
                             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Vào hệ thống</button>
                         </form>
                     </div>
@@ -992,7 +1055,7 @@ export default function Home() {
                                 </div>
                                 <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                                 <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
                             </button>
                         </div>
@@ -1020,7 +1083,7 @@ export default function Home() {
                             </nav>
                         </div>
 
-                        <button onClick={() => isAdmin ? setIsAdmin(false) : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                        <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                             <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
                         </button>
                     </div>
