@@ -6,7 +6,8 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail
+    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail,
+    BookOpen, FileText, Calendar
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -37,7 +38,7 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 // Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
 
-// === CUSTOM ICONS (Chống lỗi Vercel) ===
+// Component Icon Facebook 
 const FacebookIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
@@ -69,7 +70,7 @@ const DEFAULT_HERO = "https://images.unsplash.com/photo-1606800052052-a08af71488
 const DEFAULT_PROMO = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1519741497674-611481863552?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
 
-// --- HÀM TẠO SLUG (Link đẹp) TỪ TÊN ALBUM ---
+// --- HÀM TẠO SLUG (Link đẹp) TỪ TÊN ---
 const createSlug = (str) => {
     if (!str) return '';
     return str.toString().toLowerCase()
@@ -114,7 +115,7 @@ export default function Home() {
     const [activeCategory, setActiveCategory] = useState('Tất cả');
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(null); 
-    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding' });
+    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding', driveLink: '' });
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
     const [pendingSlug, setPendingSlug] = useState(null);
 
@@ -123,6 +124,13 @@ export default function Home() {
     const [isAddingVideo, setIsAddingVideo] = useState(false);
     const [newVideo, setNewVideo] = useState({ title: '', url: '' });
     const [videoModal, setVideoModal] = useState({ isOpen: false, youtubeId: '' });
+
+    // Blogs
+    const [blogs, setBlogs] = useState([]);
+    const [activeBlogId, setActiveBlogId] = useState(null);
+    const [isAddingBlog, setIsAddingBlog] = useState(false);
+    const [editingBlog, setEditingBlog] = useState(null);
+    const [newBlog, setNewBlog] = useState({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
 
     // Filter Tool
     const [filterText, setFilterText] = useState('');
@@ -153,7 +161,7 @@ export default function Home() {
         return () => unsubAuth();
     }, [mounted]);
 
-    // Nhận diện URL Pathname (Link Đẹp dạng /ten-album)
+    // Nhận diện URL Pathname (Link Đẹp dạng /ten-album hoặc /ten-bai-viet)
     useEffect(() => {
         if (!mounted) return;
         try {
@@ -180,11 +188,7 @@ export default function Home() {
         const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
                 const data = d.data();
-                return {
-                    id: d.id,
-                    ...data,
-                    order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0)
-                };
+                return { id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0) };
             });
             fetched.sort((a, b) => b.order - a.order);
             setAlbums(fetched);
@@ -193,32 +197,52 @@ export default function Home() {
         const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
                 const data = d.data();
-                return {
-                    id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0)
-                };
+                return { id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0) };
             });
             fetched.sort((a, b) => b.order - a.order);
             setVideos(fetched);
         });
 
-        return () => { unsubAlbums(); unsubVideos(); };
+        const unsubBlogs = onSnapshot(collection(db, 'merci_blogs'), (snapshot) => {
+            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            fetched.sort((a, b) => b.createdAt - a.createdAt); // Sắp xếp bài mới nhất lên đầu
+            setBlogs(fetched);
+        });
+
+        return () => { unsubAlbums(); unsubVideos(); unsubBlogs(); };
     }, [mounted, user]);
 
-    // Hiển thị Album dựa trên Link URL đẹp
+    // Hiển thị Album hoặc Blog dựa trên Link URL đẹp
     useEffect(() => {
-        if (pendingSlug && albums.length > 0) {
-            const foundAlbum = albums.find(a => 
-                a.slug === pendingSlug || 
-                createSlug(a.title) === pendingSlug || 
-                a.id === pendingSlug
-            );
+        if (pendingSlug) {
+            const foundAlbum = albums.find(a => a.slug === pendingSlug || createSlug(a.title) === pendingSlug || a.id === pendingSlug);
+            const foundBlog = blogs.find(b => b.slug === pendingSlug || createSlug(b.title) === pendingSlug || b.id === pendingSlug);
+            
             if (foundAlbum) {
                 setActiveTab('collection');
                 setActiveAlbumId(foundAlbum.id);
+                setAlbumDriveLink(foundAlbum.driveLink || '');
+                setPendingSlug(null);
+            } else if (foundBlog) {
+                setActiveTab('blog');
+                setActiveBlogId(foundBlog.id);
                 setPendingSlug(null);
             }
         }
-    }, [albums, pendingSlug]);
+    }, [albums, blogs, pendingSlug]);
+
+    // Cập nhật Title SEO khi xem Blog/Album
+    useEffect(() => {
+        if (activeTab === 'blog' && activeBlogId) {
+            const blog = blogs.find(b => b.id === activeBlogId);
+            if (blog) document.title = `${blog.title} | Merci Studio`;
+        } else if (activeTab === 'collection' && activeAlbumId) {
+            const album = albums.find(a => a.id === activeAlbumId);
+            if (album) document.title = `${album.title} | Merci Studio`;
+        } else {
+            document.title = 'Merci Wedding Studio';
+        }
+    }, [activeTab, activeBlogId, activeAlbumId, blogs, albums]);
 
     const nextImg = useCallback(() => {
         const imgs = lightboxData.images || [];
@@ -259,12 +283,13 @@ export default function Home() {
             category: newAlbum.category,
             images: [], 
             coverUrl: DEFAULT_COVER,
-            order: Date.now() 
+            order: Date.now(),
+            driveLink: ''
         };
         await saveAlbumData(data);
         setIsCreatingAlbum(false);
         setIsLoading(false);
-        setNewAlbum({ title: '', sub: '', category: 'Wedding' });
+        setNewAlbum({ title: '', sub: '', category: 'Wedding', driveLink: '' });
     };
 
     const handleUpdateAlbum = async () => {
@@ -276,8 +301,13 @@ export default function Home() {
                 slug: createSlug(editingAlbum.title) || editingAlbum.slug, 
                 sub: editingAlbum.sub,
                 category: editingAlbum.category,
-                coverUrl: editingAlbum.coverUrl || DEFAULT_COVER
+                coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
+                driveLink: editingAlbum.driveLink || ''
             });
+            // Nếu đang xem album này, cập nhật ô input link Drive ngay lập tức
+            if(activeAlbumId === editingAlbum.id) {
+                setAlbumDriveLink(editingAlbum.driveLink || '');
+            }
             setEditingAlbum(null);
         } catch (e) { alert("Đã xảy ra lỗi khi cập nhật album."); } 
         finally { setIsLoading(false); }
@@ -387,6 +417,57 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
+    // === HELPERS (Admin Blogs) ===
+    const handleSaveBlog = async () => {
+        if (!newBlog.title || !newBlog.content) return alert("Vui lòng nhập tiêu đề và nội dung!");
+        setIsLoading(true);
+        
+        const generatedSlug = newBlog.slug ? createSlug(newBlog.slug) : createSlug(newBlog.title);
+        
+        const data = {
+            id: editingBlog ? editingBlog.id : `blog_${Date.now()}`,
+            title: newBlog.title,
+            slug: generatedSlug,
+            metaDesc: newBlog.metaDesc || '',
+            content: newBlog.content,
+            coverUrl: newBlog.coverUrl || DEFAULT_COVER,
+            createdAt: editingBlog ? editingBlog.createdAt : Date.now()
+        };
+
+        try {
+            await setDoc(doc(db, 'merci_blogs', data.id), data);
+            setIsAddingBlog(false);
+            setEditingBlog(null);
+            setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
+        } catch (e) { alert("Lỗi lưu bài viết."); }
+        finally { setIsLoading(false); }
+    };
+
+    const handleDeleteBlog = async (id, e) => {
+        e.stopPropagation();
+        if (!confirm("Xóa bài viết này?")) return;
+        setIsLoading(true);
+        try { 
+            await deleteDoc(doc(db, 'merci_blogs', id)); 
+            if (activeBlogId === id) setActiveBlogId(null);
+        } 
+        catch(e) { alert("Lỗi xóa bài viết."); }
+        finally { setIsLoading(false); }
+    };
+
+    const openEditBlog = (blog, e) => {
+        e.stopPropagation();
+        setEditingBlog(blog);
+        setNewBlog({
+            title: blog.title,
+            slug: blog.slug,
+            metaDesc: blog.metaDesc || '',
+            content: blog.content,
+            coverUrl: blog.coverUrl
+        });
+        setIsAddingBlog(true);
+    };
+
     // Tải ảnh đơn có watermark
     const handleDownloadWithWatermark = async (imageUrl, imageName, event) => {
         event.stopPropagation(); 
@@ -477,8 +558,11 @@ export default function Home() {
                 const updated = { ...currentAlbum, images: [...newImgs, ...(currentAlbum.images || [])] };
                 if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) updated.coverUrl = newImgs[0].url;
                 
+                // Cập nhật lại driveLink vào db nếu admin muốn lưu
+                updated.driveLink = albumDriveLink.trim();
+
                 await saveAlbumData(updated);
-                setAlbumDriveLink('');
+                // Giữ lại link để user tiện xem, không clear đi nữa
                 alert(`Đã thêm thành công ${newImgs.length} ảnh vào Album!`);
             } else { alert("Thư mục trống hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết)!"); }
         } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
@@ -658,6 +742,7 @@ export default function Home() {
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
     const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
+    const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
@@ -751,6 +836,11 @@ export default function Home() {
                                 <label className="text-xs font-bold text-slate-500 ml-1">LINK ẢNH BÌA</label>
                                 <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.coverUrl || ''} onChange={e => setEditingAlbum({...editingAlbum, coverUrl: e.target.value})} />
                             </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">LINK GOOGLE DRIVE (Tùy chọn)</label>
+                                <input type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.driveLink || ''} onChange={e => setEditingAlbum({...editingAlbum, driveLink: e.target.value})} />
+                            </div>
                         </div>
 
                         <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100">
@@ -786,6 +876,44 @@ export default function Home() {
                 </div>
             )}
 
+            {/* Blog Add/Edit Modal */}
+            {isAddingBlog && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-2xl text-slate-900">{editingBlog ? 'Sửa Bài Viết' : 'Viết Blog Mới'}</h3>
+                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); setNewBlog({title: '', slug: '', metaDesc: '', content: '', coverUrl: ''}); }} className="text-slate-400 hover:text-slate-700"><X /></button>
+                        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">TIÊU ĐỀ BÀI VIẾT (*)</label>
+                                <input type="text" placeholder="Kinh nghiệm chụp ảnh cưới..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.title} onChange={e => setNewBlog({...newBlog, title: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">ĐƯỜNG DẪN TÙY CHỈNH (SLUG - Để trống sẽ tự tạo)</label>
+                                <input type="text" placeholder="kinh-nghiem-chup-anh-cuoi" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.slug} onChange={e => setNewBlog({...newBlog, slug: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">MÔ TẢ NGẮN (META DESCRIPTION - Tốt cho SEO)</label>
+                                <textarea rows={2} placeholder="Tóm tắt ngắn gọn nội dung bài viết..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.metaDesc} onChange={e => setNewBlog({...newBlog, metaDesc: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">LINK ẢNH BÌA</label>
+                                <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.coverUrl} onChange={e => setNewBlog({...newBlog, coverUrl: e.target.value})} />
+                            </div>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2">NỘI DUNG BÀI VIẾT (Mỗi lần xuống dòng là 1 đoạn văn)</label>
+                                <textarea rows={10} placeholder="Nhập nội dung bài viết vào đây..." className="w-full border-2 border-slate-100 p-4 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1 leading-relaxed" value={newBlog.content} onChange={e => setNewBlog({...newBlog, content: e.target.value})} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-slate-100">
+                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); }} className="px-6 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                            <button onClick={handleSaveBlog} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-all">{editingBlog ? 'Lưu thay đổi' : 'Đăng bài'}</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Menu Header */}
             {activeTab !== 'home' && (
                 <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
@@ -794,6 +922,7 @@ export default function Home() {
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                                 setActiveTab('home');
                                 setActiveAlbumId(null);
+                                setActiveBlogId(null);
                                 window.history.pushState({}, document.title, '/'); 
                             }}>
                                 <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
@@ -813,12 +942,14 @@ export default function Home() {
                                     { id: 'create', label: 'Tạo trang' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
                                     { id: 'videos', label: 'Video' },
+                                    { id: 'blog', label: 'Blog' },
                                     { id: 'gallery', label: 'Chọn ảnh' },
                                     { id: 'filter', label: 'Lọc ảnh' }
                                 ].map(t => (
                                     <button key={t.id} onClick={() => { 
                                         setActiveTab(t.id); 
                                         setActiveAlbumId(null); 
+                                        setActiveBlogId(null);
                                         window.history.pushState({}, document.title, '/'); 
                                     }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
@@ -866,6 +997,10 @@ export default function Home() {
                                     <button onClick={() => setActiveTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
                                         <PlayCircle className="w-5 h-5 text-red-500"/> Xem Phim Phóng Sự
                                     </button>
+
+                                    <button onClick={() => setActiveTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
+                                        <BookOpen className="w-5 h-5"/> Blog Cưới & Kinh Nghiệm
+                                    </button>
                                     
                                     <div className="grid grid-cols-2 gap-4">
                                         <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex flex-col items-center justify-center gap-2 shadow-sm">
@@ -882,9 +1017,25 @@ export default function Home() {
                                     </a>
                                 </div>
 
+                                {/* Utilities Section (Các tính năng ra ngoài) */}
+                                <div className="pt-6 border-t border-slate-100">
+                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Tiện ích Khách hàng & Studio</h3>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        <button onClick={() => setActiveTab('create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                            <Wand2 className="w-5 h-5"/> <span className="text-[11px]">Tạo Trang</span>
+                                        </button>
+                                        <button onClick={() => setActiveTab('gallery')} className="py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                            <ImageIcon className="w-5 h-5"/> <span className="text-[11px]">Chọn Ảnh</span>
+                                        </button>
+                                        <button onClick={() => setActiveTab('filter')} className="col-span-2 py-3 px-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                            <Zap className="w-5 h-5"/> <span className="text-xs">Công Cụ Lọc Ảnh</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {/* Contact Footer */}
                                 <div className="pt-6 border-t border-slate-100">
-                                    <div className="text-xs text-slate-500 space-y-3 font-medium">
+                                    <div className="text-[11px] text-slate-500 space-y-3 font-medium">
                                         <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 244 Đội Cấn, Ba Đình, HN</p>
                                         <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 650 Thân Nhân Trung, Việt Yên, BN</p>
                                         <p className="flex items-center justify-center gap-2"><Phone className="w-4 h-4 text-green-500"/> 0888.999.545 - 0877.999.545</p>
@@ -983,6 +1134,107 @@ export default function Home() {
                         </div>
                     )}
 
+                    {/* --- TAB: BLOG CHUẨN SEO --- */}
+                    {activeTab === 'blog' && (
+                        <div className="space-y-8 md:space-y-12">
+                            {!activeBlogId ? (
+                                <>
+                                    <div className="flex justify-between items-center">
+                                        <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Blog Cưới</h2>
+                                        {isAdmin && (
+                                            <button onClick={() => setIsAddingBlog(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
+                                                <FileText size={18}/> <span className="hidden sm:inline">Viết bài mới</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+                                        {blogs.length > 0 ? blogs.map(blog => (
+                                            <div key={blog.id} onClick={() => {
+                                                setActiveBlogId(blog.id);
+                                                const slugToUse = blog.slug || createSlug(blog.title) || blog.id;
+                                                window.history.pushState({}, '', `/${slugToUse}`);
+                                            }} className="group cursor-pointer bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
+                                                <div className="aspect-[16/10] overflow-hidden relative">
+                                                    <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" />
+                                                    {isAdmin && (
+                                                        <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                            <button onClick={(e) => openEditBlog(blog, e)} className="bg-white/90 p-2 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110">
+                                                                <Edit className="w-4 h-4" />
+                                                            </button>
+                                                            <button onClick={(e) => handleDeleteBlog(blog.id, e)} className="bg-white/90 p-2 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110">
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="p-6 flex flex-col flex-grow">
+                                                    <div className="flex items-center gap-2 text-xs text-blue-600 font-bold tracking-widest uppercase mb-3">
+                                                        <Calendar className="w-4 h-4"/> {new Date(blog.createdAt).toLocaleDateString('vi-VN')}
+                                                    </div>
+                                                    <h3 className="text-xl md:text-2xl font-bold font-serif text-slate-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">{blog.title}</h3>
+                                                    <p className="text-slate-500 text-sm leading-relaxed line-clamp-3 mb-6 flex-grow">{blog.metaDesc || blog.content}</p>
+                                                    <span className="text-blue-600 font-semibold text-sm flex items-center gap-1 mt-auto">Đọc tiếp <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
+                                                </div>
+                                            </div>
+                                        )) : (
+                                            <div className="col-span-full text-center py-20 text-slate-400">
+                                                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                                <p className="text-sm md:text-base">Chưa có bài viết nào.</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                <div className="animate-in slide-in-from-right duration-500 max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-sm border border-slate-100">
+                                    <div className="flex items-center justify-between mb-8 pb-8 border-b border-slate-100">
+                                        <button onClick={() => {
+                                            setActiveBlogId(null);
+                                            window.history.pushState({}, document.title, '/'); 
+                                        }} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium">
+                                            <ArrowLeft size={20}/> Quay lại danh sách
+                                        </button>
+                                        
+                                        <button onClick={() => {
+                                            const slugToUse = currentViewBlog?.slug || createSlug(currentViewBlog?.title) || currentViewBlog?.id;
+                                            const link = `${window.location.origin}/${slugToUse}`;
+                                            if(navigator.clipboard && window.isSecureContext) {
+                                                navigator.clipboard.writeText(link).then(() => alert("Đã copy link bài viết này!"));
+                                            } else {
+                                                prompt("Copy link:", link);
+                                            }
+                                        }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
+                                            <LinkIcon size={16}/> Copy Link
+                                        </button>
+                                    </div>
+
+                                    {currentViewBlog && (
+                                        <article className="prose prose-slate prose-lg md:prose-xl max-w-none">
+                                            <div className="flex items-center gap-2 text-sm text-blue-600 font-bold tracking-widest uppercase mb-4">
+                                                <Calendar className="w-4 h-4"/> {new Date(currentViewBlog.createdAt).toLocaleDateString('vi-VN')}
+                                            </div>
+                                            <h1 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 leading-tight mb-8">
+                                                {currentViewBlog.title}
+                                            </h1>
+                                            {currentViewBlog.coverUrl && (
+                                                <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden mb-10 shadow-md">
+                                                    <img src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} />
+                                                </div>
+                                            )}
+                                            
+                                            {/* Phần nội dung bài viết hỗ trợ xuống dòng */}
+                                            <div className="text-slate-700 leading-relaxed space-y-6 text-base md:text-lg">
+                                                {currentViewBlog.content.split('\n').map((paragraph, idx) => (
+                                                    paragraph.trim() ? <p key={idx}>{paragraph}</p> : <br key={idx}/>
+                                                ))}
+                                            </div>
+                                        </article>
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    )}
+
                     {/* --- TAB: BỘ SƯU TẬP --- */}
                     {activeTab === 'collection' && (
                         <div className="space-y-8 md:space-y-12">
@@ -1013,6 +1265,7 @@ export default function Home() {
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div key={a.id} onClick={() => {
                                                 setActiveAlbumId(a.id); 
+                                                setAlbumDriveLink(a.driveLink || '');
                                                 setLightboxData(p => ({...p, images: a.images||[]}));
                                                 // Thay đổi URL trình duyệt cho ĐẸP
                                                 const slugToUse = a.slug || createSlug(a.title) || a.id;
