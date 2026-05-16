@@ -12,8 +12,8 @@ import {
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc } from 'firebase/firestore';
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -96,6 +96,13 @@ const createSlug = (str) => {
         .replace(/-+$/, '');            
 };
 
+
+const getCategoryHash = (category) => category === 'Tất cả' ? '' : `#${createSlug(category)}`;
+const getCategoryFromHash = (hash) => {
+    const cleanHash = (hash || '').replace(/^#/, '');
+    return ALBUM_CATEGORIES.find(cat => createSlug(cat) === cleanHash) || '';
+};
+
 export default function Home() {
     // === STATES ===
     const [mounted, setMounted] = useState(false);
@@ -111,6 +118,7 @@ export default function Home() {
     // Khách hàng & Filter
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
+    const [savedClientPages, setSavedClientPages] = useState([]);
     const [loadedImages, setLoadedImages] = useState([]);
     const [selectedImages, setSelectedImages] = useState(new Set());
     const [currentFolderId, setCurrentFolderId] = useState(null);
@@ -198,6 +206,12 @@ export default function Home() {
                 setCurrentFolderId(folderId);
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(folderId); 
+            } else if (window.location.hash) {
+                const categoryFromHash = getCategoryFromHash(window.location.hash);
+                if (categoryFromHash) {
+                    setActiveTab('collection');
+                    setActiveCategory(categoryFromHash);
+                }
             } else if (pathname && pathname !== '') {
                 setPendingSlug(pathname);
             }
@@ -205,7 +219,20 @@ export default function Home() {
     }, [mounted]);
 
     useEffect(() => {
-        if (!mounted || !user || !db) return;
+        if (!mounted) return;
+        const handleHashChange = () => {
+            const categoryFromHash = getCategoryFromHash(window.location.hash);
+            if (categoryFromHash) {
+                setActiveTab('collection');
+                setActiveCategory(categoryFromHash);
+            }
+        };
+        window.addEventListener('hashchange', handleHashChange);
+        return () => window.removeEventListener('hashchange', handleHashChange);
+    }, [mounted]);
+
+    useEffect(() => {
+        if (!mounted || !db) return;
         
         const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
@@ -232,7 +259,7 @@ export default function Home() {
         });
 
         return () => { unsubAlbums(); unsubVideos(); unsubBlogs(); };
-    }, [mounted, user]);
+    }, [mounted]);
 
     // Hiển thị Album hoặc Blog dựa trên Link URL đẹp
     useEffect(() => {
@@ -689,6 +716,37 @@ export default function Home() {
         }
     };
 
+    const handleGoogleLogin = async () => {
+        if (!auth) return alert('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error('Google login error:', error);
+            alert('Không đăng nhập được Google. Hãy kiểm tra Firebase Authentication đã bật Google provider chưa.');
+        }
+    };
+
+    const loadSavedClientPages = useCallback(async () => {
+        if (!db || !user?.uid) {
+            setSavedClientPages([]);
+            return;
+        }
+        try {
+            const q = query(collection(db, 'client_pages'), where('ownerUid', '==', user.uid));
+            const snap = await getDocs(q);
+            const pages = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+                .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+            setSavedClientPages(pages);
+        } catch (error) {
+            console.error('Load client pages error:', error);
+        }
+    }, [user?.uid]);
+
+    useEffect(() => {
+        loadSavedClientPages();
+    }, [loadSavedClientPages]);
+
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoginError('');
@@ -763,7 +821,7 @@ export default function Home() {
         return new Set();
     };
 
-    const fetchDrive = async (id) => {
+    const fetchDrive = async (id, options = { savePage: false }) => {
         if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
         if (!id || !id.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
 
@@ -780,7 +838,22 @@ export default function Home() {
             if (files.length > 0) {
                 setLoadedImages(files.map(normalizeDriveImage));
 
-                setClientLink(`${window.location.origin}?folder=${folderId}`);
+                const newClientLink = `${window.location.origin}?folder=${folderId}`;
+                setClientLink(newClientLink);
+
+                if (options?.savePage && user?.uid) {
+                    await setDoc(doc(db, 'client_pages', folderId), {
+                        folderId,
+                        link: newClientLink,
+                        ownerUid: user.uid,
+                        ownerEmail: user.email || '',
+                        title: `Album chọn ảnh ${new Date().toLocaleDateString('vi-VN')}`,
+                        imageCount: files.length,
+                        createdAt: Date.now(),
+                        updatedAt: Date.now()
+                    }, { merge: true });
+                    loadSavedClientPages();
+                }
                 
                 const savedSelections = await loadClientSelectionFromDB(folderId);
                 setSelectedImages(savedSelections);
@@ -1304,12 +1377,17 @@ export default function Home() {
                             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-left duration-500">
                                 <h2 className="text-4xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
                                 <p className="text-slate-500 text-base md:text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
+                                {!user && (
+                                    <button onClick={handleGoogleLogin} className="bg-white border-2 border-slate-100 px-5 py-3 rounded-2xl font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm flex items-center gap-2 w-fit">
+                                        <User className="w-5 h-5"/> Đăng nhập Google để lưu các link đã tạo
+                                    </button>
+                                )}
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
                                         <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
                                     </div>
-                                    <button onClick={() => fetchDrive(driveLink)} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
+                                    <button onClick={() => fetchDrive(driveLink, { savePage: true })} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
                                     </button>
                                 </div>
@@ -1501,13 +1579,29 @@ export default function Home() {
                                         {ALBUM_CATEGORIES.map(cat => (
                                             <button 
                                                 key={cat} 
-                                                onClick={() => setActiveCategory(cat)} 
+                                                onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', window.location.pathname); else window.history.pushState({}, '', `${window.location.pathname}${getCategoryHash(cat)}`); }} 
                                                 className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat === 'Tất cả' ? cat : `#${cat}`}
                                             </button>
                                         ))}
                                     </div>
+
+                                    {activeCategory !== 'Tất cả' && (
+                                        <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Link gửi khách theo hashtag</p>
+                                                <p className="font-mono text-sm text-blue-700 truncate">{`${window.location.origin}/${getCategoryHash(activeCategory)}`}</p>
+                                            </div>
+                                            <button onClick={() => {
+                                                const link = `${window.location.origin}/${getCategoryHash(activeCategory)}`;
+                                                if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(link).then(() => alert('Đã copy link hashtag!'));
+                                                else prompt('Copy link:', link);
+                                            }} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
+                                                <Copy className="w-4 h-4"/> Copy link #{activeCategory}
+                                            </button>
+                                        </div>
+                                    )}
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
@@ -1690,6 +1784,44 @@ export default function Home() {
                     {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'gallery' && (
                         <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
+                            <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm">
+                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+                                    <div>
+                                        <h2 className="text-2xl md:text-3xl font-bold font-serif text-slate-900">Các link chọn ảnh đã tạo</h2>
+                                        <p className="text-sm text-slate-500">Danh sách này lưu theo tài khoản Google đang đăng nhập.</p>
+                                    </div>
+                                    {!user ? (
+                                        <button onClick={handleGoogleLogin} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                                            <User className="w-4 h-4"/> Đăng nhập Google
+                                        </button>
+                                    ) : (
+                                        <button onClick={loadSavedClientPages} className="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                                            <RefreshCcw className="w-4 h-4"/> Tải lại danh sách
+                                        </button>
+                                    )}
+                                </div>
+                                {user && savedClientPages.length > 0 && (
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        {savedClientPages.map(page => (
+                                            <div key={page.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 flex flex-col gap-3">
+                                                <div>
+                                                    <p className="font-bold text-slate-900">{page.title || 'Album chọn ảnh'}</p>
+                                                    <p className="text-xs text-slate-500">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
+                                                    <p className="font-mono text-xs text-blue-700 truncate mt-1">{page.link}</p>
+                                                </div>
+                                                <div className="flex gap-2">
+                                                    <button onClick={() => fetchDrive(page.folderId)} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold hover:border-blue-300 hover:text-blue-600 transition-colors">Mở</button>
+                                                    <button onClick={() => {
+                                                        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(page.link).then(() => alert('Đã copy link!'));
+                                                        else prompt('Copy link:', page.link);
+                                                    }} className="flex-1 bg-slate-900 text-white rounded-xl px-3 py-2 text-xs font-bold hover:bg-blue-600 transition-colors">Copy</button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+
                             {loadedImages.length > 0 ? (
                                 <>
                                     {/* Control Bar */}
