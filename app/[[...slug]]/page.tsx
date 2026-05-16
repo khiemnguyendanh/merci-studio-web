@@ -149,6 +149,8 @@ export default function Home() {
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] });
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
+    const [albumPage, setAlbumPage] = useState(1);
+    const [galleryPage, setGalleryPage] = useState(1);
 
     // === EFFECTS ===
     useEffect(() => { 
@@ -869,6 +871,90 @@ export default function Home() {
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
+    const IMAGES_PER_PAGE = 50;
+
+    const albumImages = currentViewAlbum?.images || [];
+    const albumTotalPages = Math.max(1, Math.ceil(albumImages.length / IMAGES_PER_PAGE));
+    const safeAlbumPage = Math.min(Math.max(albumPage, 1), albumTotalPages);
+    const albumStartIndex = (safeAlbumPage - 1) * IMAGES_PER_PAGE;
+    const paginatedAlbumImages = albumImages.slice(albumStartIndex, albumStartIndex + IMAGES_PER_PAGE);
+
+    const galleryTotalPages = Math.max(1, Math.ceil(displayedImages.length / IMAGES_PER_PAGE));
+    const safeGalleryPage = Math.min(Math.max(galleryPage, 1), galleryTotalPages);
+    const galleryStartIndex = (safeGalleryPage - 1) * IMAGES_PER_PAGE;
+    const paginatedDisplayedImages = displayedImages.slice(galleryStartIndex, galleryStartIndex + IMAGES_PER_PAGE);
+
+    useEffect(() => {
+        setAlbumPage(1);
+    }, [activeAlbumId, albumImages.length]);
+
+    useEffect(() => {
+        setGalleryPage(1);
+    }, [currentFolderId, showOnlySelected, loadedImages.length]);
+
+    const getPageNumbers = (currentPage, totalPages) => {
+        if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+
+        const pages = [1];
+        const start = Math.max(2, currentPage - 1);
+        const end = Math.min(totalPages - 1, currentPage + 1);
+
+        if (start > 2) pages.push('...');
+        for (let i = start; i <= end; i++) pages.push(i);
+        if (end < totalPages - 1) pages.push('...');
+        pages.push(totalPages);
+
+        return pages;
+    };
+
+    const PaginationControls = ({ currentPage, totalPages, totalItems, onPageChange, label }) => {
+        if (totalItems <= IMAGES_PER_PAGE) return null;
+
+        const startItem = (currentPage - 1) * IMAGES_PER_PAGE + 1;
+        const endItem = Math.min(currentPage * IMAGES_PER_PAGE, totalItems);
+
+        return (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white border border-slate-100 rounded-2xl p-3 md:p-4 shadow-sm">
+                <div className="text-xs md:text-sm text-slate-500 font-medium">
+                    {label}: <span className="font-bold text-slate-900">{startItem}-{endItem}</span> / {totalItems} ảnh
+                    <span className="ml-2 text-blue-600 font-bold">Trang {currentPage}/{totalPages}</span>
+                </div>
+
+                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                    <button
+                        onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
+                    >
+                        Trước
+                    </button>
+
+                    {getPageNumbers(currentPage, totalPages).map((page, index) => (
+                        page === '...' ? (
+                            <span key={`dots-${index}`} className="px-2 text-slate-400 font-bold">...</span>
+                        ) : (
+                            <button
+                                key={page}
+                                onClick={() => onPageChange(page)}
+                                className={`min-w-9 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${currentPage === page ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border'}`}
+                            >
+                                {page}
+                            </button>
+                        )
+                    ))}
+
+                    <button
+                        onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
+                    >
+                        Sau
+                    </button>
+                </div>
+            </div>
+        );
+    };
+
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
@@ -1483,12 +1569,22 @@ export default function Home() {
                                         <h2 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-2">{currentViewAlbum?.title}</h2>
                                         <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>
                                     </div>
+
+                                    <PaginationControls
+                                        currentPage={safeAlbumPage}
+                                        totalPages={albumTotalPages}
+                                        totalItems={albumImages.length}
+                                        onPageChange={setAlbumPage}
+                                        label="Bộ sưu tập"
+                                    />
+
                                     <div className="masonry-grid">
-                                        {currentViewAlbum?.images?.map((img: any, i: number) => {
+                                        {paginatedAlbumImages.map((img: any, i: number) => {
                                             const isCover = currentViewAlbum?.coverUrl === img.url;
+                                            const originalIndex = albumStartIndex + i;
                                             
                                             return (
-                                                <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentViewAlbum?.images})}>
+                                                <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: originalIndex, images: albumImages})}>
                                                     <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt="Album" referrerPolicy="no-referrer" />
                                                     
                                                     {/* Nút Tải xuống */}
@@ -1514,6 +1610,14 @@ export default function Home() {
                                             );
                                         })}
                                     </div>
+
+                                    <PaginationControls
+                                        currentPage={safeAlbumPage}
+                                        totalPages={albumTotalPages}
+                                        totalItems={albumImages.length}
+                                        onPageChange={setAlbumPage}
+                                        label="Bộ sưu tập"
+                                    />
                                 </div>
                             )}
                         </div>
@@ -1591,11 +1695,20 @@ export default function Home() {
                                         </div>
                                     </div>
 
+                                    <PaginationControls
+                                        currentPage={safeGalleryPage}
+                                        totalPages={galleryTotalPages}
+                                        totalItems={displayedImages.length}
+                                        onPageChange={setGalleryPage}
+                                        label={showOnlySelected ? 'Ảnh đã chọn' : 'Trang chọn ảnh'}
+                                    />
+
                                     {/* Grid Ảnh */}
                                     {displayedImages.length > 0 ? (
                                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
-                                            {displayedImages.map((img, idx) => {
+                                            {paginatedDisplayedImages.map((img, idx) => {
                                                 const isSelected = selectedImages.has(img.id);
+                                                const originalIndex = galleryStartIndex + idx;
                                                 return (
                                                     <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
                                                         <img 
@@ -1604,7 +1717,7 @@ export default function Home() {
                                                             alt="Gallery" 
                                                             loading="lazy" decoding="async"
                                                             referrerPolicy="no-referrer"
-                                                            onClick={() => { setLightboxData({isOpen: true, index: idx, images: displayedImages}); }}
+                                                            onClick={() => { setLightboxData({isOpen: true, index: originalIndex, images: displayedImages}); }}
                                                         />
                                                         
                                                         {/* Nút thả tim to */}
@@ -1628,6 +1741,16 @@ export default function Home() {
                                             <Heart className="w-12 h-12 md:w-16 md:h-16 mx-auto text-pink-200 mb-4" />
                                             <p className="text-slate-500 font-medium text-sm md:text-base">Bạn chưa chọn bức ảnh nào.</p>
                                         </div>
+                                    )}
+
+                                    {displayedImages.length > 0 && (
+                                        <PaginationControls
+                                            currentPage={safeGalleryPage}
+                                            totalPages={galleryTotalPages}
+                                            totalItems={displayedImages.length}
+                                            onPageChange={setGalleryPage}
+                                            label={showOnlySelected ? 'Ảnh đã chọn' : 'Trang chọn ảnh'}
+                                        />
                                     )}
                                 </>
                             ) : (
