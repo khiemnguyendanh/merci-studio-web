@@ -730,6 +730,34 @@ export default function Home() {
         return enriched;
     };
 
+    const getDefaultClientPageTitle = (folders = []) => {
+        const cleanFolders = (folders || []).filter(Boolean);
+
+        if (cleanFolders.length === 1) {
+            return cleanFolders[0]?.name || 'Album chọn ảnh';
+        }
+
+        if (cleanFolders.length > 1) {
+            const names = cleanFolders.map(folder => folder?.name).filter(Boolean);
+            if (names.length > 0) {
+                return `${names.slice(0, 2).join(' + ')}${cleanFolders.length > 2 ? ` +${cleanFolders.length - 2}` : ''}`;
+            }
+            return `Album chọn ảnh ${cleanFolders.length} folder`;
+        }
+
+        return 'Album chọn ảnh';
+    };
+
+    const getClientPageDisplayTitle = (page) => {
+        const savedTitle = (page?.title || '').trim();
+        const isOldDefaultTitle = /^Album chọn ảnh/i.test(savedTitle);
+        const folders = page?.folders && page.folders.length ? page.folders : [];
+
+        if (savedTitle && !isOldDefaultTitle) return savedTitle;
+        if (folders.length > 0) return getDefaultClientPageTitle(folders);
+        return savedTitle || 'Album chọn ảnh';
+    };
+
     const safeZipFolderName = (name) => {
         const clean = (name || 'Folder')
             .toString()
@@ -928,7 +956,30 @@ export default function Home() {
             const snap = await getDocs(q);
             const pages = snap.docs.map(d => ({ id: d.id, ...d.data() }))
                 .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
-            setSavedClientPages(pages);
+
+            const enrichedPages = await Promise.all(pages.map(async (page) => {
+                if (page.folders && page.folders.length) return page;
+
+                const folderIds = (page.folderIds && page.folderIds.length ? page.folderIds : [page.folderId]).filter(Boolean);
+                if (!folderIds.length) return page;
+
+                try {
+                    const folders = await enrichDriveFolders(folderIds.map(id => ({ id, source: id })));
+                    const oldDefaultTitle = /^Album chọn ảnh/i.test((page.title || '').trim());
+                    const nextPage = { ...page, folders };
+
+                    if (oldDefaultTitle && folders.length === 1 && folders[0]?.name) {
+                        nextPage.title = folders[0].name;
+                    }
+
+                    return nextPage;
+                } catch (error) {
+                    console.warn('Không lấy được tên folder cho link đã lưu:', page.id, error);
+                    return page;
+                }
+            }));
+
+            setSavedClientPages(enrichedPages);
         } catch (error) {
             console.warn('Load client pages skipped or blocked by Firestore Rules:', error);
             setSavedClientPages([]);
@@ -938,6 +989,32 @@ export default function Home() {
     useEffect(() => {
         loadSavedClientPages();
     }, [loadSavedClientPages]);
+
+    const handleRenameClientPage = async (page) => {
+        if (!db || !user?.uid || !page?.id) return;
+
+        const currentTitle = getClientPageDisplayTitle(page);
+        const nextTitle = prompt('Nhập tên dễ nhớ cho link chọn ảnh:', currentTitle);
+
+        if (nextTitle === null) return;
+
+        const cleanTitle = nextTitle.trim();
+        if (!cleanTitle) return alert('Tên link không được để trống.');
+
+        try {
+            await updateDoc(doc(db, 'client_pages', page.id), {
+                title: cleanTitle,
+                updatedAt: Date.now()
+            });
+
+            setSavedClientPages(prev => prev.map(item => (
+                item.id === page.id ? { ...item, title: cleanTitle, updatedAt: Date.now() } : item
+            )));
+        } catch (error) {
+            console.error('Rename client page error:', error);
+            alert('Không đổi được tên link. Hãy kiểm tra quyền Firestore hoặc đăng nhập lại.');
+        }
+    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -1141,7 +1218,7 @@ export default function Home() {
                         link: newClientLink,
                         ownerUid: user.uid,
                         ownerEmail: user.email || '',
-                        title: folders.length > 1 ? `Album chọn ảnh ${folders.length} folder ${new Date().toLocaleDateString('vi-VN')}` : `Album chọn ảnh ${new Date().toLocaleDateString('vi-VN')}`,
+                        title: getDefaultClientPageTitle(folders),
                         imageCount: totalImageCount,
                         createdAt: Date.now(),
                         updatedAt: Date.now()
@@ -2326,8 +2403,18 @@ export default function Home() {
                                         {savedClientPages.map(page => (
                                             <div key={page.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 flex flex-col gap-3">
                                                 <div>
-                                                    <p className="font-bold text-slate-900">{page.title || 'Album chọn ảnh'}</p>
-                                                    <p className="text-xs text-slate-500">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
+                                                    <div className="flex items-start justify-between gap-2">
+                                                        <p className="font-bold text-slate-900 leading-snug">{getClientPageDisplayTitle(page)}</p>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRenameClientPage(page)}
+                                                            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                                                            title="Đổi tên link chọn ảnh"
+                                                        >
+                                                            <Edit className="w-3 h-3"/> Sửa tên
+                                                        </button>
+                                                    </div>
+                                                    <p className="text-xs text-slate-500 mt-1">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
                                                     <p className="font-mono text-xs text-blue-700 truncate mt-1">{page.link}</p>
                                                 </div>
                                                 <div className="flex gap-2">
