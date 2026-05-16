@@ -530,40 +530,94 @@ export default function Home() {
         }
     };
 
+    // === GOOGLE DRIVE HELPER: LẤY TOÀN BỘ ẢNH, KHÔNG BỊ GIỚI HẠN 100 ẢNH ===
+    const getAllDriveImages = async (folderId) => {
+        if (!GOOGLE_API_KEY) {
+            throw new Error("Thiếu Google API Key!");
+        }
+
+        const allFiles = [];
+        let pageToken = '';
+
+        do {
+            const url =
+                `https://www.googleapis.com/drive/v3/files` +
+                `?q='${folderId}'+in+parents+and+mimeType+contains+'image/'` +
+                `&key=${GOOGLE_API_KEY}` +
+                `&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink)` +
+                `&pageSize=100` +
+                `&orderBy=name` +
+                (pageToken ? `&pageToken=${pageToken}` : '');
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.error) {
+                console.error("Google Drive API Error:", data.error);
+                throw new Error(data.error.message || "Lỗi Google Drive API");
+            }
+
+            allFiles.push(...(data.files || []));
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
+
+        return allFiles;
+    };
+
     const handleSyncDriveToAlbum = async () => {
         if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
         if (!albumDriveLink.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
         
         setIsLoading(true);
-        setLoadingMessage('Đang lấy ảnh từ Google Drive...');
+        setLoadingMessage('Đang lấy toàn bộ ảnh từ Google Drive...');
         
         let folderId = albumDriveLink.trim();
-        if (folderId.includes('folders/')) folderId = folderId.split('folders/')[1].split('?')[0];
 
-        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&key=${GOOGLE_API_KEY}&fields=files(id,name,thumbnailLink,webContentLink)&pageSize=100&orderBy=name`;
-        
+        // Hỗ trợ cả link Google Drive đầy đủ và Folder ID
+        if (folderId.includes('folders/')) {
+            folderId = folderId.split('folders/')[1].split('?')[0];
+        }
+
         try {
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.files && data.files.length > 0) {
-                const newImgs = data.files.map((f) => ({
-                    id: f.id, name: f.name,
+            const files = await getAllDriveImages(folderId);
+
+            if (files.length > 0) {
+                const newImgs = files.map((f) => ({
+                    id: f.id,
+                    name: f.name,
                     url: f.thumbnailLink?.replace('=s220', '=w600'),
                     originalUrl: f.thumbnailLink?.replace('=s220', '=s0'),
                     downloadUrl: f.webContentLink
                 }));
                 
                 const currentAlbum = albums.find(a => a.id === activeAlbumId);
-                const updated = { ...currentAlbum, images: [...newImgs, ...(currentAlbum.images || [])] };
-                if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) updated.coverUrl = newImgs[0].url;
-                
-                updated.driveLink = albumDriveLink.trim();
+
+                if (!currentAlbum) {
+                    alert("Không tìm thấy album hiện tại.");
+                    return;
+                }
+
+                const updated = {
+                    ...currentAlbum,
+                    images: [...newImgs, ...(currentAlbum.images || [])],
+                    driveLink: albumDriveLink.trim()
+                };
+
+                if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) {
+                    updated.coverUrl = newImgs[0].url;
+                }
 
                 await saveAlbumData(updated);
                 alert(`Đã thêm thành công ${newImgs.length} ảnh vào Album!`);
-            } else { alert("Thư mục trống hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết)!"); }
-        } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
-        finally { setIsLoading(false); }
+            } else {
+                alert("Thư mục trống hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết.");
+            }
+        } catch (e) {
+            console.error(e);
+            alert("Lỗi khi kết nối Google Drive: " + e.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const handleLogin = (e) => {
@@ -599,35 +653,46 @@ export default function Home() {
 
     const fetchDrive = async (id) => {
         if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
+        if (!id || !id.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
+
         setIsLoading(true);
-        setLoadingMessage('Đang lấy dữ liệu album...');
+        setLoadingMessage('Đang lấy toàn bộ dữ liệu album...');
         
-        let folderId = id;
-        if (id.includes('folders/')) folderId = id.split('folders/')[1].split('?')[0];
+        let folderId = id.trim();
+
+        // Hỗ trợ cả link Google Drive đầy đủ và Folder ID
+        if (folderId.includes('folders/')) {
+            folderId = folderId.split('folders/')[1].split('?')[0];
+        }
         
         setCurrentFolderId(folderId);
 
-        const url = `https://www.googleapis.com/drive/v3/files?q='${folderId}'+in+parents+and+mimeType+contains+'image/'&key=${GOOGLE_API_KEY}&fields=files(id,name,thumbnailLink,webContentLink)&pageSize=100&orderBy=name`;
-        
         try {
-            const res = await fetch(url);
-            const data = await res.json();
-            if (data.files && data.files.length > 0) {
-                setLoadedImages(data.files.map((f) => ({
-                    id: f.id, name: f.name,
+            const files = await getAllDriveImages(folderId);
+
+            if (files.length > 0) {
+                setLoadedImages(files.map((f) => ({
+                    id: f.id,
+                    name: f.name,
                     url: f.thumbnailLink?.replace('=s220', '=w600'),
-                    originalUrl: f.thumbnailLink?.replace('=s220', '=s0')
+                    originalUrl: f.thumbnailLink?.replace('=s220', '=s0'),
+                    downloadUrl: f.webContentLink
                 })));
+
                 setClientLink(`${window.location.origin}?folder=${folderId}`);
                 
                 const savedSelections = await loadClientSelectionFromDB(folderId);
                 setSelectedImages(savedSelections);
 
             } else {
-                alert("Thư mục không có ảnh hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết) trên Google Drive.");
+                alert("Thư mục không có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết.");
             }
-        } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
-        finally { setIsLoading(false); }
+        } catch (e) {
+            console.error(e);
+            alert("Lỗi khi kết nối Google Drive: " + e.message);
+        } finally {
+            setIsLoading(false);
+        }
     };
 
     const toggleImageSelect = (id, event) => {
