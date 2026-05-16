@@ -976,7 +976,7 @@ export default function Home() {
 
                                 {/* Avatar */}
                                 <div className="relative w-28 h-28 mx-auto rounded-full overflow-hidden shadow-xl ring-4 ring-white mt-4">
-                                    <img src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar"/>
+                                    <img src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar" referrerPolicy="no-referrer"/>
                                 </div>
                                 
                                 {/* Title & Bio */}
@@ -1081,7 +1081,7 @@ export default function Home() {
                                     </div>
                                 )}
                             </div>
-                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" />
+                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" referrerPolicy="no-referrer" />
                         </div>
                     )}
 
@@ -1100,7 +1100,7 @@ export default function Home() {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                 {videos.length > 0 ? videos.map(vid => (
                                     <div key={vid.id} onClick={() => setVideoModal({isOpen: true, youtubeId: vid.youtubeId})} className="group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900">
-                                        <img src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} />
+                                        <img src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
                                             <PlayCircle className="w-16 h-16 text-white/80 group-hover:text-white transition-all group-hover:scale-110 drop-shadow-lg" />
                                         </div>
@@ -1154,7 +1154,7 @@ export default function Home() {
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer bg-white rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
                                                 <div className="aspect-[16/10] overflow-hidden relative">
-                                                    <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" />
+                                                    <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_PROMO; }} />
                                                     {isAdmin && (
                                                         <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             <button onClick={(e) => openEditBlog(blog, e)} className="bg-white/90 p-2 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110">
@@ -1216,7 +1216,7 @@ export default function Home() {
                                             </h1>
                                             {currentViewBlog.coverUrl && (
                                                 <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden mb-10 shadow-md">
-                                                    <img src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} />
+                                                    <img src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} referrerPolicy="no-referrer" />
                                                 </div>
                                             )}
                                             
@@ -1270,7 +1270,7 @@ export default function Home() {
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer relative">
                                                 <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
-                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" />
+                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
@@ -1317,12 +1317,12 @@ export default function Home() {
                                         <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
-                                                window.history.pushState({}, document.title, '/'); 
+                                                window.history.pushState({}, document.title, '/'); // Xóa link ảo khi Back
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18}/> Quay lại
                                             </button>
                                             
-                                            {/* Link Album */}
+                                            {/* Link Album MỚI (Dạng Slug đẹp) */}
                                             <button onClick={() => {
                                                 const slugToUse = currentViewAlbum?.slug || createSlug(currentViewAlbum?.title) || currentViewAlbum?.id;
                                                 const link = `${window.location.origin}/${slugToUse}`;
@@ -1361,7 +1361,7 @@ export default function Home() {
                                             
                                             return (
                                                 <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: i, images: currentViewAlbum?.images})}>
-                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt="Album" />
+                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt="Album" referrerPolicy="no-referrer" />
                                                     
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-3 right-3 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
@@ -1475,6 +1475,7 @@ export default function Home() {
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
                                                             alt="Gallery" 
                                                             loading="lazy" decoding="async"
+                                                            referrerPolicy="no-referrer"
                                                             onClick={() => { setLightboxData({isOpen: true, index: idx, images: displayedImages}); }}
                                                         />
                                                         
