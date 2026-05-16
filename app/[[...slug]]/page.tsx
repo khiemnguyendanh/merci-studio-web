@@ -350,7 +350,7 @@ export default function Home() {
         if (!activeAlbumId) return;
         setIsLoading(true);
         try {
-            await updateDoc(doc(db, 'merci_albums', activeAlbumId), { coverUrl: imageUrl });
+            await updateDoc(doc(db, 'merci_albums', activeAlbumId), { coverUrl: imageUrl, coverId: activeAlbumId ? (albumImages.find(img => img.url === imageUrl)?.id || '') : '' });
             alert("Đã đặt ảnh này làm Ảnh Bìa thành công!");
         } catch (error) { alert("Lỗi khi cập nhật ảnh bìa."); } 
         finally { setIsLoading(false); }
@@ -586,53 +586,100 @@ export default function Home() {
         return allFiles;
     };
 
+    // === GOOGLE DRIVE IMAGE HELPERS: LINK ẢNH ỔN ĐỊNH HƠN THUMBNAIL LINK CŨ ===
+    const extractDriveFolderId = (input) => {
+        let folderId = (input || '').trim();
+        if (!folderId) return '';
+        if (folderId.includes('folders/')) folderId = folderId.split('folders/')[1].split('?')[0].split('/')[0];
+        return folderId;
+    };
+
+    const getDriveThumbUrl = (fileId, size = 'w1200') => {
+        if (!fileId) return DEFAULT_COVER;
+        return `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`;
+    };
+
+    const getDriveDownloadUrl = (fileId) => {
+        if (!fileId) return DEFAULT_COVER;
+        return `https://drive.google.com/uc?export=download&id=${fileId}`;
+    };
+
+    const normalizeDriveImage = (f) => ({
+        id: f.id,
+        name: f.name,
+        // Không lưu thumbnailLink cũ làm link chính vì link này dễ hết hạn / vỡ ảnh.
+        url: getDriveThumbUrl(f.id, 'w1200'),
+        originalUrl: getDriveThumbUrl(f.id, 'w2400'),
+        downloadUrl: f.webContentLink || getDriveDownloadUrl(f.id),
+        thumbnailUrl: f.thumbnailLink || getDriveThumbUrl(f.id, 'w600')
+    });
+
+    const handleImageError = (e, img) => {
+        const target = e.currentTarget;
+        const fallbackUrl = img?.thumbnailUrl || getDriveThumbUrl(img?.id, 'w600');
+        const finalFallback = DEFAULT_COVER;
+
+        if (target.dataset.fallback !== '1' && fallbackUrl && target.src !== fallbackUrl) {
+            target.dataset.fallback = '1';
+            target.src = fallbackUrl;
+            return;
+        }
+
+        if (target.dataset.finalFallback !== '1') {
+            target.dataset.finalFallback = '1';
+            target.src = finalFallback;
+        }
+    };
+
     const handleSyncDriveToAlbum = async () => {
         if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
-        if (!albumDriveLink.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
+
+        const currentAlbum = albums.find(a => a.id === activeAlbumId);
+        if (!currentAlbum) return alert("Không tìm thấy album hiện tại.");
+
+        const sourceDriveLink = albumDriveLink.trim() || currentAlbum.driveLink || '';
+        if (!sourceDriveLink) return alert("Vui lòng dán link thư mục Google Drive!");
         
         setIsLoading(true);
-        setLoadingMessage('Đang lấy toàn bộ ảnh từ Google Drive...');
+        setLoadingMessage('Đang reload album từ Google Drive...');
         
-        let folderId = albumDriveLink.trim();
-
-        // Hỗ trợ cả link Google Drive đầy đủ và Folder ID
-        if (folderId.includes('folders/')) {
-            folderId = folderId.split('folders/')[1].split('?')[0];
-        }
+        const folderId = extractDriveFolderId(sourceDriveLink);
 
         try {
             const files = await getAllDriveImages(folderId);
 
             if (files.length > 0) {
-                const newImgs = files.map((f) => ({
-                    id: f.id,
-                    name: f.name,
-                    url: f.thumbnailLink?.replace('=s220', '=w600'),
-                    originalUrl: f.thumbnailLink?.replace('=s220', '=s0'),
-                    downloadUrl: f.webContentLink
-                }));
-                
-                const currentAlbum = albums.find(a => a.id === activeAlbumId);
-
-                if (!currentAlbum) {
-                    alert("Không tìm thấy album hiện tại.");
-                    return;
-                }
+                const newImgs = files.map(normalizeDriveImage);
+                const existingCoverId = (currentAlbum.images || []).find(img => img.url === currentAlbum.coverUrl || img.id === currentAlbum.coverId)?.id;
+                const coverStillExists = newImgs.find(img => img.id === existingCoverId);
+                const coverImage = coverStillExists || newImgs[0];
 
                 const updated = {
                     ...currentAlbum,
-                    images: [...newImgs, ...(currentAlbum.images || [])],
-                    driveLink: albumDriveLink.trim()
+                    // Reload Drive: chỉ giữ đúng các ảnh đang có trong folder Drive hiện tại.
+                    // Ảnh đã xóa khỏi folder sẽ bị xóa khỏi album, ảnh mới sẽ được thêm vào.
+                    images: newImgs,
+                    driveLink: sourceDriveLink,
+                    coverUrl: coverImage?.url || DEFAULT_COVER,
+                    coverId: coverImage?.id || ''
                 };
 
-                if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) {
-                    updated.coverUrl = newImgs[0].url;
-                }
-
                 await saveAlbumData(updated);
-                alert(`Đã thêm thành công ${newImgs.length} ảnh vào Album!`);
+                setAlbumDriveLink(sourceDriveLink);
+                setAlbumPage(1);
+                alert(`Đã reload thành công ${newImgs.length} ảnh từ Google Drive!`);
             } else {
-                alert("Thư mục trống hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết.");
+                const confirmClear = confirm("Thư mục Drive hiện không có ảnh. Bạn có muốn làm trống album này trên web không?");
+                if (confirmClear) {
+                    await saveAlbumData({
+                        ...currentAlbum,
+                        images: [],
+                        driveLink: sourceDriveLink,
+                        coverUrl: DEFAULT_COVER,
+                        coverId: ''
+                    });
+                    setAlbumPage(1);
+                }
             }
         } catch (e) {
             console.error(e);
@@ -723,12 +770,7 @@ export default function Home() {
         setIsLoading(true);
         setLoadingMessage('Đang lấy toàn bộ dữ liệu album...');
         
-        let folderId = id.trim();
-
-        // Hỗ trợ cả link Google Drive đầy đủ và Folder ID
-        if (folderId.includes('folders/')) {
-            folderId = folderId.split('folders/')[1].split('?')[0];
-        }
+        const folderId = extractDriveFolderId(id);
         
         setCurrentFolderId(folderId);
 
@@ -736,13 +778,7 @@ export default function Home() {
             const files = await getAllDriveImages(folderId);
 
             if (files.length > 0) {
-                setLoadedImages(files.map((f) => ({
-                    id: f.id,
-                    name: f.name,
-                    url: f.thumbnailLink?.replace('=s220', '=w600'),
-                    originalUrl: f.thumbnailLink?.replace('=s220', '=s0'),
-                    downloadUrl: f.webContentLink
-                })));
+                setLoadedImages(files.map(normalizeDriveImage));
 
                 setClientLink(`${window.location.origin}?folder=${folderId}`);
                 
@@ -1484,7 +1520,7 @@ export default function Home() {
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer relative">
                                                 <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
-                                                    <img src={a.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_COVER; }} />
+                                                    <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
@@ -1560,7 +1596,7 @@ export default function Home() {
                                                     className="flex-1 md:w-64 px-3 md:px-4 py-2 border border-slate-200 rounded-lg md:rounded-xl outline-none text-xs md:text-sm focus:border-blue-500"
                                                 />
                                                 <button onClick={handleSyncDriveToAlbum} className="bg-white hover:bg-blue-600 hover:text-white text-blue-600 px-4 md:px-6 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-bold border border-blue-200 shadow-sm transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
-                                                    <RefreshCcw size={16}/> Lấy ảnh
+                                                    <RefreshCcw size={16}/> Reload Drive
                                                 </button>
                                             </div>
                                         )}
@@ -1580,12 +1616,12 @@ export default function Home() {
 
                                     <div className="masonry-grid">
                                         {paginatedAlbumImages.map((img: any, i: number) => {
-                                            const isCover = currentViewAlbum?.coverUrl === img.url;
+                                            const isCover = currentViewAlbum?.coverId === img.id || currentViewAlbum?.coverUrl === img.url;
                                             const originalIndex = albumStartIndex + i;
                                             
                                             return (
                                                 <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: originalIndex, images: albumImages})}>
-                                                    <img src={img.url} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt="Album" referrerPolicy="no-referrer" />
+                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
                                                     
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-3 right-3 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
@@ -1712,11 +1748,12 @@ export default function Home() {
                                                 return (
                                                     <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
                                                         <img 
-                                                            src={img.url} 
+                                                            src={img.url || getDriveThumbUrl(img.id, 'w1200')} 
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
-                                                            alt="Gallery" 
+                                                            alt={img.name || "Gallery"} 
                                                             loading="lazy" decoding="async"
                                                             referrerPolicy="no-referrer"
+                                                            onError={(e) => handleImageError(e, img)}
                                                             onClick={() => { setLightboxData({isOpen: true, index: originalIndex, images: displayedImages}); }}
                                                         />
                                                         
@@ -1790,7 +1827,7 @@ export default function Home() {
                     
                     <img 
                         key={lightboxData.index}
-                        src={lightboxData.images[lightboxData.index]?.originalUrl || lightboxData.images[lightboxData.index]?.url} 
+                        src={lightboxData.images[lightboxData.index]?.originalUrl || lightboxData.images[lightboxData.index]?.url || getDriveThumbUrl(lightboxData.images[lightboxData.index]?.id, 'w2400')} 
                         onError={(e) => {
                             // Nếu ảnh gốc chất lượng cao (=s0) bị Google Drive chặn, tự động lùi về ảnh xem trước (=w600)
                             const fallbackSrc = lightboxData.images[lightboxData.index]?.url;
