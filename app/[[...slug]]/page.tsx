@@ -38,10 +38,13 @@ const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 // Danh sách email được phép vào Admin.
 // Thêm biến môi trường NEXT_PUBLIC_ADMIN_EMAILS trên Vercel.
 // Ví dụ: admin1@gmail.com,admin2@gmail.com
-const ADMIN_EMAILS = (process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
-    .split(',')
-    .map(email => email.trim().toLowerCase())
-    .filter(Boolean);
+const ADMIN_EMAILS = Array.from(new Set([
+    'khiemnguyendanh@gmail.com',
+    ...(process.env.NEXT_PUBLIC_ADMIN_EMAILS || '')
+        .split(',')
+        .map(email => email.trim().toLowerCase())
+        .filter(Boolean)
+]));
 
 // Danh mục Album
 const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
@@ -1529,7 +1532,7 @@ export default function Home() {
                         <div className="flex justify-between items-start mb-7">
                             <div>
                                 <h3 className="font-bold text-3xl md:text-4xl font-serif leading-tight">Chào mừng trở lại</h3>
-                                <p className="text-slate-300 text-sm md:text-base mt-3 leading-relaxed">Đăng nhập để quản lý trang cá nhân và kết nối với khách hàng.</p>
+                                <p className="text-slate-300 text-sm md:text-base mt-3 leading-relaxed">Đăng nhập một lần để quản lý trang. Nếu dùng email Admin, hệ thống sẽ tự mở quyền quản trị.</p>
                             </div>
                             <button onClick={() => setShowClientLoginModal(false)} className="text-slate-300 hover:text-white p-1"><X /></button>
                         </div>
@@ -1751,7 +1754,7 @@ export default function Home() {
                                 <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
                             <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <User size={18}/> {user ? 'Tài khoản' : 'Khách đăng nhập'}
+                                <User size={18}/> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                         </div>
 
@@ -1779,11 +1782,8 @@ export default function Home() {
                         </div>
 
                         <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <User size={18}/> {user ? (user.email || 'Tài khoản') : 'Khách đăng nhập'}
-                            </button>
-                            <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} title="Admin" className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors">
-                                Admin
+                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border transition-colors ${isAdmin ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                                <User size={18}/> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
                         </div>
                     </div>
@@ -1877,8 +1877,8 @@ export default function Home() {
                                     </div>
                                 </div>
                                 
-                                {/* Nút ẩn dành cho Admin */}
-                                <button onClick={() => setShowLoginModal(true)} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
+                                {/* Nút đăng nhập nhanh */}
+                                <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
                                     <User size={16} />
                                 </button>
                             </div>
