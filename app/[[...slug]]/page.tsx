@@ -12,7 +12,7 @@ import {
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
 
 // Cấu hình Firebase
@@ -114,6 +114,12 @@ export default function Home() {
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [loginError, setLoginError] = useState('');
+
+    // Đăng nhập / đăng ký khách hàng
+    const [showClientLoginModal, setShowClientLoginModal] = useState(false);
+    const [clientAuthMode, setClientAuthMode] = useState('login'); // login | register
+    const [clientAuthData, setClientAuthData] = useState({ email: '', password: '' });
+    const [clientAuthError, setClientAuthError] = useState('');
     
     // Khách hàng & Filter
     const [driveLink, setDriveLink] = useState('');
@@ -721,10 +727,58 @@ export default function Home() {
         try {
             const provider = new GoogleAuthProvider();
             await signInWithPopup(auth, provider);
+            setShowClientLoginModal(false);
+            setClientAuthError('');
         } catch (error) {
             console.error('Google login error:', error);
             alert('Không đăng nhập được Google. Hãy kiểm tra Firebase Authentication đã bật Google provider chưa.');
         }
+    };
+
+    const handleClientEmailAuth = async (e) => {
+        e.preventDefault();
+        setClientAuthError('');
+
+        if (!auth) {
+            setClientAuthError('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
+            return;
+        }
+
+        const email = clientAuthData.email.trim().toLowerCase();
+        const password = clientAuthData.password;
+
+        if (!email || !password) {
+            setClientAuthError('Vui lòng nhập email và mật khẩu.');
+            return;
+        }
+
+        if (password.length < 6) {
+            setClientAuthError('Mật khẩu cần tối thiểu 6 ký tự.');
+            return;
+        }
+
+        try {
+            if (clientAuthMode === 'register') {
+                await createUserWithEmailAndPassword(auth, email, password);
+            } else {
+                await signInWithEmailAndPassword(auth, email, password);
+            }
+            setShowClientLoginModal(false);
+            setClientAuthData({ email: '', password: '' });
+        } catch (error) {
+            console.error('Client auth error:', error);
+            const code = error?.code || '';
+            if (code.includes('email-already-in-use')) setClientAuthError('Email này đã có tài khoản. Hãy bấm Đăng nhập.');
+            else if (code.includes('user-not-found') || code.includes('invalid-credential') || code.includes('wrong-password')) setClientAuthError('Email hoặc mật khẩu chưa đúng.');
+            else if (code.includes('operation-not-allowed')) setClientAuthError('Firebase chưa bật phương thức Email/Password hoặc Google.');
+            else setClientAuthError('Không đăng nhập/đăng ký được. Vui lòng thử lại.');
+        }
+    };
+
+    const openClientAuth = (mode = 'login') => {
+        setClientAuthMode(mode);
+        setClientAuthError('');
+        setShowClientLoginModal(true);
     };
 
     const loadSavedClientPages = useCallback(async () => {
@@ -739,7 +793,8 @@ export default function Home() {
                 .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
             setSavedClientPages(pages);
         } catch (error) {
-            console.error('Load client pages error:', error);
+            console.warn('Load client pages skipped or blocked by Firestore Rules:', error);
+            setSavedClientPages([]);
         }
     }, [user?.uid]);
 
@@ -1083,6 +1138,67 @@ export default function Home() {
                 </div>
             )}
 
+            {/* Client Login / Register Modal */}
+            {showClientLoginModal && (
+                <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-[2rem] w-full max-w-md shadow-2xl border border-white/10 animate-in zoom-in-95">
+                        <div className="flex justify-between items-start mb-7">
+                            <div>
+                                <h3 className="font-bold text-3xl md:text-4xl font-serif leading-tight">Chào mừng trở lại</h3>
+                                <p className="text-slate-300 text-sm md:text-base mt-3 leading-relaxed">Đăng nhập để quản lý trang cá nhân và kết nối với khách hàng.</p>
+                            </div>
+                            <button onClick={() => setShowClientLoginModal(false)} className="text-slate-300 hover:text-white p-1"><X /></button>
+                        </div>
+
+                        <button onClick={handleGoogleLogin} className="w-full border border-white/15 hover:border-white/40 rounded-2xl py-3.5 font-bold text-lg flex items-center justify-center gap-3 transition-all bg-transparent hover:bg-white/5">
+                            <span className="text-2xl font-black text-blue-400">G</span> Tiếp tục với Google
+                        </button>
+
+                        <div className="flex items-center gap-4 my-6 text-xs text-slate-400 uppercase tracking-widest">
+                            <div className="h-px bg-white/10 flex-1"></div>
+                            <span>Hoặc tiếp tục với Email</span>
+                            <div className="h-px bg-white/10 flex-1"></div>
+                        </div>
+
+                        <form onSubmit={handleClientEmailAuth} className="space-y-5">
+                            {clientAuthError && <p className="text-red-300 bg-red-500/10 border border-red-500/20 p-3 rounded-xl text-sm font-medium">{clientAuthError}</p>}
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Email hoặc tên đăng nhập</label>
+                                <input
+                                    type="email"
+                                    placeholder="ban@vidu.com"
+                                    className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
+                                    value={clientAuthData.email}
+                                    onChange={e => setClientAuthData({...clientAuthData, email: e.target.value})}
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-semibold text-slate-300 mb-2">Mật khẩu</label>
+                                <input
+                                    type="password"
+                                    placeholder="••••••••"
+                                    className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
+                                    value={clientAuthData.password}
+                                    onChange={e => setClientAuthData({...clientAuthData, password: e.target.value})}
+                                />
+                                {clientAuthMode === 'login' && <button type="button" className="block ml-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Quên mật khẩu?</button>}
+                            </div>
+                            <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
+                                {clientAuthMode === 'register' ? 'Tạo tài khoản' : 'Đăng nhập'}
+                            </button>
+                        </form>
+
+                        <div className="text-center mt-6 text-slate-300">
+                            {clientAuthMode === 'register' ? (
+                                <span>Đã có tài khoản? <button onClick={() => { setClientAuthMode('login'); setClientAuthError(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Đăng nhập</button></span>
+                            ) : (
+                                <span>Chưa có tài khoản? <button onClick={() => { setClientAuthMode('register'); setClientAuthError(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Tạo tài khoản</button></span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Login Modal */}
             {showLoginModal && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
@@ -1250,8 +1366,8 @@ export default function Home() {
                                 </div>
                                 <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <User size={18}/> {isAdmin ? 'Thoát' : 'Đăng nhập'}
+                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                                <User size={18}/> {user ? 'Tài khoản' : 'Khách đăng nhập'}
                             </button>
                         </div>
 
@@ -1278,9 +1394,14 @@ export default function Home() {
                             </nav>
                         </div>
 
-                        <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} className="hidden md:flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                            <User size={18}/> {isAdmin ? 'Admin (Thoát)' : 'Đăng nhập'}
-                        </button>
+                        <div className="hidden md:flex items-center gap-2">
+                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                                <User size={18}/> {user ? (user.email || 'Tài khoản') : 'Khách đăng nhập'}
+                            </button>
+                            <button onClick={() => isAdmin ? handleLogout() : setShowLoginModal(true)} title="Admin" className="flex items-center gap-2 text-xs font-bold text-slate-400 hover:text-blue-600 px-3 py-2 rounded-xl hover:bg-blue-50 transition-colors">
+                                Admin
+                            </button>
+                        </div>
                     </div>
                 </header>
             )}
@@ -1340,6 +1461,15 @@ export default function Home() {
                                 {/* Utilities Section (Các tính năng ra ngoài) */}
                                 <div className="pt-6 border-t border-slate-100">
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Tiện ích Khách hàng & Studio</h3>
+                                    {!user ? (
+                                        <button onClick={() => openClientAuth('login')} className="w-full mb-3 py-3 px-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                            <User className="w-5 h-5"/> Đăng nhập / đăng ký khách hàng
+                                        </button>
+                                    ) : (
+                                        <div className="w-full mb-3 py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm text-xs">
+                                            <CheckCircleIcon className="w-5 h-5"/> Đã đăng nhập: {user.email}
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-2 gap-3">
                                         <button onClick={() => setActiveTab('create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
                                             <Wand2 className="w-5 h-5"/> <span className="text-[11px]">Tạo Trang</span>
@@ -1378,8 +1508,8 @@ export default function Home() {
                                 <h2 className="text-4xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
                                 <p className="text-slate-500 text-base md:text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
                                 {!user && (
-                                    <button onClick={handleGoogleLogin} className="bg-white border-2 border-slate-100 px-5 py-3 rounded-2xl font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm flex items-center gap-2 w-fit">
-                                        <User className="w-5 h-5"/> Đăng nhập Google để lưu các link đã tạo
+                                    <button onClick={() => openClientAuth('login')} className="bg-white border-2 border-slate-100 px-5 py-3 rounded-2xl font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm flex items-center gap-2 w-fit">
+                                        <User className="w-5 h-5"/> Đăng nhập / đăng ký khách hàng
                                     </button>
                                 )}
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
@@ -1791,8 +1921,8 @@ export default function Home() {
                                         <p className="text-sm text-slate-500">Danh sách này lưu theo tài khoản Google đang đăng nhập.</p>
                                     </div>
                                     {!user ? (
-                                        <button onClick={handleGoogleLogin} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                            <User className="w-4 h-4"/> Đăng nhập Google
+                                        <button onClick={() => openClientAuth('login')} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
+                                            <User className="w-4 h-4"/> Đăng nhập / đăng ký
                                         </button>
                                     ) : (
                                         <button onClick={loadSavedClientPages} className="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
