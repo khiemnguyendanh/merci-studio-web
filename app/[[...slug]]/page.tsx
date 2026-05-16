@@ -304,7 +304,6 @@ export default function Home() {
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
                 driveLink: editingAlbum.driveLink || ''
             });
-            // Nếu đang xem album này, cập nhật ô input link Drive ngay lập tức
             if(activeAlbumId === editingAlbum.id) {
                 setAlbumDriveLink(editingAlbum.driveLink || '');
             }
@@ -558,11 +557,9 @@ export default function Home() {
                 const updated = { ...currentAlbum, images: [...newImgs, ...(currentAlbum.images || [])] };
                 if (newImgs.length > 0 && (!updated.coverUrl || updated.coverUrl === DEFAULT_COVER)) updated.coverUrl = newImgs[0].url;
                 
-                // Cập nhật lại driveLink vào db nếu admin muốn lưu
                 updated.driveLink = albumDriveLink.trim();
 
                 await saveAlbumData(updated);
-                // Giữ lại link để user tiện xem, không clear đi nữa
                 alert(`Đã thêm thành công ${newImgs.length} ảnh vào Album!`);
             } else { alert("Thư mục trống hoặc chưa bật quyền chia sẻ (Bất kỳ ai có liên kết)!"); }
         } catch (e) { alert("Lỗi khi kết nối Google Drive."); } 
@@ -1110,6 +1107,7 @@ export default function Home() {
                                         <div className="absolute bottom-6 left-6 right-6 text-white">
                                             <h3 className="text-xl md:text-2xl font-bold font-serif leading-tight drop-shadow-md">{vid.title}</h3>
                                         </div>
+                                        {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                 <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
@@ -1276,8 +1274,10 @@ export default function Home() {
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
+                                                    {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                            {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
                                                             {activeCategory === 'Tất cả' && (
                                                                 <>
                                                                     <button onClick={(e) => handleMoveAlbum(a.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
@@ -1538,11 +1538,18 @@ export default function Home() {
                     
                     <img 
                         key={lightboxData.index}
-                        src={lightboxData.images[lightboxData.index].originalUrl || lightboxData.images[lightboxData.index].url} 
+                        src={lightboxData.images[lightboxData.index]?.originalUrl || lightboxData.images[lightboxData.index]?.url} 
+                        onError={(e) => {
+                            // Nếu ảnh gốc chất lượng cao (=s0) bị Google Drive chặn, tự động lùi về ảnh xem trước (=w600)
+                            const fallbackSrc = lightboxData.images[lightboxData.index]?.url;
+                            if (e.target.src !== fallbackSrc) {
+                                e.target.src = fallbackSrc;
+                            }
+                        }}
                         className="w-full h-full md:max-w-full md:max-h-full object-contain md:shadow-2xl animate-in zoom-in-95 duration-300 select-none pointer-events-none" 
                         alt="Zoomed"
                         draggable={false}
-                        loading="lazy"
+                        referrerPolicy="no-referrer"
                     />
                     
                     <button className="absolute left-2 md:left-6 text-white/30 hover:text-white p-3 md:p-4 rounded-full hidden sm:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft className="w-8 h-8 md:w-14 md:h-14" /></button>
