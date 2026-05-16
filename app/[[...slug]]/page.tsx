@@ -128,6 +128,9 @@ export default function Home() {
     const [loadedImages, setLoadedImages] = useState([]);
     const [selectedImages, setSelectedImages] = useState(new Set());
     const [currentFolderId, setCurrentFolderId] = useState(null);
+    const [clientFolders, setClientFolders] = useState([]);
+    const [activeClientFolderId, setActiveClientFolderId] = useState(null);
+    const [currentSelectionKey, setCurrentSelectionKey] = useState(null);
     const [showOnlySelected, setShowOnlySelected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     
@@ -203,13 +206,20 @@ export default function Home() {
         try {
             const urlParams = new URLSearchParams(window.location.search);
             const folderId = urlParams.get('folder');
+            const foldersParam = urlParams.get('folders');
             const viewMode = urlParams.get('view');
             
             const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
             
-            if (folderId) {
+            if (foldersParam) {
+                setActiveTab('gallery');
+                if (viewMode === 'selected') setShowOnlySelected(true);
+                fetchDrive(foldersParam.split(',').map(v => decodeURIComponent(v)).join('\n'));
+            } else if (folderId) {
                 setActiveTab('gallery');
                 setCurrentFolderId(folderId);
+                setActiveClientFolderId(folderId);
+                setCurrentSelectionKey(folderId);
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(folderId); 
             } else if (window.location.hash) {
@@ -522,66 +532,132 @@ export default function Home() {
         setIsAddingBlog(true);
     };
 
-    // Tải ảnh đơn có watermark
-    const handleDownloadWithWatermark = async (imageUrl, imageName, event) => {
-        event.stopPropagation(); 
-        setIsLoading(true);
-        setLoadingMessage('Đang đóng dấu bản quyền...');
-        
-        const addWatermarkAndDownload = (srcUrl) => {
-            const img = new Image();
-            img.crossOrigin = "Anonymous"; 
-            img.onload = () => {
-                try {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    
-                    ctx.drawImage(img, 0, 0);
-                    
-                    const fontSize = Math.max(30, img.width / 25);
-                    ctx.font = `bold ${fontSize}px serif`;
-                    ctx.textAlign = 'right';
-                    ctx.textBaseline = 'bottom';
-                    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-                    ctx.shadowBlur = Math.max(5, fontSize / 4);
-                    ctx.shadowOffsetX = 2;
-                    ctx.shadowOffsetY = 2;
-                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                    ctx.fillText('© MERCI STUDIO', canvas.width - (fontSize / 2), canvas.height - (fontSize / 2));
+    // Tải ảnh đơn có watermark - KHÔNG mở link ảnh gốc nếu đóng dấu lỗi
+    // Dùng proxy nội bộ để tải ảnh Google Drive qua server Next.js.
+    // Lý do: fetch trực tiếp Google Drive trên trình duyệt hay bị CORS,
+    // làm canvas không đóng dấu được và code cũ bị nhảy sang link ảnh gốc.
+    const buildDriveMediaUrl = (fileId) => {
+        if (!fileId) return '';
+        return `/api/drive-image?id=${encodeURIComponent(fileId)}`;
+    };
 
-                    const a = document.createElement('a');
-                    a.href = canvas.toDataURL('image/jpeg', 0.95);
-                    a.download = `${imageName ? imageName.replace(/\.[^/.]+$/, "") : 'image'}_merci.jpg`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                } catch (e) {
-                    alert("Hệ thống đang tải ảnh gốc cho bạn...");
-                    window.open(imageUrl, '_blank');
-                }
-                setIsLoading(false);
-            };
-            img.onerror = () => {
-                alert("Đang mở liên kết tải gốc...");
-                window.open(imageUrl, '_blank');
-                setIsLoading(false);
-            };
-            img.src = srcUrl;
-        };
+    const blobToDataUrl = (blob) => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+    });
 
-        if (imageUrl.startsWith('data:')) {
-            addWatermarkAndDownload(imageUrl);
-        } else {
+    const loadImageElement = (src) => new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        // Dùng dataURL/blob nội bộ để tránh canvas bị tainted bởi Google Drive CORS
+        img.src = src;
+    });
+
+    const getImageDownloadSources = (imageInput) => {
+        const img = typeof imageInput === 'string' ? { originalUrl: imageInput } : (imageInput || {});
+        const sources = [
+            // Ưu tiên proxy nội bộ để tránh CORS và luôn đóng dấu được.
+            img.id ? buildDriveMediaUrl(img.id) : '',
+            // Các nguồn dưới chỉ là dự phòng, không bao giờ mở tab link gốc.
+            img.originalUrl,
+            img.url,
+            img.thumbnailUrl,
+            img.id ? `https://drive.google.com/thumbnail?id=${img.id}&sz=w2400` : ''
+        ].filter(Boolean);
+
+        return Array.from(new Set(sources));
+    };
+
+    const fetchImageAsDataUrl = async (imageInput) => {
+        const sources = getImageDownloadSources(imageInput);
+        let lastError = null;
+
+        for (const src of sources) {
             try {
-                const response = await fetch(imageUrl);
-                const blob = await response.blob();
-                const objectUrl = URL.createObjectURL(blob);
-                addWatermarkAndDownload(objectUrl);
+                if (src.startsWith('data:')) return src;
+
+                const res = await fetch(src, { mode: 'cors', cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const blob = await res.blob();
+                if (!blob || !blob.type.startsWith('image/')) throw new Error('Không phải file ảnh');
+
+                return await blobToDataUrl(blob);
             } catch (err) {
-                addWatermarkAndDownload(imageUrl);
+                lastError = err;
             }
+        }
+
+        throw lastError || new Error('Không tải được ảnh để đóng dấu');
+    };
+
+    const createWatermarkedImageBlob = async (imageInput) => {
+        const dataUrl = await fetchImageAsDataUrl(imageInput);
+        const img = await loadImageElement(dataUrl);
+
+        const canvas = document.createElement('canvas');
+        // Giữ nguyên kích thước gốc của ảnh Google Drive, không resize.
+        canvas.width = img.naturalWidth || img.width;
+        canvas.height = img.naturalHeight || img.height;
+
+        const ctx = canvas.getContext('2d', { alpha: false });
+        if (!ctx) throw new Error('Trình duyệt không hỗ trợ canvas');
+
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+        // Chỉ chèn 1 dòng chữ nhỏ phía dưới ảnh.
+        // Không dùng watermark lớn để giữ ảnh sạch và gần chất lượng gốc nhất có thể.
+        const fontSize = Math.max(18, Math.round(canvas.width / 95));
+        const paddingBottom = Math.max(14, Math.round(fontSize * 0.9));
+
+        ctx.save();
+        ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = Math.max(2, Math.round(fontSize / 8));
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+        ctx.fillStyle = 'rgba(255,255,255,0.86)';
+        ctx.fillText('Merci Studio', canvas.width / 2, canvas.height - paddingBottom);
+        ctx.restore();
+
+        // Xuất JPEG quality cao. Canvas vẫn phải encode lại ảnh vì có chèn chữ,
+        // nhưng giữ nguyên độ phân giải gốc và dùng quality 0.98 để hạn chế giảm chất lượng.
+        return await new Promise((resolve, reject) => {
+            canvas.toBlob((blob) => {
+                if (blob) resolve(blob);
+                else reject(new Error('Không xuất được ảnh đã đóng dấu'));
+            }, 'image/jpeg', 0.98);
+        });
+    };
+
+    const handleDownloadWithWatermark = async (imageInput, imageName, event) => {
+        event?.stopPropagation?.();
+        setIsLoading(true);
+        setLoadingMessage('Đang đóng dấu Merci Studio...');
+
+        try {
+            const blob = await createWatermarkedImageBlob(imageInput);
+            const objectUrl = URL.createObjectURL(blob);
+
+            const fileName = imageName || (typeof imageInput === 'object' ? imageInput?.name : '') || 'image';
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = `${fileName.replace(/\.[^/.]+$/, '')}_merci_studio.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (error) {
+            console.error('Watermark download error:', error);
+            alert('Không thể tải ảnh đã đóng dấu. Hãy kiểm tra quyền chia sẻ Google Drive: Bất kỳ ai có liên kết đều có thể xem.');
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -617,6 +693,64 @@ export default function Home() {
         } while (pageToken);
 
         return allFiles;
+    };
+
+    // Lấy tên thật của folder Google Drive để hiển thị cho khách thay vì Folder 1, Folder 2...
+    const getDriveFolderInfo = async (folderId) => {
+        if (!GOOGLE_API_KEY || !folderId) return null;
+
+        const url =
+            `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}` +
+            `?key=${GOOGLE_API_KEY}` +
+            `&fields=id,name,mimeType`;
+
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (data.error) {
+            console.warn('Không lấy được tên folder Drive:', folderId, data.error);
+            return null;
+        }
+
+        return data;
+    };
+
+    const enrichDriveFolders = async (folders) => {
+        const enriched = await Promise.all((folders || []).map(async (folder, index) => {
+            const info = await getDriveFolderInfo(folder.id);
+            return {
+                ...folder,
+                name: info?.name || folder.name || `Folder ${index + 1}`
+            };
+        }));
+
+        return enriched;
+    };
+
+    const safeZipFolderName = (name) => {
+        const clean = (name || 'Folder')
+            .toString()
+            .replace(/[\/:*?"<>|]/g, '-')
+            .replace(/\s+/g, ' ')
+            .trim();
+        return clean || 'Folder';
+    };
+
+    const dedupeZipFileName = (usedNames, fileName, fallbackName) => {
+        const original = (fileName || fallbackName || 'image.jpg').toString();
+        const dotIndex = original.lastIndexOf('.');
+        const base = dotIndex > 0 ? original.slice(0, dotIndex) : original;
+        const ext = dotIndex > 0 ? original.slice(dotIndex) : '.jpg';
+        let candidate = original;
+        let count = 1;
+
+        while (usedNames.has(candidate.toLowerCase())) {
+            candidate = `${base}_${count}${ext}`;
+            count += 1;
+        }
+
+        usedNames.add(candidate.toLowerCase());
+        return candidate;
     };
 
     // === GOOGLE DRIVE IMAGE HELPERS: LINK ẢNH ỔN ĐỊNH HƠN THUMBNAIL LINK CŨ ===
@@ -852,6 +986,18 @@ export default function Home() {
         }
     };
 
+    const handleClientLogout = async () => {
+        setShowClientLoginModal(false);
+        setSavedClientPages([]);
+        if (auth) {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                console.error('Client logout error:', error);
+            }
+        }
+    };
+
     // === CLIENT GALLERY HELPERS ===
     const saveClientSelectionToDB = async (folderId, newSelectedSet) => {
         if (!db || !folderId) return;
@@ -876,44 +1022,138 @@ export default function Home() {
         return new Set();
     };
 
-    const fetchDrive = async (id, options = { savePage: false }) => {
-        if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
-        if (!id || !id.trim()) return alert("Vui lòng dán link thư mục Google Drive!");
+    const getDriveFolderInputs = (input) => {
+        const lines = (input || '')
+            .split(/[\r\n,]+/)
+            .map(item => item.trim())
+            .filter(Boolean);
 
-        setIsLoading(true);
-        setLoadingMessage('Đang lấy toàn bộ dữ liệu album...');
-        
-        const folderId = extractDriveFolderId(id);
-        
-        setCurrentFolderId(folderId);
+        const unique = [];
+        const seen = new Set();
+
+        lines.forEach((line, index) => {
+            const folderId = extractDriveFolderId(line);
+            if (!folderId || seen.has(folderId)) return;
+            seen.add(folderId);
+            unique.push({
+                id: folderId,
+                name: `Folder ${unique.length + 1}`,
+                source: line
+            });
+        });
+
+        return unique;
+    };
+
+    const getClientPageKey = (folders) => {
+        const ids = (folders || []).map(f => f.id || f).filter(Boolean);
+        return ids.length <= 1 ? (ids[0] || '') : `multi_${ids.join('_')}`;
+    };
+
+    const buildClientPageLink = (folders, viewMode = '') => {
+        const origin = window.location.origin;
+        const ids = (folders || []).map(f => f.id || f).filter(Boolean);
+        if (ids.length <= 1) return `${origin}?folder=${ids[0] || ''}${viewMode ? `&view=${viewMode}` : ''}`;
+        return `${origin}?folders=${ids.map(id => encodeURIComponent(id)).join(',')}${viewMode ? `&view=${viewMode}` : ''}`;
+    };
+
+    const loadDriveFolderImages = async (folderId, options = { silent: false }) => {
+        if (!folderId) return [];
+        if (!options?.silent) {
+            setIsLoading(true);
+            setLoadingMessage('Đang lấy dữ liệu folder...');
+        }
 
         try {
             const files = await getAllDriveImages(folderId);
+            const imgs = files.map(normalizeDriveImage);
+            setCurrentFolderId(folderId);
+            setActiveClientFolderId(folderId);
+            setLoadedImages(imgs);
+            setGalleryPage(1);
+            return imgs;
+        } finally {
+            if (!options?.silent) setIsLoading(false);
+        }
+    };
 
-            if (files.length > 0) {
-                setLoadedImages(files.map(normalizeDriveImage));
+    const handleSwitchClientFolder = async (folderId) => {
+        if (!folderId || folderId === activeClientFolderId) return;
+        try {
+            await loadDriveFolderImages(folderId);
+        } catch (e) {
+            console.error(e);
+            alert('Không tải được folder này: ' + e.message);
+        }
+    };
 
-                const newClientLink = `${window.location.origin}?folder=${folderId}`;
+    const fetchDrive = async (id, options = { savePage: false }) => {
+        if (!GOOGLE_API_KEY) return alert("Thiếu Google API Key!");
+        if (!id || !id.trim()) return alert("Vui lòng dán ít nhất 1 link thư mục Google Drive!");
+
+        const rawFolders = getDriveFolderInputs(id);
+        if (rawFolders.length === 0) return alert("Không nhận diện được folder Google Drive. Hãy dán link folder, mỗi dòng 1 folder con.");
+
+        setIsLoading(true);
+        setLoadingMessage(rawFolders.length > 1 ? 'Đang lấy tên folder Drive và tạo trang...' : 'Đang lấy toàn bộ dữ liệu album...');
+
+        try {
+            const folders = await enrichDriveFolders(rawFolders);
+            const pageKey = getClientPageKey(folders);
+            setClientFolders(folders);
+            setCurrentSelectionKey(pageKey);
+            setCurrentFolderId(folders[0].id);
+            setActiveClientFolderId(folders[0].id);
+
+            const firstFiles = await getAllDriveImages(folders[0].id);
+
+            if (firstFiles.length > 0 || folders.length > 1) {
+                setLoadedImages(firstFiles.map(normalizeDriveImage));
+
+                const newClientLink = buildClientPageLink(folders);
                 setClientLink(newClientLink);
 
                 if (options?.savePage && user?.uid) {
-                    await setDoc(doc(db, 'client_pages', folderId), {
-                        folderId,
+                    let totalImageCount = firstFiles.length;
+
+                    if (folders.length > 1) {
+                        const counts = await Promise.all(
+                            folders.slice(1).map(async (folder) => {
+                                try {
+                                    const files = await getAllDriveImages(folder.id);
+                                    return files.length;
+                                } catch (e) {
+                                    console.warn('Không đếm được folder:', folder.id, e);
+                                    return 0;
+                                }
+                            })
+                        );
+                        totalImageCount += counts.reduce((sum, count) => sum + count, 0);
+                    }
+
+                    await setDoc(doc(db, 'client_pages', pageKey), {
+                        folderId: folders[0].id,
+                        folderIds: folders.map(f => f.id),
+                        folders,
                         link: newClientLink,
                         ownerUid: user.uid,
                         ownerEmail: user.email || '',
-                        title: `Album chọn ảnh ${new Date().toLocaleDateString('vi-VN')}`,
-                        imageCount: files.length,
+                        title: folders.length > 1 ? `Album chọn ảnh ${folders.length} folder ${new Date().toLocaleDateString('vi-VN')}` : `Album chọn ảnh ${new Date().toLocaleDateString('vi-VN')}`,
+                        imageCount: totalImageCount,
                         createdAt: Date.now(),
                         updatedAt: Date.now()
                     }, { merge: true });
                     loadSavedClientPages();
                 }
-                
-                const savedSelections = await loadClientSelectionFromDB(folderId);
+
+                const savedSelections = await loadClientSelectionFromDB(pageKey);
                 setSelectedImages(savedSelections);
 
+                if (firstFiles.length === 0) {
+                    alert("Folder đầu tiên không có ảnh. Bạn có thể chuyển sang folder con khác trong phần Chọn ảnh.");
+                }
             } else {
+                setLoadedImages([]);
                 alert("Thư mục không có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết.");
             }
         } catch (e) {
@@ -929,14 +1169,15 @@ export default function Home() {
         setSelectedImages(prev => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
-            if (currentFolderId) saveClientSelectionToDB(currentFolderId, newSet);
+            if (currentSelectionKey || currentFolderId) saveClientSelectionToDB(currentSelectionKey || currentFolderId, newSet);
             return newSet;
         });
     };
 
     const generateSelectedImagesLink = () => {
         if (!currentFolderId) return;
-        const newLink = `${window.location.origin}?folder=${currentFolderId}&view=selected`;
+        const foldersForLink = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Folder 1' }];
+        const newLink = buildClientPageLink(foldersForLink, 'selected');
         
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(newLink).then(() => alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh."));
@@ -945,38 +1186,181 @@ export default function Home() {
         }
     };
 
+    // Tải ZIP ở phần Chọn ảnh: giữ file gốc Google Drive, KHÔNG đóng dấu watermark
+    const getOriginalDriveFileSources = (img) => {
+        const sources = [
+            img?.id ? buildDriveMediaUrl(img.id) : '',
+            img?.downloadUrl,
+            img?.id ? getDriveDownloadUrl(img.id) : '',
+            img?.originalUrl,
+            img?.url
+        ].filter(Boolean);
+
+        return Array.from(new Set(sources));
+    };
+
+    const fetchOriginalDriveFileBlob = async (img) => {
+        const sources = getOriginalDriveFileSources(img);
+        let lastError = null;
+
+        for (const src of sources) {
+            try {
+                const res = await fetch(src, { mode: 'cors', cache: 'no-store' });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const blob = await res.blob();
+                if (!blob || blob.size === 0) throw new Error('File rỗng');
+
+                return blob;
+            } catch (err) {
+                lastError = err;
+            }
+        }
+
+        throw lastError || new Error('Không tải được file gốc từ Google Drive');
+    };
+
+    // Tải từng ảnh ở phần Chọn ảnh: tải file gốc Google Drive, KHÔNG watermark
+    const handleDownloadOriginalImage = async (img, event) => {
+        event?.stopPropagation?.();
+        if (!img) return;
+
+        setIsLoading(true);
+        setLoadingMessage('Đang tải file gốc từ Google Drive...');
+
+        try {
+            const originalBlob = await fetchOriginalDriveFileBlob(img);
+            const objectUrl = URL.createObjectURL(originalBlob);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = img.name || `merci_original_${img.id || Date.now()}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (error) {
+            console.error('Single original download error:', error);
+            alert('Không tải được file gốc từ Google Drive. Hãy kiểm tra thư mục đã bật quyền: Bất kỳ ai có liên kết đều có thể xem.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleDownloadSelected = async () => {
         if (selectedImages.size === 0) return alert("Bạn chưa chọn ảnh nào!");
         if (!window.JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
 
         setIsLoading(true);
-        setLoadingMessage('Đang nén các ảnh đã chọn thành file ZIP...');
+        setLoadingMessage('Đang tải file gốc từ Google Drive và nén ZIP...');
         try {
             const JSZip = window.JSZip;
             const zip = new JSZip();
             const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0,10);
             const imgFolder = zip.folder(folderName);
+            const selectedIds = Array.from(selectedImages);
+            const selectedIdSet = new Set(selectedIds);
+            const allFolders = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Ảnh đã chọn' }];
+            let downloadedCount = 0;
+            const usedNames = new Set();
 
-            const promises = Array.from(selectedImages).map(id => {
-                const img = loadedImages.find(i => i.id === id);
-                if (img) {
-                    return fetch(img.originalUrl)
-                        .then(res => res.blob())
-                        .then(blob => imgFolder?.file(img.name, blob));
+            for (const folder of allFolders) {
+                if (!folder?.id) continue;
+                setLoadingMessage(`Đang tìm ảnh đã chọn trong ${folder.name || 'folder'}...`);
+                const folderImages = folder.id === activeClientFolderId && loadedImages.length > 0
+                    ? loadedImages
+                    : (await getAllDriveImages(folder.id)).map(normalizeDriveImage);
+
+                for (const img of folderImages) {
+                    if (!selectedIdSet.has(img.id)) continue;
+                    downloadedCount += 1;
+                    setLoadingMessage(`Đang tải file gốc đã chọn ${downloadedCount}/${selectedIds.length}...`);
+                    const originalBlob = await fetchOriginalDriveFileBlob(img);
+                    const fileName = dedupeZipFileName(usedNames, img.name, `image_${downloadedCount}.jpg`);
+                    imgFolder?.file(fileName, originalBlob);
                 }
-                return Promise.resolve();
-            });
+            }
 
-            await Promise.all(promises);
+            if (downloadedCount === 0) {
+                alert('Không tìm thấy ảnh đã chọn trong các folder hiện tại. Hãy thử tải lại link chọn ảnh.');
+                return;
+            }
+
+            setLoadingMessage('Đang nén file ZIP gốc...');
             const content = await zip.generateAsync({ type: "blob" });
+            const objectUrl = URL.createObjectURL(content);
             const a = document.createElement('a');
-            a.href = URL.createObjectURL(content);
-            a.download = folderName + ".zip";
+            a.href = objectUrl;
+            a.download = folderName + "_file_goc.zip";
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         } catch (error) {
-            alert("Đã xảy ra lỗi trong quá trình gom file ZIP. Bạn hãy thử lại sau nhé.");
+            console.error('ZIP original download error:', error);
+            alert("Đã xảy ra lỗi khi tải file gốc / gom file ZIP. Hãy kiểm tra quyền chia sẻ Google Drive rồi thử lại.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // Tải toàn bộ ảnh trong tất cả folder con của link chọn ảnh: file gốc Google Drive, KHÔNG watermark
+    const handleDownloadAllOriginal = async () => {
+        if (!window.JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
+
+        const allFolders = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Tat ca anh' }];
+        if (!allFolders.some(folder => folder?.id)) return alert('Chưa có folder Google Drive để tải.');
+
+        setIsLoading(true);
+        setLoadingMessage('Đang chuẩn bị tải toàn bộ ảnh gốc...');
+
+        try {
+            const JSZip = window.JSZip;
+            const zip = new JSZip();
+            const rootName = "Merci_Toan_Bo_Anh_" + new Date().toISOString().slice(0,10);
+            const rootFolder = zip.folder(rootName);
+            let totalDownloaded = 0;
+
+            for (let folderIndex = 0; folderIndex < allFolders.length; folderIndex++) {
+                const folder = allFolders[folderIndex];
+                if (!folder?.id) continue;
+
+                const folderName = safeZipFolderName(folder.name || `Folder ${folderIndex + 1}`);
+                setLoadingMessage(`Đang lấy danh sách ảnh: ${folderName}...`);
+                const folderImages = folder.id === activeClientFolderId && loadedImages.length > 0
+                    ? loadedImages
+                    : (await getAllDriveImages(folder.id)).map(normalizeDriveImage);
+
+                const targetFolder = allFolders.length > 1 ? rootFolder?.folder(folderName) : rootFolder;
+                const usedNames = new Set();
+
+                for (let index = 0; index < folderImages.length; index++) {
+                    const img = folderImages[index];
+                    setLoadingMessage(`Đang tải ${folderName}: ${index + 1}/${folderImages.length} ảnh gốc...`);
+                    const originalBlob = await fetchOriginalDriveFileBlob(img);
+                    const fileName = dedupeZipFileName(usedNames, img.name, `image_${index + 1}.jpg`);
+                    targetFolder?.file(fileName, originalBlob);
+                    totalDownloaded += 1;
+                }
+            }
+
+            if (totalDownloaded === 0) {
+                alert('Không có ảnh nào để tải trong các folder hiện tại.');
+                return;
+            }
+
+            setLoadingMessage(`Đang nén ${totalDownloaded} ảnh gốc thành file ZIP...`);
+            const content = await zip.generateAsync({ type: "blob" });
+            const objectUrl = URL.createObjectURL(content);
+            const a = document.createElement('a');
+            a.href = objectUrl;
+            a.download = rootName + "_file_goc.zip";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+        } catch (error) {
+            console.error('ZIP all original download error:', error);
+            alert("Đã xảy ra lỗi khi tải toàn bộ ảnh gốc. Hãy kiểm tra quyền chia sẻ Google Drive rồi thử lại.");
         } finally {
             setIsLoading(false);
         }
@@ -1515,7 +1899,14 @@ export default function Home() {
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
-                                        <input value={driveLink} onChange={e => setDriveLink(e.target.value)} type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base" />
+                                        <textarea
+                                            value={driveLink}
+                                            onChange={e => setDriveLink(e.target.value)}
+                                            rows={5}
+                                            placeholder={'Dán link folder Google Drive. Nếu có nhiều folder con, mỗi dòng là 1 folder:\nhttps://drive.google.com/drive/folders/...\nhttps://drive.google.com/drive/folders/...'}
+                                            className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors text-sm md:text-base resize-none"
+                                        />
+                                        <p className="text-xs text-slate-400 font-medium ml-1">Có thể dán 1 folder hoặc nhiều folder con. Trang chọn ảnh sẽ có nút chuyển qua lại giữa các folder.</p>
                                     </div>
                                     <button onClick={() => fetchDrive(driveLink, { savePage: true })} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
@@ -1849,7 +2240,7 @@ export default function Home() {
                                                     
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-3 right-3 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
-                                                        <button onClick={(e) => handleDownloadWithWatermark(img.originalUrl, img.name, e)} className="bg-white/90 p-2 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
+                                                        <button onClick={(e) => handleDownloadWithWatermark(img, img.name, e)} className="bg-white/90 p-2 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
                                                             <Download size={16} className="md:w-5 md:h-5"/>
                                                         </button>
                                                     </div>
@@ -1940,7 +2331,13 @@ export default function Home() {
                                                     <p className="font-mono text-xs text-blue-700 truncate mt-1">{page.link}</p>
                                                 </div>
                                                 <div className="flex gap-2">
-                                                    <button onClick={() => fetchDrive(page.folderId)} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold hover:border-blue-300 hover:text-blue-600 transition-colors">Mở</button>
+                                                    <button onClick={() => {
+                                                        const pageFolders = page.folders && page.folders.length ? page.folders : [];
+                                                        const folderInput = pageFolders.length
+                                                            ? pageFolders.map(folder => folder.source || folder.id).filter(Boolean).join('\n')
+                                                            : (page.folderIds && page.folderIds.length ? page.folderIds : [page.folderId]).filter(Boolean).join('\n');
+                                                        fetchDrive(folderInput);
+                                                    }} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold hover:border-blue-300 hover:text-blue-600 transition-colors">Mở</button>
                                                     <button onClick={() => {
                                                         if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(page.link).then(() => alert('Đã copy link!'));
                                                         else prompt('Copy link:', page.link);
@@ -1954,6 +2351,30 @@ export default function Home() {
 
                             {loadedImages.length > 0 ? (
                                 <>
+                                    {clientFolders.length > 1 && (
+                                        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 shadow-sm">
+                                            <div className="flex items-center justify-between gap-3 mb-3">
+                                                <div>
+                                                    <h3 className="text-sm md:text-base font-bold text-slate-900">Folder con trong trang chọn ảnh</h3>
+                                                    <p className="text-xs text-slate-500">Bấm để chuyển qua lại giữa các folder. Ảnh đã chọn vẫn được lưu chung trong link này.</p>
+                                                </div>
+                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">{clientFolders.length} folder</span>
+                                            </div>
+                                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                {clientFolders.map((folder, index) => (
+                                                    <button
+                                                        key={folder.id}
+                                                        type="button"
+                                                        onClick={() => handleSwitchClientFolder(folder.id)}
+                                                        className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeClientFolderId === folder.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                    >
+                                                        {folder.name || `Folder ${index + 1}`}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Control Bar */}
                                     <div className="sticky top-16 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-3 md:p-4 border border-slate-100 rounded-2xl md:rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 shadow-xl">
                                         <div className="flex items-center justify-between w-full md:w-auto px-1 md:pl-2">
@@ -1987,8 +2408,12 @@ export default function Home() {
                                                 <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Link Chốt</span>
                                             </button>
 
+                                            <button onClick={handleDownloadAllOriginal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <FolderDown className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải tất cả</span>
+                                            </button>
+
                                             <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải ZIP</span>
+                                                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải ảnh đã chọn</span>
                                             </button>
                                         </div>
                                     </div>
@@ -2026,6 +2451,16 @@ export default function Home() {
                                                         >
                                                             <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isSelected ? 'fill-current' : ''}`}/>
                                                         </div>
+
+                                                        {/* Nút tải từng ảnh gốc - không watermark */}
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => handleDownloadOriginalImage(img, e)}
+                                                            className="absolute bottom-2 left-2 md:bottom-3 md:left-3 w-9 h-9 md:w-10 md:h-10 rounded-full bg-white/90 text-slate-800 shadow-lg backdrop-blur-md flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100"
+                                                            title="Tải file gốc"
+                                                        >
+                                                            <Download className="w-4 h-4 md:w-5 md:h-5" />
+                                                        </button>
 
                                                         {/* Tên ảnh */}
                                                         <div className="absolute top-1 left-1 right-1 md:top-2 md:left-2 md:right-2 flex justify-between pointer-events-none">
