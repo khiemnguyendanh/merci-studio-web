@@ -638,31 +638,106 @@ export default function Home() {
         });
     };
 
-    const handleDownloadWithWatermark = async (imageInput, imageName, event) => {
-        event?.stopPropagation?.();
-        setIsLoading(true);
-        setLoadingMessage('Đang đóng dấu Merci Studio...');
+    const getFileNameWithoutExt = (name = 'image') => {
+    return name.replace(/\.[^/.]+$/, '') || 'image';
+};
 
-        try {
-            const blob = await createWatermarkedImageBlob(imageInput);
-            const objectUrl = URL.createObjectURL(blob);
+const downloadBlob = (blob, fileName) => {
+    const a = document.createElement('a');
+    const objectUrl = URL.createObjectURL(blob);
+    a.href = objectUrl;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(objectUrl);
+};
 
-            const fileName = imageName || (typeof imageInput === 'object' ? imageInput?.name : '') || 'image';
-            const a = document.createElement('a');
-            a.href = objectUrl;
-            a.download = `${fileName.replace(/\.[^/.]+$/, '')}_merci_studio.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+// Chỉ dùng cho BỘ SƯU TẬP: tải ảnh có chữ nhỏ Merci Studio
+const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
+    if (event) event.stopPropagation();
 
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-        } catch (error) {
-            console.error('Watermark download error:', error);
-            alert('Không thể tải ảnh đã đóng dấu. Hãy kiểm tra quyền chia sẻ Google Drive: Bất kỳ ai có liên kết đều có thể xem.');
-        } finally {
-            setIsLoading(false);
+    setIsLoading(true);
+    setLoadingMessage('Đang chèn chữ Merci Studio...');
+
+    try {
+        const imageId =
+            typeof imageOrUrl === 'object'
+                ? imageOrUrl?.id
+                : '';
+
+        const sourceUrl = imageId
+            ? `/api/drive-image?id=${encodeURIComponent(imageId)}`
+            : imageOrUrl;
+
+        const response = await fetch(sourceUrl, { cache: 'no-store' });
+
+        if (!response.ok) {
+            throw new Error(`Không tải được ảnh: ${response.status}`);
         }
-    };
+
+        const blob = await response.blob();
+
+        let bitmap;
+        if ('createImageBitmap' in window) {
+            bitmap = await createImageBitmap(blob);
+        } else {
+            bitmap = await new Promise((resolve, reject) => {
+                const img = new Image();
+                img.onload = () => resolve(img);
+                img.onerror = reject;
+                img.src = URL.createObjectURL(blob);
+            });
+        }
+
+        const width = bitmap.width;
+        const height = bitmap.height;
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx = canvas.getContext('2d');
+        if (!ctx) throw new Error('Không tạo được canvas');
+
+        ctx.drawImage(bitmap, 0, 0, width, height);
+
+        // Chữ nhỏ phía dưới
+        const fontSize = Math.max(18, Math.round(width * 0.018));
+        const padding = Math.max(18, Math.round(width * 0.018));
+
+        ctx.save();
+        ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'bottom';
+        ctx.shadowColor = 'rgba(0,0,0,0.45)';
+        ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.18));
+        ctx.fillStyle = 'rgba(255,255,255,0.82)';
+        ctx.fillText('Merci Studio', width - padding, height - padding);
+        ctx.restore();
+
+        const outputBlob = await new Promise((resolve, reject) => {
+            canvas.toBlob(
+                (result) => {
+                    if (result) resolve(result);
+                    else reject(new Error('Không xuất được ảnh đã chèn chữ'));
+                },
+                'image/jpeg',
+                0.98
+            );
+        });
+
+        downloadBlob(
+            outputBlob,
+            `${getFileNameWithoutExt(imageName || (typeof imageOrUrl === 'object' ? imageOrUrl?.name : 'image'))}_merci_studio.jpg`
+        );
+    } catch (error) {
+        console.error('Watermark download error:', error);
+        alert('Ảnh này chưa tải được bản có chữ Merci Studio. Hãy kiểm tra quyền chia sẻ Google Drive hoặc thử reload album.');
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     // === GOOGLE DRIVE HELPER: LẤY TOÀN BỘ ẢNH, KHÔNG BỊ GIỚI HẠN 100 ẢNH ===
     const getAllDriveImages = async (folderId) => {
@@ -678,7 +753,7 @@ export default function Home() {
                 `https://www.googleapis.com/drive/v3/files` +
                 `?q='${folderId}'+in+parents+and+mimeType+contains+'image/'` +
                 `&key=${GOOGLE_API_KEY}` +
-                `&fields=nextPageToken,files(id,name,thumbnailLink,webContentLink)` +
+                `&fields=nextPageToken,files(id,name,mimeType,thumbnailLink,webContentLink)` +
                 `&pageSize=100` +
                 `&orderBy=name` +
                 (pageToken ? `&pageToken=${pageToken}` : '');
@@ -803,14 +878,14 @@ export default function Home() {
     };
 
     const normalizeDriveImage = (f) => ({
-        id: f.id,
-        name: f.name,
-        // Không lưu thumbnailLink cũ làm link chính vì link này dễ hết hạn / vỡ ảnh.
-        url: getDriveThumbUrl(f.id, 'w1200'),
-        originalUrl: getDriveThumbUrl(f.id, 'w2400'),
-        downloadUrl: f.webContentLink || getDriveDownloadUrl(f.id),
-        thumbnailUrl: f.thumbnailLink || getDriveThumbUrl(f.id, 'w600')
-    });
+    id: f.id,
+    name: f.name,
+    mimeType: f.mimeType || '',
+    url: getDriveThumbUrl(f.id, 'w1200'),
+    originalUrl: getDriveThumbUrl(f.id, 'w2400'),
+    downloadUrl: f.webContentLink || getDriveDownloadUrl(f.id),
+    thumbnailUrl: f.thumbnailLink || getDriveThumbUrl(f.id, 'w600')
+});
 
     const handleImageError = (e, img) => {
         const target = e.currentTarget;
