@@ -637,7 +637,7 @@ export default function Home() {
             if (images.length === 0) {
                 alert('Folder Drive này chưa có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết đều có thể xem.');
             } else {
-                alert(`Đã lấy ${images.length} ảnh trong kho Google Drive. AI sẽ tự dùng ảnh này làm ảnh bìa và chèn ảnh minh họa vào nội dung bài.`);
+                alert(`Đã lấy ${images.length} ảnh trong kho Google Drive. AI sẽ tự lấy ảnh bìa từ kho này khi viết bài.`);
             }
         } catch (error) {
             console.error('Load blog Drive images error:', error);
@@ -648,158 +648,18 @@ export default function Home() {
         }
     };
 
-    const getBlogDriveImageUrl = (img, preferOriginal = true) => {
-        if (!img) return '';
-        return preferOriginal
-            ? (img.originalUrl || img.url || img.thumbnailUrl || '')
-            : (img.thumbnailUrl || img.url || img.originalUrl || '');
-    };
-
-    const pickBlogDriveImage = (index = 0, sourceImages = blogDriveImages) => {
-        if (!sourceImages.length) return '';
-        const safeIndex = Math.abs(index) % sourceImages.length;
-        return getBlogDriveImageUrl(sourceImages[safeIndex]);
-    };
-
-    const getBlogDriveAltText = (img, fallback = 'Ảnh minh họa Merci Studio') => {
-        const rawName = (img?.name || '').toString().replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
-        return rawName || fallback;
-    };
-
-    const injectDriveImagesIntoContent = (content = '', sourceImages = [], options = {}) => {
-        const images = (sourceImages || [])
-            .map((img, index) => ({
-                ...img,
-                __url: getBlogDriveImageUrl(img),
-                __alt: getBlogDriveAltText(img, `Ảnh minh họa ${index + 1} - Merci Studio`)
-            }))
-            .filter(img => img.__url);
-
-        if (!images.length) return content || '';
-
-        const maxImages = Math.min(
-            options.maxImages || 4,
-            images.length,
-            Math.max(2, Math.ceil((content.match(/^##\s+/gm) || []).length / 2) || 2)
-        );
-
-        const used = new Set();
-        const pick = (offset = 0) => {
-            for (let i = 0; i < images.length; i += 1) {
-                const candidate = images[(offset + i) % images.length];
-                if (!used.has(candidate.__url)) {
-                    used.add(candidate.__url);
-                    return candidate;
-                }
-            }
-            return images[offset % images.length];
-        };
-
-        const lines = (content || '').split('\n');
-        const output = [];
-        let inserted = 0;
-        let h2Count = 0;
-
-        for (let index = 0; index < lines.length; index += 1) {
-            const line = lines[index];
-            output.push(line);
-
-            if (/^##\s+/.test(line.trim())) {
-                h2Count += 1;
-
-                // Chèn ảnh sau H2 thứ 1, 3, 5... để bài không bị toàn chữ.
-                if (inserted < maxImages && h2Count % 2 === 1) {
-                    const img = pick(index + inserted);
-                    output.push('');
-                    output.push(`![${img.__alt}](${img.__url})`);
-                    output.push('');
-                    inserted += 1;
-                }
-            }
-        }
-
-        // Nếu bài ít heading, vẫn chèn ít nhất 2 ảnh vào giữa bài.
-        if (inserted < Math.min(2, images.length)) {
-            const paragraphs = output
-                .map((line, index) => ({ line, index }))
-                .filter(item => item.line.trim() && !item.line.trim().startsWith('#') && !item.line.trim().startsWith('!['));
-
-            const insertPositions = [
-                paragraphs[Math.floor(paragraphs.length * 0.35)]?.index,
-                paragraphs[Math.floor(paragraphs.length * 0.7)]?.index
-            ].filter(pos => typeof pos === 'number');
-
-            let offset = 0;
-            insertPositions.forEach((position) => {
-                if (inserted >= Math.min(2, images.length)) return;
-                const img = pick(position + inserted);
-                output.splice(position + 1 + offset, 0, '', `![${img.__alt}](${img.__url})`, '');
-                offset += 3;
-                inserted += 1;
-            });
-        }
-
-        return output.join('\n').replace(/\n{4,}/g, '\n\n\n').trim();
-    };
-
-    const ensureBlogDriveImagesLoaded = async () => {
-        if (blogDriveImages.length > 0) return blogDriveImages;
-
-        const folderId = extractDriveFolderId(blogDriveFolderLink);
-        if (!folderId) return [];
-
-        if (!GOOGLE_API_KEY) {
-            alert('Thiếu NEXT_PUBLIC_GOOGLE_API_KEY để đọc ảnh Google Drive.');
-            return [];
-        }
-
-        setIsLoadingBlogDriveImages(true);
-        setLoadingMessage('Đang tự lấy ảnh từ kho Google Drive để chèn vào bài viết...');
-
-        try {
-            const files = await getAllDriveImages(folderId);
-            const images = files.map(normalizeDriveImage);
-            setBlogDriveImages(images);
-            return images;
-        } catch (error) {
-            console.error('Auto load blog Drive images error:', error);
-            alert('Không lấy được ảnh từ kho Drive để chèn vào bài: ' + error.message);
-            return [];
-        } finally {
-            setIsLoadingBlogDriveImages(false);
-        }
-    };
-
-    const insertSingleImageIntoContent = (content = '', imageUrl = '', altText = 'Ảnh minh họa Merci Studio') => {
-        if (!imageUrl) return content || '';
-        const imageMarkdown = `![${altText}](${imageUrl})`;
-        const current = content || '';
-        return `${current}${current.trim() ? '\n\n' : ''}${imageMarkdown}\n`;
+    const pickBlogDriveImage = (index = 0) => {
+        if (!blogDriveImages.length) return '';
+        const safeIndex = Math.abs(index) % blogDriveImages.length;
+        const img = blogDriveImages[safeIndex];
+        return img?.originalUrl || img?.url || img?.thumbnailUrl || '';
     };
 
     const handleUseBlogDriveImage = (img) => {
-        const imageUrl = getBlogDriveImageUrl(img);
+        const imageUrl = img?.originalUrl || img?.url || img?.thumbnailUrl || '';
         if (!imageUrl) return;
-        setNewBlog(prev => ({
-            ...prev,
-            coverUrl: prev.coverUrl || imageUrl,
-            content: insertSingleImageIntoContent(prev.content, imageUrl, getBlogDriveAltText(img))
-        }));
+        setNewBlog(prev => ({ ...prev, coverUrl: imageUrl }));
         setBlogImageUrl(imageUrl);
-    };
-
-    const handleInjectDriveImagesToCurrentBlog = async () => {
-        const images = await ensureBlogDriveImagesLoaded();
-        if (!images.length) return alert('Chưa có ảnh trong kho Google Drive để chèn vào bài.');
-        setNewBlog(prev => {
-            const contentWithImages = injectDriveImagesIntoContent(prev.content || '', images, { maxImages: 5 });
-            return {
-                ...prev,
-                coverUrl: prev.coverUrl || pickBlogDriveImage(Date.now(), images) || DEFAULT_COVER,
-                content: contentWithImages
-            };
-        });
-        alert('Đã chèn ảnh từ kho Google Drive vào nội dung bài viết.');
     };
 
     const handleGenerateBlogWithAI = async (publishNow = false) => {
@@ -808,17 +668,15 @@ export default function Home() {
             return;
         }
 
-        if (publishNow && !confirm(`${getAiProviderLabel()} sẽ viết, tự chèn ảnh từ kho Google Drive và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?`)) {
+        if (publishNow && !confirm(`${getAiProviderLabel()} sẽ viết và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?`)) {
             return;
         }
 
         setIsGeneratingBlog(true);
         setIsLoading(true);
-        setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài, lấy ảnh kho Drive và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp và chèn ảnh kho Drive...`);
+        setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài chuẩn SEO và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp bài chuẩn SEO...`);
 
         try {
-            const stockImages = await ensureBlogDriveImagesLoaded();
-
             const response = await fetch('/api/generate-blog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -839,19 +697,14 @@ export default function Home() {
                 throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
             }
 
-            const rawContent = result.content || '';
-            const contentWithDriveImages = stockImages.length
-                ? injectDriveImagesIntoContent(rawContent, stockImages, { maxImages: 5 })
-                : rawContent;
+            const coverFromDrive = getBlogDriveImageUrl(Date.now());
 
             const generatedBlog = {
                 title: result.title,
                 slug: createSlug(result.slug || result.title),
                 metaDesc: result.metaDesc || '',
-                content: contentWithDriveImages,
-                coverUrl: pickBlogDriveImage(Date.now(), stockImages) || result.coverUrl || newBlog.coverUrl || DEFAULT_COVER,
-                aiProvider,
-                imageStockFolder: blogDriveFolderLink || ''
+                content: injectDriveImagesIntoBlogContent(result.content || '', result.title, Date.now() + 1),
+                coverUrl: result.coverUrl || coverFromDrive || newBlog.coverUrl || DEFAULT_COVER
             };
 
             if (publishNow) {
@@ -868,10 +721,10 @@ export default function Home() {
                 setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
                 setAiBlogPrompt('');
                 setAiBlogKeyword('');
-                alert(`${getAiProviderLabel()} đã viết, chèn ảnh từ kho Drive và đăng bài lên blog thành công!`);
+                alert(`${getAiProviderLabel()} đã viết và đăng bài lên blog thành công!`);
             } else {
                 setNewBlog(generatedBlog);
-                alert(`${getAiProviderLabel()} đã viết xong bản nháp và đã tự chèn ảnh từ kho Google Drive.`);
+                alert(`${getAiProviderLabel()} đã viết xong bản nháp. Hãy đọc lại rồi bấm Đăng bài.`);
             }
         } catch (error) {
             console.error('AI blog generation error:', error);
@@ -951,7 +804,106 @@ export default function Home() {
         }
     };
 
-    const generateSingleBlogData = async ({ topic, mainKeyword }, imageIndex = 0, stockImages = blogDriveImages) => {
+    const cleanAiContent = (content = '') => {
+        return String(content || '')
+            .replace(/```markdown/gi, '')
+            .replace(/```md/gi, '')
+            .replace(/```/g, '')
+            .trim();
+    };
+
+    const getBlogDriveImageUrl = (index = 0) => {
+        if (!blogDriveImages.length) return '';
+
+        const safeIndex = Math.abs(Number(index) || 0) % blogDriveImages.length;
+        const img = blogDriveImages[safeIndex];
+
+        return img?.originalUrl || img?.url || img?.thumbnailUrl || '';
+    };
+
+    const injectDriveImagesIntoBlogContent = (content = '', title = 'Merci Studio', startIndex = 0) => {
+        let cleanContent = cleanAiContent(content);
+
+        // Nếu chưa nạp kho ảnh Drive, xóa các placeholder ảnh để bài không hiện link lỗi.
+        if (!blogDriveImages.length) {
+            return cleanContent
+                .replace(/^!\[(.*?)\]\(LINK_ANH_CAN_THAY\)\s*$/gim, '')
+                .replace(/^!\[(.*?)\]\(link_anh_can_thay\)\s*$/gim, '')
+                .replace(/^!\[(.*?)\]\(IMAGE_URL\)\s*$/gim, '')
+                .replace(/^!\[(.*?)\]\(image_url\)\s*$/gim, '')
+                .replace(/^!\[(.*?)\]\(\s*\)\s*$/gim, '')
+                .trim();
+        }
+
+        let imageCursor = Number(startIndex) || 0;
+
+        // Thay placeholder ảnh do AI tạo bằng ảnh thật lấy từ kho Google Drive.
+        cleanContent = cleanContent.replace(
+            /^!\[(.*?)\]\((LINK_ANH_CAN_THAY|link_anh_can_thay|IMAGE_URL|image_url|)\)\s*$/gim,
+            (_, alt) => {
+                const imageUrl = getBlogDriveImageUrl(imageCursor++);
+                if (!imageUrl) return '';
+                return `![${alt || title}](${imageUrl})`;
+            }
+        );
+
+        // Nếu AI đã có ảnh thật trong nội dung thì giữ nguyên.
+        const alreadyHasRealImage = /!\[(.*?)\]\((https?:\/\/.*?)\)/i.test(cleanContent);
+        if (alreadyHasRealImage) return cleanContent;
+
+        // Nếu bài chưa có ảnh, tự chèn ảnh sau một số H2 để bài không bị toàn text.
+        const lines = cleanContent.split('\n');
+        const nextLines = [];
+        let h2Count = 0;
+        let insertedCount = 0;
+
+        const maxImages = Math.min(
+            blogDriveImages.length,
+            lines.length > 90 ? 4 : 3
+        );
+
+        for (let i = 0; i < lines.length; i += 1) {
+            const line = lines[i];
+            nextLines.push(line);
+
+            if (line.trim().startsWith('## ')) {
+                h2Count += 1;
+
+                // Chèn ảnh sau H2 số 1, 3, 5... để trải đều bài.
+                if (insertedCount < maxImages && h2Count % 2 === 1) {
+                    const imageUrl = getBlogDriveImageUrl(imageCursor++);
+                    if (imageUrl) {
+                        const alt = `${title} - hình ảnh minh họa ${insertedCount + 1}`;
+                        nextLines.push('');
+                        nextLines.push(`![${alt}](${imageUrl})`);
+                        nextLines.push('');
+                        insertedCount += 1;
+                    }
+                }
+            }
+        }
+
+        // Nếu bài ít H2, chèn ít nhất 1 ảnh sau đoạn mở bài.
+        if (insertedCount === 0) {
+            const imageUrl = getBlogDriveImageUrl(imageCursor++);
+            if (imageUrl) {
+                const firstBlankIndex = nextLines.findIndex((line, index) => index > 0 && !line.trim());
+                const insertAt = firstBlankIndex > 0 ? firstBlankIndex + 1 : Math.min(3, nextLines.length);
+
+                nextLines.splice(
+                    insertAt,
+                    0,
+                    '',
+                    `![${title} - hình ảnh minh họa](${imageUrl})`,
+                    ''
+                );
+            }
+        }
+
+        return nextLines.join('\n').replace(/\n{4,}/g, '\n\n\n').trim();
+    };
+
+    const generateSingleBlogData = async ({ topic, mainKeyword }, imageIndex = 0) => {
         const response = await fetch('/api/generate-blog', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -966,28 +918,37 @@ export default function Home() {
             })
         });
 
-        const result = await response.json();
+        let result = null;
 
-        if (!response.ok || !result?.title || !result?.content) {
-            throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
+        try {
+            result = await response.json();
+        } catch (error) {
+            const rawText = await response.text().catch(() => '');
+            console.error('API generate-blog không trả JSON:', rawText);
+            throw new Error('API generate-blog không trả về JSON. Kiểm tra file app/api/generate-blog/route.js');
         }
 
-        const rotatedImages = stockImages.length
-            ? [...stockImages.slice(imageIndex), ...stockImages.slice(0, imageIndex)]
-            : [];
+        if (!response.ok) {
+            throw new Error(result?.error || `${getAiProviderLabel()} API lỗi.`);
+        }
+
+        if (!result?.title || !result?.content) {
+            console.error('Response thiếu dữ liệu:', result);
+            throw new Error(`${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
+        }
+
+        const coverFromDrive = getBlogDriveImageUrl(imageIndex);
+        const coverUrl = result.coverUrl || coverFromDrive || DEFAULT_COVER;
 
         return {
             title: result.title,
             slug: createSlug(result.slug || result.title),
             metaDesc: result.metaDesc || '',
-            content: rotatedImages.length
-                ? injectDriveImagesIntoContent(result.content || '', rotatedImages, { maxImages: 5 })
-                : (result.content || ''),
-            coverUrl: pickBlogDriveImage(imageIndex, stockImages) || result.coverUrl || DEFAULT_COVER,
+            content: injectDriveImagesIntoBlogContent(result.content || '', result.title, imageIndex + 1),
+            coverUrl,
             aiProvider,
             sourceTopic: topic,
-            sourceKeyword: mainKeyword || topic,
-            imageStockFolder: blogDriveFolderLink || ''
+            sourceKeyword: mainKeyword || topic
         };
     };
 
@@ -1004,7 +965,7 @@ export default function Home() {
             return;
         }
 
-        if (publishNow && !confirm(`Bạn sắp dùng ${getAiProviderLabel()} viết, tự chèn ảnh kho Google Drive và đăng ${items.length} bài lên website. Tiếp tục?`)) {
+        if (publishNow && !confirm(`Bạn sắp dùng ${getAiProviderLabel()} viết và đăng ${items.length} bài lên website. Tiếp tục?`)) {
             return;
         }
 
@@ -1016,16 +977,14 @@ export default function Home() {
         const failed = [];
 
         try {
-            const stockImages = await ensureBlogDriveImagesLoaded();
-
             for (let index = 0; index < items.length; index += 1) {
                 const item = items[index];
-                const progressText = `${getAiProviderLabel()} đang xử lý bài ${index + 1}/${items.length} và chèn ảnh kho Drive: ${item.topic}`;
+                const progressText = `${getAiProviderLabel()} đang xử lý bài ${index + 1}/${items.length}: ${item.topic}`;
                 setBulkBlogProgress(progressText);
                 setLoadingMessage(progressText);
 
                 try {
-                    const blogData = await generateSingleBlogData(item, index, stockImages);
+                    const blogData = await generateSingleBlogData(item, index);
                     generated.push(blogData);
                     setBulkGeneratedBlogs([...generated]);
 
@@ -2444,7 +2403,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-sm font-black text-slate-900">Kho ảnh Google Drive cho AI Blog</p>
-                                                <p className="text-xs text-slate-500">Dán link folder Drive chứa ảnh đẹp. Khi AI viết bài, hệ thống sẽ tự lấy ảnh trong kho này làm ảnh bìa và chèn nhiều ảnh minh họa vào giữa nội dung. Bài hàng loạt sẽ tự xoay ảnh theo từng bài.</p>
+                                                <p className="text-xs text-slate-500">Dán link folder Drive chứa ảnh đẹp. Khi AI viết bài, hệ thống sẽ tự lấy ảnh trong kho này làm ảnh bìa. Bài hàng loạt sẽ tự xoay ảnh theo từng bài.</p>
                                             </div>
                                         </div>
 
@@ -2470,22 +2429,13 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-2">
                                                     <p className="text-xs font-bold text-emerald-700">Đã sẵn sàng {blogDriveImages.length} ảnh trong kho</p>
-                                                    <div className="flex items-center gap-3">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => setNewBlog(prev => ({ ...prev, coverUrl: pickBlogDriveImage(Date.now()) }))}
-                                                            className="text-xs font-bold text-blue-600 hover:text-blue-800"
-                                                        >
-                                                            Lấy ngẫu nhiên làm ảnh bìa
-                                                        </button>
-                                                        <button
-                                                            type="button"
-                                                            onClick={handleInjectDriveImagesToCurrentBlog}
-                                                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900"
-                                                        >
-                                                            Chèn ảnh vào nội dung
-                                                        </button>
-                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setNewBlog(prev => ({ ...prev, coverUrl: pickBlogDriveImage(Date.now()) }))}
+                                                        className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                                                    >
+                                                        Lấy ngẫu nhiên làm ảnh bìa
+                                                    </button>
                                                 </div>
                                                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                     {blogDriveImages.slice(0, 12).map((img, index) => (

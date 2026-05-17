@@ -1,160 +1,257 @@
 export const runtime = 'nodejs';
 
-function createSlug(input = '') {
-    return input
+function createSlug(str = '') {
+    return str
         .toString()
         .toLowerCase()
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/đ/g, 'd')
         .replace(/Đ/g, 'd')
-        .replace(/[^a-z0-9\s-]/g, '')
-        .trim()
         .replace(/\s+/g, '-')
-        .replace(/-+/g, '-');
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 }
 
-function extractJson(text = '') {
-    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const first = clean.indexOf('{');
-    const last = clean.lastIndexOf('}');
+function safeJsonParse(text = '') {
+    const raw = String(text || '').trim();
 
-    if (first === -1 || last === -1) {
-        throw new Error('AI không trả về JSON hợp lệ.');
+    try {
+        return JSON.parse(raw);
+    } catch (_) {}
+
+    const cleaned = raw
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```$/i, '')
+        .trim();
+
+    try {
+        return JSON.parse(cleaned);
+    } catch (_) {}
+
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+
+    throw new Error('AI không trả về JSON hợp lệ.');
+}
+
+function buildPrompt({
+    topic,
+    mainKeyword,
+    brandName,
+    serviceArea,
+    services,
+    tone
+}) {
+    return [
+        'Bạn là Senior Content Marketer + SEO Specialist chuyên viết bài cho studio ảnh cưới, kỷ yếu, photobooth, makeup và váy cưới tại Việt Nam.',
+        '',
+        `Hãy viết 1 bài blog TIẾNG VIỆT chuẩn SEO nhưng sinh động, có cảm xúc, có emoji vừa phải, có tính bán hàng mềm cho website ${brandName}.`,
+        '',
+        'THÔNG TIN THƯƠNG HIỆU:',
+        `- Thương hiệu: ${brandName}`,
+        `- Khu vực SEO local: ${serviceArea}`,
+        `- Dịch vụ chính: ${services}`,
+        `- Giọng văn: ${tone}`,
+        `- Chủ đề bài viết: ${topic}`,
+        `- Từ khóa chính: ${mainKeyword || topic}`,
+        '',
+        'YÊU CẦU OUTPUT:',
+        '- Chỉ trả về JSON hợp lệ.',
+        '- Không markdown code fence.',
+        '- Không giải thích ngoài JSON.',
+        '- Không viết text ngoài JSON.',
+        '',
+        'JSON phải đúng cấu trúc sau:',
+        '{',
+        '  "title": "Tiêu đề SEO",',
+        '  "slug": "slug-khong-dau",',
+        '  "metaDesc": "Mô tả SEO",',
+        '  "content": "Nội dung Markdown đầy đủ",',
+        '  "coverUrl": ""',
+        '}',
+        '',
+        'YÊU CẦU SEO:',
+        '- title dài khoảng 50-65 ký tự, có từ khóa chính, không dùng emoji.',
+        '- slug tiếng Việt không dấu, ngắn gọn.',
+        '- metaDesc dài khoảng 135-155 ký tự, có từ khóa chính và CTA nhẹ, không dùng emoji.',
+        '- content dài khoảng 1000-1600 chữ.',
+        '- Từ khóa chính xuất hiện tự nhiên trong mở bài, ít nhất 1 H2, thân bài và CTA cuối.',
+        '- Có từ khóa liên quan tự nhiên: chụp ảnh đẹp, studio chụp ảnh, concept chụp ảnh, kinh nghiệm chụp ảnh, đặt lịch chụp ảnh.',
+        '- Không nhồi từ khóa.',
+        '',
+        'YÊU CẦU PHONG CÁCH MARKETING:',
+        '- Viết sinh động, có cảm xúc, không giống văn AI.',
+        '- Mở bài phải chạm insight khách hàng.',
+        '- Có ví dụ thực tế, tình huống khách hàng thường gặp.',
+        '- Có lợi ích rõ ràng cho người đọc.',
+        '- Có CTA mềm ở giữa bài nếu phù hợp.',
+        '- Có CTA mạnh hơn ở cuối bài.',
+        '- Văn phong thân thiện, tư vấn, gần gũi nhưng chuyên nghiệp.',
+        '- Ưu tiên giúp khách muốn inbox/đặt lịch.',
+        '',
+        'YÊU CẦU EMOJI:',
+        '- content phải có emoji sinh động nhưng vừa phải.',
+        '- Có thể dùng emoji ở heading hoặc bullet.',
+        '- Không dùng emoji trong title, slug, metaDesc.',
+        '- Emoji phù hợp: 📸 💍 ✨ 🎓 👗 ✅ 💡 📍 💬 ❤️',
+        '',
+        'YÊU CẦU CẤU TRÚC CONTENT:',
+        '- content dùng Markdown đơn giản.',
+        '- Không dùng H1 trong content.',
+        '- Dùng "## " cho H2.',
+        '- Có 4-6 mục H2.',
+        '- Dùng "### " cho H3 nếu cần.',
+        '- Dùng "- " cho bullet.',
+        '- Có checklist hoặc bullet hữu ích.',
+        '',
+        'YÊU CẦU ẢNH MINH HỌA:',
+        '- Bắt buộc chèn 2-4 vị trí ảnh minh họa trong content.',
+        '- Dùng đúng cú pháp Markdown:',
+        '![Mô tả ảnh phù hợp với đoạn nội dung](LINK_ANH_CAN_THAY)',
+        '- Không tự bịa link ảnh thật.',
+        '- Đặt ảnh sau các mục H2 quan trọng.',
+        '- Alt ảnh phải tự nhiên, có liên quan nội dung và có thể chứa từ khóa.',
+        '',
+        'YÊU CẦU NỘI DUNG:',
+        '- Không bịa giá cụ thể.',
+        '- Không bịa khuyến mãi.',
+        '- Không cam kết quá đà như đẹp nhất, rẻ nhất, số 1.',
+        `- Có nhắc local tự nhiên: ${serviceArea}.`,
+        '- Viết cho khách hàng thật, không viết kiểu học thuật.',
+        '',
+        'YÊU CẦU COVER:',
+        '- coverUrl để chuỗi rỗng "".',
+        '- Không tự tạo link ảnh.',
+        '',
+        `CTA cuối bài: mời khách inbox/đặt lịch với ${brandName}, nhắc khu vực ${serviceArea}, dùng emoji vừa phải.`,
+        '',
+        'Hãy viết bài hoàn chỉnh theo đúng yêu cầu trên.'
+    ].join('\n');
+}
+
+function normalizeArticle(parsed, topic) {
+    const title = String(parsed?.title || topic).trim();
+    const slug = createSlug(parsed?.slug || title);
+    const metaDesc = String(parsed?.metaDesc || '').trim().slice(0, 170);
+    const content = String(parsed?.content || '').trim();
+    const coverUrl = String(parsed?.coverUrl || '').trim();
+
+    if (!title || !content) {
+        throw new Error('AI trả về thiếu title hoặc content.');
     }
 
-    return JSON.parse(clean.slice(first, last + 1));
+    return {
+        title,
+        slug,
+        metaDesc,
+        content,
+        coverUrl
+    };
 }
 
-function buildPrompt({ topic, keyword, brandInfo }) {
-    return `
-Bạn là chuyên gia SEO content cho studio ảnh cưới, kỷ yếu, photobooth tại Việt Nam.
-
-Hãy viết một bài blog tiếng Việt chuẩn SEO cho website Merci Studio.
-
-Thông tin thương hiệu:
-${brandInfo || `
-Merci Studio
-Dịch vụ: chụp ảnh cưới, ảnh cá nhân, kỷ yếu, couple, baby/family, photobooth, makeup
-Khu vực ưu tiên: Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội
-Địa chỉ:
-- 244 Đội Cấn, Hà Nội
-- 650 Thân Nhân Trung, Việt Yên, Bắc Ninh
-Hotline: 0888.999.545
-`}
-
-Chủ đề bài viết: ${topic}
-Từ khóa chính: ${keyword || topic}
-
-Yêu cầu SEO:
-- title dài khoảng 50-65 ký tự
-- metaDesc dài khoảng 135-155 ký tự
-- slug tiếng Việt không dấu, ngắn gọn
-- content dùng Markdown
-- Có 1 đoạn mở bài ngắn
-- Có heading ## và ###
-- Có checklist hoặc bullet hữu ích
-- Có CTA cuối bài kêu gọi inbox/đặt lịch
-- Giọng văn tự nhiên, local, dễ hiểu
-- Không bịa cam kết quá đà
-- Không dùng văn phong máy móc
-
-Chỉ trả về JSON hợp lệ, không thêm giải thích ngoài JSON.
-
-Cấu trúc JSON:
-{
-  "title": "Tiêu đề SEO",
-  "slug": "slug-khong-dau",
-  "metaDesc": "Mô tả SEO",
-  "content": "Nội dung Markdown đầy đủ",
-  "coverUrl": ""
-}
-`;
+function getGeminiText(data) {
+    return (data?.candidates || [])
+        .flatMap(candidate => candidate?.content?.parts || [])
+        .map(part => part?.text || '')
+        .join('')
+        .trim();
 }
 
-async function generateWithGemini({ prompt }) {
-    const apiKey = process.env.GEMINI_API_KEY;
+async function generateWithGemini(prompt) {
+    if (!process.env.GEMINI_API_KEY) {
+        throw new Error('Thiếu GEMINI_API_KEY trong .env.local hoặc Vercel Environment Variables.');
+    }
+
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
-    if (!apiKey) {
-        throw new Error('Thiếu GEMINI_API_KEY trong biến môi trường.');
-    }
+    const url =
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` +
+        `?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`;
 
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-                contents: [
-                    {
-                        role: 'user',
-                        parts: [{ text: prompt }]
-                    }
-                ],
-                generationConfig: {
-                    temperature: 0.75,
-                    maxOutputTokens: 5000,
-                    responseMimeType: 'application/json'
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            contents: [
+                {
+                    role: 'user',
+                    parts: [{ text: prompt }]
                 }
-            })
-        }
-    );
+            ],
+            generationConfig: {
+                temperature: 0.8,
+                maxOutputTokens: 6000,
+                responseMimeType: 'application/json'
+            }
+        })
+    });
 
     const data = await response.json();
 
     if (!response.ok) {
         console.error('Gemini API error:', data);
-        throw new Error(data?.error?.message || 'Gemini API lỗi.');
+        throw new Error(data?.error?.message || 'Gemini API lỗi, vui lòng thử lại.');
     }
 
-    const text =
-        data?.candidates?.[0]?.content?.parts
-            ?.map(part => part.text || '')
-            .join('\n')
-            .trim() || '';
+    const outputText = getGeminiText(data);
 
-    if (!text) {
-        throw new Error('Gemini không trả về nội dung.');
+    if (!outputText) {
+        throw new Error('Gemini chưa trả về nội dung bài viết.');
     }
 
-    return extractJson(text);
+    return safeJsonParse(outputText);
 }
 
-async function generateWithOpenAI({ prompt }) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-
-    if (!apiKey) {
-        throw new Error('Thiếu OPENAI_API_KEY trong biến môi trường.');
+async function generateWithOpenAI(prompt) {
+    if (!process.env.OPENAI_API_KEY) {
+        throw new Error('Thiếu OPENAI_API_KEY trong .env.local hoặc Vercel Environment Variables.');
     }
+
+    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
     const response = await fetch('https://api.openai.com/v1/responses', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
+            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
         },
         body: JSON.stringify({
             model,
             input: [
                 {
                     role: 'system',
-                    content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm markdown ngoài JSON.'
+                    content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm giải thích ngoài JSON.'
                 },
                 {
                     role: 'user',
                     content: prompt
                 }
             ],
-            temperature: 0.75,
-            max_output_tokens: 5000,
+            temperature: 0.8,
+            max_output_tokens: 6000,
             text: {
                 format: {
-                    type: 'json_object'
+                    type: 'json_schema',
+                    name: 'seo_blog_article',
+                    strict: true,
+                    schema: {
+                        type: 'object',
+                        additionalProperties: false,
+                        properties: {
+                            title: { type: 'string' },
+                            slug: { type: 'string' },
+                            metaDesc: { type: 'string' },
+                            content: { type: 'string' },
+                            coverUrl: { type: 'string' }
+                        },
+                        required: ['title', 'slug', 'metaDesc', 'content', 'coverUrl']
+                    }
                 }
             }
         })
@@ -164,29 +261,43 @@ async function generateWithOpenAI({ prompt }) {
 
     if (!response.ok) {
         console.error('OpenAI API error:', data);
-        throw new Error(data?.error?.message || 'OpenAI API lỗi.');
+        throw new Error(data?.error?.message || 'OpenAI API lỗi, vui lòng thử lại.');
     }
 
-    const text =
+    const outputText =
         data?.output_text ||
-        data?.output?.[0]?.content?.[0]?.text ||
-        '';
+        (data?.output || [])
+            .flatMap(item => item?.content || [])
+            .map(part => part?.text || '')
+            .join('')
+            .trim();
 
-    if (!text) {
-        throw new Error('OpenAI không trả về nội dung.');
+    if (!outputText) {
+        throw new Error('OpenAI chưa trả về nội dung bài viết.');
     }
 
-    return extractJson(text);
+    return safeJsonParse(outputText);
 }
 
 export async function POST(request) {
     try {
         const body = await request.json();
 
-        const provider = (body.provider || 'gemini').toLowerCase();
-        const topic = (body.topic || '').trim();
-        const keyword = (body.keyword || '').trim();
-        const brandInfo = (body.brandInfo || '').trim();
+        const provider = String(body.provider || 'gemini').toLowerCase();
+        const topic = String(body.topic || '').trim();
+        const mainKeyword = String(body.mainKeyword || body.keyword || '').trim();
+
+        const brandName = body.brandName || body.brand || 'Merci Studio';
+        const serviceArea = body.serviceArea || 'Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội';
+
+        const services = Array.isArray(body.services)
+            ? body.services.join(', ')
+            : body.services ||
+              'chụp ảnh cưới, chụp ảnh kỷ yếu, chụp ảnh couple, chụp ảnh baby/family, photobooth tiệc cưới và sự kiện, makeup, váy cưới';
+
+        const tone =
+            body.tone ||
+            'sinh động, chuyên nghiệp như marketer, chuẩn SEO, dễ đọc, có cảm xúc, có emoji vừa phải, có CTA inbox/đặt lịch';
 
         if (!topic) {
             return Response.json(
@@ -195,36 +306,33 @@ export async function POST(request) {
             );
         }
 
-        const prompt = buildPrompt({ topic, keyword, brandInfo });
+        const prompt = buildPrompt({
+            topic,
+            mainKeyword,
+            brandName,
+            serviceArea,
+            services,
+            tone
+        });
 
-        let result;
+        const parsed =
+            provider === 'openai' || provider === 'chatgpt'
+                ? await generateWithOpenAI(prompt)
+                : await generateWithGemini(prompt);
 
-        if (provider === 'openai' || provider === 'chatgpt') {
-            result = await generateWithOpenAI({ prompt });
-        } else if (provider === 'gemini') {
-            result = await generateWithGemini({ prompt });
-        } else {
-            return Response.json(
-                { error: 'Provider không hợp lệ. Chỉ dùng: gemini hoặc openai.' },
-                { status: 400 }
-            );
-        }
-
-        const title = result.title || topic;
-        const slug = createSlug(result.slug || title);
+        const article = normalizeArticle(parsed, topic);
 
         return Response.json({
             provider,
-            title,
-            slug,
-            metaDesc: result.metaDesc || '',
-            content: result.content || '',
-            coverUrl: result.coverUrl || ''
+            ...article
         });
     } catch (error) {
-        console.error('Generate blog error:', error);
+        console.error('Generate blog route error:', error);
+
         return Response.json(
-            { error: error.message || 'Không tạo được bài viết.' },
+            {
+                error: error.message || 'Không tạo được bài viết.'
+            },
             { status: 500 }
         );
     }
