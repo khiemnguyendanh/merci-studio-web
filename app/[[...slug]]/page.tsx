@@ -1665,9 +1665,12 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
             <style dangerouslySetInnerHTML={{__html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .masonry-grid { column-count: 1; column-gap: 1.5rem; }
-                @media (min-width: 768px) { .masonry-grid { column-count: 2; } }
-                @media (min-width: 1024px) { .masonry-grid { column-count: 3; } }
+                .masonry-grid { column-count: 2; column-gap: 0.55rem; }
+                .masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid; display: inline-block; width: 100%; }
+                @media (min-width: 640px) { .masonry-grid { column-count: 2; column-gap: 0.75rem; } }
+                @media (min-width: 768px) { .masonry-grid { column-count: 3; column-gap: 1rem; } }
+                @media (min-width: 1024px) { .masonry-grid { column-count: 4; column-gap: 1.25rem; } }
+                @media (min-width: 1280px) { .masonry-grid { column-count: 5; column-gap: 1.35rem; } }
             `}} />
 
             {isLoading && (
@@ -2387,25 +2390,25 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             const originalIndex = albumStartIndex + i;
                                             
                                             return (
-                                                <div key={img.id} className="mb-4 md:mb-6 relative group rounded-[1.5rem] md:rounded-[2rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all" onClick={() => setLightboxData({isOpen: true, index: originalIndex, images: albumImages})}>
-                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className="w-full transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
+                                                <div key={img.id} className="masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white" onClick={() => setLightboxData({isOpen: true, index: originalIndex, images: albumImages})}>
+                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className="w-full h-auto block transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
                                                     
                                                     {/* Nút Tải xuống */}
-                                                    <div className="absolute top-3 right-3 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
-                                                        <button onClick={(e) => handleDownloadWithWatermark(img, img.name, e)} className="bg-white/90 p-2 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
-                                                            <Download size={16} className="md:w-5 md:h-5"/>
+                                                    <div className="absolute top-2 right-2 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
+                                                        <button onClick={(e) => handleDownloadWithWatermark(img, img.name, e)} className="bg-white/90 p-1.5 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
+                                                            <Download size={14} className="md:w-5 md:h-5"/>
                                                         </button>
                                                     </div>
 
                                                     {/* Nút Đặt làm Ảnh Bìa (Chỉ hiện với Admin) */}
                                                     {isAdmin && (
-                                                        <div className={`absolute top-3 left-3 md:top-4 md:left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
+                                                        <div className={`absolute top-2 left-2 md:top-4 md:left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                                                             <button 
                                                                 onClick={(e) => handleSetCover(e, img.url)} 
-                                                                className={`p-2 md:p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
+                                                                className={`p-1.5 md:p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
                                                                 title={isCover ? "Đây là ảnh bìa hiện tại" : "Đặt làm ảnh bìa"}
                                                             >
-                                                                <Star size={16} className={`md:w-5 md:h-5 ${isCover ? "fill-current" : ""}`} />
+                                                                <Star size={14} className={`md:w-5 md:h-5 ${isCover ? "fill-current" : ""}`} />
                                                             </button>
                                                         </div>
                                                     )}
