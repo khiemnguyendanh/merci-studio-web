@@ -1680,6 +1680,28 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                 </div>
             )}
 
+            {/* Nút trượt nhanh về đầu / cuối trang */}
+            <div className="fixed right-3 bottom-24 md:right-6 md:bottom-8 z-[80] flex flex-col gap-2">
+                <button
+                    type="button"
+                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                    className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-slate-900 text-white shadow-xl border border-white/20 flex items-center justify-center active:scale-95 hover:bg-blue-600 transition-all"
+                    title="Về đầu trang"
+                    aria-label="Về đầu trang"
+                >
+                    <ArrowUp className="w-5 h-5" />
+                </button>
+                <button
+                    type="button"
+                    onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })}
+                    className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white text-slate-900 shadow-xl border border-slate-200 flex items-center justify-center active:scale-95 hover:bg-blue-600 hover:text-white transition-all"
+                    title="Xuống cuối trang"
+                    aria-label="Xuống cuối trang"
+                >
+                    <ArrowDown className="w-5 h-5" />
+                </button>
+            </div>
+
             {/* Client Login / Register Modal */}
             {showClientLoginModal && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
@@ -2114,10 +2136,10 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
                                                     <ArrowUp className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
                                                     <ArrowDown className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110" title="Xóa Video">
@@ -2279,7 +2301,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         </div>
                                     )}
 
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div key={a.id} onClick={() => {
                                                 setActiveAlbumId(a.id); 
@@ -2289,14 +2311,14 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 const slugToUse = a.slug || createSlug(a.title) || a.id;
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer relative">
-                                                <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
+                                                <div className="aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden mb-2 md:mb-4 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
-                                                    <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
+                                                    <div className="absolute top-2 md:top-5 left-2 md:left-5 bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm max-w-[80%] truncate">{a.category}</div>
                                                     
                                                     {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
-                                                        <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                        <div className="absolute top-2 md:top-5 right-2 md:right-5 z-20 flex flex-col gap-1.5 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
                                                             {activeCategory === 'Tất cả' && (
                                                                 <>
@@ -2308,17 +2330,17 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                                     </button>
                                                                 </>
                                                             )}
-                                                            <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
+                                                            <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
                                                                 <Edit className="w-4 h-4" />
                                                             </button>
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute bottom-6 md:bottom-8 left-6 md:left-8 right-6 md:right-8 text-white">
-                                                        <h3 className="text-2xl md:text-3xl font-bold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
+                                                    <div className="absolute bottom-3 md:bottom-6 left-3 md:left-6 right-3 md:right-6 text-white">
+                                                        <h3 className="text-base md:text-2xl font-bold font-serif mb-1 md:mb-2 leading-tight line-clamp-2">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-[10px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
-                                                            {a.sub && <p className="text-[10px] md:text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
+                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                            {a.sub && <p className="text-[8px] md:text-xs opacity-70 truncate max-w-[45%]">{a.sub}</p>}
                                                         </div>
                                                     </div>
                                                 </div>
