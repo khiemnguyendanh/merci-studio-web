@@ -1,178 +1,231 @@
 export const runtime = 'nodejs';
 
-function createSlug(str = '') {
-  return str
-    .toString()
-    .toLowerCase()
-    .trim()
-    .replace(/á|à|ả|ạ|ã|ă|ắ|ằ|ẳ|ặ|ẵ|â|ấ|ầ|ẩ|ậ|ẫ/g, 'a')
-    .replace(/é|è|ẻ|ẹ|ẽ|ê|ế|ề|ể|ệ|ễ/g, 'e')
-    .replace(/i|í|ì|ỉ|ị|ĩ/g, 'i')
-    .replace(/ó|ò|ỏ|ọ|õ|ô|ố|ồ|ổ|ộ|ỗ|ơ|ớ|ờ|ở|ợ|ỡ/g, 'o')
-    .replace(/ú|ù|ủ|ụ|ũ|ư|ứ|ừ|ử|ự|ữ/g, 'u')
-    .replace(/ý|ỳ|ỷ|ỵ|ỹ/g, 'y')
-    .replace(/đ/g, 'd')
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '')
-    .replace(/--+/g, '-')
-    .replace(/^-+/, '')
-    .replace(/-+$/, '');
+function createSlug(input = '') {
+    return input
+        .toString()
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/đ/g, 'd')
+        .replace(/Đ/g, 'd')
+        .replace(/[^a-z0-9\s-]/g, '')
+        .trim()
+        .replace(/\s+/g, '-')
+        .replace(/-+/g, '-');
 }
 
 function extractJson(text = '') {
-  const cleaned = text
-    .replace(/```json/g, '')
-    .replace(/```/g, '')
-    .trim();
+    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
+    const first = clean.indexOf('{');
+    const last = clean.lastIndexOf('}');
 
-  const start = cleaned.indexOf('{');
-  const end = cleaned.lastIndexOf('}');
+    if (first === -1 || last === -1) {
+        throw new Error('AI không trả về JSON hợp lệ.');
+    }
 
-  if (start === -1 || end === -1) {
-    throw new Error('Gemini không trả về JSON hợp lệ.');
-  }
-
-  return JSON.parse(cleaned.slice(start, end + 1));
+    return JSON.parse(clean.slice(first, last + 1));
 }
 
-export async function POST(request) {
-  try {
+function buildPrompt({ topic, keyword, brandInfo }) {
+    return `
+Bạn là chuyên gia SEO content cho studio ảnh cưới, kỷ yếu, photobooth tại Việt Nam.
+
+Hãy viết một bài blog tiếng Việt chuẩn SEO cho website Merci Studio.
+
+Thông tin thương hiệu:
+${brandInfo || `
+Merci Studio
+Dịch vụ: chụp ảnh cưới, ảnh cá nhân, kỷ yếu, couple, baby/family, photobooth, makeup
+Khu vực ưu tiên: Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội
+Địa chỉ:
+- 244 Đội Cấn, Hà Nội
+- 650 Thân Nhân Trung, Việt Yên, Bắc Ninh
+Hotline: 0888.999.545
+`}
+
+Chủ đề bài viết: ${topic}
+Từ khóa chính: ${keyword || topic}
+
+Yêu cầu SEO:
+- title dài khoảng 50-65 ký tự
+- metaDesc dài khoảng 135-155 ký tự
+- slug tiếng Việt không dấu, ngắn gọn
+- content dùng Markdown
+- Có 1 đoạn mở bài ngắn
+- Có heading ## và ###
+- Có checklist hoặc bullet hữu ích
+- Có CTA cuối bài kêu gọi inbox/đặt lịch
+- Giọng văn tự nhiên, local, dễ hiểu
+- Không bịa cam kết quá đà
+- Không dùng văn phong máy móc
+
+Chỉ trả về JSON hợp lệ, không thêm giải thích ngoài JSON.
+
+Cấu trúc JSON:
+{
+  "title": "Tiêu đề SEO",
+  "slug": "slug-khong-dau",
+  "metaDesc": "Mô tả SEO",
+  "content": "Nội dung Markdown đầy đủ",
+  "coverUrl": ""
+}
+`;
+}
+
+async function generateWithGemini({ prompt }) {
     const apiKey = process.env.GEMINI_API_KEY;
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 
     if (!apiKey) {
-      return Response.json(
-        { error: 'Thiếu GEMINI_API_KEY trong biến môi trường.' },
-        { status: 500 }
-      );
+        throw new Error('Thiếu GEMINI_API_KEY trong biến môi trường.');
     }
 
-    const body = await request.json();
-    const topic = (body?.topic || '').trim();
-    const keyword = (body?.keyword || '').trim();
-    const brand = (body?.brand || 'Merci Studio').trim();
-
-    if (!topic) {
-      return Response.json(
-        { error: 'Vui lòng nhập chủ đề bài viết.' },
-        { status: 400 }
-      );
-    }
-
-    const prompt = `
-Bạn là chuyên gia SEO content tiếng Việt cho studio ảnh cưới, kỷ yếu, photobooth, makeup và váy cưới.
-
-Hãy viết 1 bài blog chuẩn SEO cho website của ${brand}.
-
-Thông tin thương hiệu:
-- Merci Studio
-- Dịch vụ: chụp ảnh cưới, chụp kỷ yếu, photobooth sự kiện, baby/family, couple, makeup, váy cưới
-- Khu vực ưu tiên SEO: Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội
-- Tệp khách: học sinh cấp 3, cặp đôi sắp cưới, gia đình trẻ, khách địa phương
-
-Chủ đề bài viết:
-${topic}
-
-Từ khóa chính:
-${keyword || topic}
-
-Yêu cầu SEO:
-- Tiêu đề hấp dẫn, khoảng 50-65 ký tự
-- Meta description khoảng 135-155 ký tự
-- Slug tiếng Việt không dấu, ngắn, có từ khóa
-- Nội dung dài khoảng 900-1300 từ
-- Viết tự nhiên, dễ đọc, không nhồi nhét từ khóa
-- Có mở bài ngắn
-- Có nhiều heading H2, H3 bằng markdown
-- Có checklist hoặc bullet list nếu phù hợp
-- Có CTA cuối bài mời inbox / đặt lịch tại Merci Studio
-- Không bịa số liệu, không cam kết quá đà
-- Giọng văn trẻ, chuyên nghiệp, hợp khách địa phương
-
-Chỉ trả về JSON hợp lệ, không thêm giải thích bên ngoài.
-
-Format JSON:
-{
-  "title": "Tiêu đề bài viết",
-  "slug": "slug-khong-dau",
-  "metaDesc": "Mô tả SEO",
-  "coverUrl": "",
-  "content": "Nội dung markdown đầy đủ"
-}
-`;
-
-    const geminiUrl =
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` +
-      `?key=${encodeURIComponent(apiKey)}`;
-
-    const geminiRes = await fetch(geminiUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: prompt }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.75,
-          topP: 0.9,
-          maxOutputTokens: 8192,
-          responseMimeType: 'application/json'
-        }
-      })
-    });
-
-    const geminiData = await geminiRes.json();
-
-    if (!geminiRes.ok) {
-      console.error('Gemini API error:', geminiData);
-      return Response.json(
+    const response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
         {
-          error:
-            geminiData?.error?.message ||
-            'Gemini API lỗi. Hãy kiểm tra GEMINI_API_KEY hoặc GEMINI_MODEL.'
-        },
-        { status: 500 }
-      );
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-goog-api-key': apiKey
+            },
+            body: JSON.stringify({
+                contents: [
+                    {
+                        role: 'user',
+                        parts: [{ text: prompt }]
+                    }
+                ],
+                generationConfig: {
+                    temperature: 0.75,
+                    maxOutputTokens: 5000,
+                    responseMimeType: 'application/json'
+                }
+            })
+        }
+    );
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('Gemini API error:', data);
+        throw new Error(data?.error?.message || 'Gemini API lỗi.');
     }
 
     const text =
-      geminiData?.candidates?.[0]?.content?.parts
-        ?.map((part) => part.text || '')
-        .join('\n') || '';
+        data?.candidates?.[0]?.content?.parts
+            ?.map(part => part.text || '')
+            .join('\n')
+            .trim() || '';
 
     if (!text) {
-      return Response.json(
-        { error: 'Gemini không trả về nội dung.' },
-        { status: 500 }
-      );
+        throw new Error('Gemini không trả về nội dung.');
     }
 
-    const article = extractJson(text);
+    return extractJson(text);
+}
 
-    const title = article.title || topic;
-    const slug = createSlug(article.slug || title);
+async function generateWithOpenAI({ prompt }) {
+    const apiKey = process.env.OPENAI_API_KEY;
+    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 
-    return Response.json({
-      title,
-      slug,
-      metaDesc: article.metaDesc || '',
-      coverUrl: article.coverUrl || '',
-      content: article.content || ''
+    if (!apiKey) {
+        throw new Error('Thiếu OPENAI_API_KEY trong biến môi trường.');
+    }
+
+    const response = await fetch('https://api.openai.com/v1/responses', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${apiKey}`
+        },
+        body: JSON.stringify({
+            model,
+            input: [
+                {
+                    role: 'system',
+                    content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm markdown ngoài JSON.'
+                },
+                {
+                    role: 'user',
+                    content: prompt
+                }
+            ],
+            temperature: 0.75,
+            max_output_tokens: 5000,
+            text: {
+                format: {
+                    type: 'json_object'
+                }
+            }
+        })
     });
-  } catch (error) {
-    console.error('Generate blog route error:', error);
-    return Response.json(
-      {
-        error:
-          error?.message ||
-          'Không tạo được bài viết bằng Gemini. Vui lòng thử lại.'
-      },
-      { status: 500 }
-    );
-  }
+
+    const data = await response.json();
+
+    if (!response.ok) {
+        console.error('OpenAI API error:', data);
+        throw new Error(data?.error?.message || 'OpenAI API lỗi.');
+    }
+
+    const text =
+        data?.output_text ||
+        data?.output?.[0]?.content?.[0]?.text ||
+        '';
+
+    if (!text) {
+        throw new Error('OpenAI không trả về nội dung.');
+    }
+
+    return extractJson(text);
+}
+
+export async function POST(request) {
+    try {
+        const body = await request.json();
+
+        const provider = (body.provider || 'gemini').toLowerCase();
+        const topic = (body.topic || '').trim();
+        const keyword = (body.keyword || '').trim();
+        const brandInfo = (body.brandInfo || '').trim();
+
+        if (!topic) {
+            return Response.json(
+                { error: 'Vui lòng nhập chủ đề bài viết.' },
+                { status: 400 }
+            );
+        }
+
+        const prompt = buildPrompt({ topic, keyword, brandInfo });
+
+        let result;
+
+        if (provider === 'openai' || provider === 'chatgpt') {
+            result = await generateWithOpenAI({ prompt });
+        } else if (provider === 'gemini') {
+            result = await generateWithGemini({ prompt });
+        } else {
+            return Response.json(
+                { error: 'Provider không hợp lệ. Chỉ dùng: gemini hoặc openai.' },
+                { status: 400 }
+            );
+        }
+
+        const title = result.title || topic;
+        const slug = createSlug(result.slug || title);
+
+        return Response.json({
+            provider,
+            title,
+            slug,
+            metaDesc: result.metaDesc || '',
+            content: result.content || '',
+            coverUrl: result.coverUrl || ''
+        });
+    } catch (error) {
+        console.error('Generate blog error:', error);
+        return Response.json(
+            { error: error.message || 'Không tạo được bài viết.' },
+            { status: 500 }
+        );
+    }
 }

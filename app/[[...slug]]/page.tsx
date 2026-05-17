@@ -161,6 +161,9 @@ export default function Home() {
     const [newBlog, setNewBlog] = useState({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
     const [aiBlogPrompt, setAiBlogPrompt] = useState('');
     const [aiBlogKeyword, setAiBlogKeyword] = useState('');
+    const [aiProvider, setAiProvider] = useState('gemini'); // gemini | openai
+    const [blogImageUrl, setBlogImageUrl] = useState('');
+    const [blogImageCaption, setBlogImageCaption] = useState('');
     const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
 
     // Filter Tool
@@ -575,28 +578,57 @@ export default function Home() {
         setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
         setAiBlogPrompt('');
         setAiBlogKeyword('');
+        setBlogImageUrl('');
+        setBlogImageCaption('');
         setIsAddingBlog(true);
     };
 
+    const insertTextIntoBlogContent = (textToInsert) => {
+        setNewBlog(prev => {
+            const current = prev.content || '';
+            const nextContent = `${current}${current.trim() ? '\n\n' : ''}${textToInsert}\n`;
+            return { ...prev, content: nextContent };
+        });
+    };
+
+    const handleInsertBlogImage = () => {
+        const url = blogImageUrl.trim();
+        if (!url) return alert('Vui lòng nhập link ảnh cần chèn.');
+        if (!/^https?:\/\//i.test(url)) return alert('Link ảnh cần bắt đầu bằng http:// hoặc https://');
+
+        const caption = blogImageCaption.trim() || 'Ảnh minh họa Merci Studio';
+        insertTextIntoBlogContent(`![${caption}](${url})`);
+
+        if (!newBlog.coverUrl) {
+            setNewBlog(prev => ({ ...prev, coverUrl: url }));
+        }
+
+        setBlogImageUrl('');
+        setBlogImageCaption('');
+    };
+
+    const getAiProviderLabel = () => aiProvider === 'openai' ? 'ChatGPT' : 'Gemini';
+
     const handleGenerateBlogWithAI = async (publishNow = false) => {
         if (!aiBlogPrompt.trim()) {
-            alert('Vui lòng nhập chủ đề bài viết cho Gemini.');
+            alert(`Vui lòng nhập chủ đề bài viết cho ${getAiProviderLabel()}.`);
             return;
         }
 
-        if (publishNow && !confirm('Gemini sẽ viết và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?')) {
+        if (publishNow && !confirm(`${getAiProviderLabel()} sẽ viết và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?`)) {
             return;
         }
 
         setIsGeneratingBlog(true);
         setIsLoading(true);
-        setLoadingMessage(publishNow ? 'Gemini đang viết bài chuẩn SEO và đăng lên blog...' : 'Gemini đang viết nháp bài chuẩn SEO...');
+        setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài chuẩn SEO và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp bài chuẩn SEO...`);
 
         try {
             const response = await fetch('/api/generate-blog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    provider: aiProvider,
                     topic: aiBlogPrompt,
                     mainKeyword: aiBlogKeyword,
                     brandName: 'Merci Studio',
@@ -609,7 +641,7 @@ export default function Home() {
             const result = await response.json();
 
             if (!response.ok || !result?.title || !result?.content) {
-                throw new Error(result?.error || 'Gemini chưa tạo được bài viết hợp lệ.');
+                throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
             }
 
             const generatedBlog = {
@@ -634,14 +666,14 @@ export default function Home() {
                 setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
                 setAiBlogPrompt('');
                 setAiBlogKeyword('');
-                alert('Gemini đã viết và đăng bài lên blog thành công!');
+                alert(`${getAiProviderLabel()} đã viết và đăng bài lên blog thành công!`);
             } else {
                 setNewBlog(generatedBlog);
-                alert('Gemini đã viết xong bản nháp. Hãy đọc lại rồi bấm Đăng bài.');
+                alert(`${getAiProviderLabel()} đã viết xong bản nháp. Hãy đọc lại rồi bấm Đăng bài.`);
             }
         } catch (error) {
-            console.error('Gemini blog generation error:', error);
-            alert('Không tạo được bài viết Gemini: ' + error.message);
+            console.error('AI blog generation error:', error);
+            alert(`Không tạo được bài viết bằng ${getAiProviderLabel()}: ${error.message}`);
         } finally {
             setIsGeneratingBlog(false);
             setIsLoading(false);
@@ -1983,12 +2015,20 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             <Wand2 size={18}/>
                                         </div>
                                         <div>
-                                            <p className="font-bold text-slate-900">Gemini AI viết bài chuẩn SEO</p>
-                                            <p className="text-xs md:text-sm text-slate-500">Nhập chủ đề, Gemini sẽ tự tạo tiêu đề, slug, meta description và nội dung có H2/H3 để bạn duyệt trước khi đăng.</p>
+                                            <p className="font-bold text-slate-900">AI viết bài chuẩn SEO</p>
+                                            <p className="text-xs md:text-sm text-slate-500">Chọn Gemini hoặc ChatGPT, nhập chủ đề, AI sẽ tự tạo tiêu đề, slug, meta description và nội dung có H2/H3 để bạn duyệt trước khi đăng.</p>
                                         </div>
                                     </div>
 
-                                    <div className="grid md:grid-cols-3 gap-3">
+                                    <div className="grid md:grid-cols-4 gap-3">
+                                        <select
+                                            className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors font-bold text-slate-700"
+                                            value={aiProvider}
+                                            onChange={e => setAiProvider(e.target.value)}
+                                        >
+                                            <option value="gemini">Google Gemini</option>
+                                            <option value="openai">ChatGPT / OpenAI</option>
+                                        </select>
                                         <input
                                             type="text"
                                             placeholder="VD: Chụp ảnh cưới ở Bắc Ninh cần chuẩn bị gì?"
@@ -2012,7 +2052,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             onClick={() => handleGenerateBlogWithAI(false)}
                                             className="flex-1 bg-slate-900 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                         >
-                                            <Wand2 size={17}/> Gemini viết nháp
+                                            <Wand2 size={17}/> {getAiProviderLabel()} viết nháp
                                         </button>
                                         <button
                                             type="button"
@@ -2020,7 +2060,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             onClick={() => handleGenerateBlogWithAI(true)}
                                             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                         >
-                                            <Zap size={17}/> Gemini viết & đăng ngay
+                                            <Zap size={17}/> {getAiProviderLabel()} viết & đăng ngay
                                         </button>
                                     </div>
 
@@ -2051,13 +2091,43 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     </div>
                                 )}
                             </div>
+                            <div className="bg-slate-50 border border-slate-100 rounded-2xl p-4 space-y-3">
+                                <div>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">Chèn ảnh vào nội dung bài viết</p>
+                                    <p className="text-xs text-slate-400 mt-1">Dán link ảnh, nhập chú thích/alt text rồi bấm chèn. Ảnh sẽ hiện ngay trong bài bằng cú pháp Markdown.</p>
+                                </div>
+                                <div className="grid md:grid-cols-5 gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Link ảnh: https://..."
+                                        className="md:col-span-2 w-full border-2 border-slate-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                                        value={blogImageUrl}
+                                        onChange={e => setBlogImageUrl(e.target.value)}
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Chú thích / alt SEO cho ảnh"
+                                        className="md:col-span-2 w-full border-2 border-slate-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                                        value={blogImageCaption}
+                                        onChange={e => setBlogImageCaption(e.target.value)}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleInsertBlogImage}
+                                        className="bg-slate-900 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                    >
+                                        <ImageIcon size={17}/> Chèn ảnh
+                                    </button>
+                                </div>
+                            </div>
+
                             <div>
-                                <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2">NỘI DUNG BÀI VIẾT (Mỗi lần xuống dòng là 1 đoạn văn)</label>
+                                <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2">NỘI DUNG BÀI VIẾT (Hỗ trợ ## H2, ### H3, - bullet, ![alt](link ảnh))</label>
                                 <textarea rows={10} placeholder="Nhập nội dung bài viết vào đây..." className="w-full border-2 border-slate-100 p-4 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1 leading-relaxed" value={newBlog.content} onChange={e => setNewBlog({...newBlog, content: e.target.value})} />
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-slate-100">
-                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); }} className="px-6 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
+                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); setBlogImageUrl(''); setBlogImageCaption(''); }} className="px-6 py-2.5 font-semibold text-slate-500 hover:bg-slate-100 rounded-xl transition-colors">Hủy</button>
                             <button onClick={handleSaveBlog} className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-2.5 rounded-xl font-bold shadow-lg transition-all">{editingBlog ? 'Lưu thay đổi' : 'Đăng bài'}</button>
                         </div>
                     </div>
@@ -2413,6 +2483,18 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 {currentViewBlog.content.split('\n').map((line, idx) => {
                                                     const textLine = line.trim();
                                                     if (!textLine) return <br key={idx}/>;
+
+                                                    const imageMatch = textLine.match(/^!\[(.*?)\]\((.*?)\)$/);
+                                                    if (imageMatch) {
+                                                        const altText = imageMatch[1] || currentViewBlog.title;
+                                                        const imageUrl = imageMatch[2];
+                                                        return (
+                                                            <figure key={idx} className="my-8">
+                                                                <img src={imageUrl} alt={altText} className="w-full rounded-2xl shadow-sm object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                                                                {altText && <figcaption className="text-center text-sm text-slate-400 mt-2">{altText}</figcaption>}
+                                                            </figure>
+                                                        );
+                                                    }
 
                                                     if (textLine.startsWith('### ')) {
                                                         return <h3 key={idx} className="text-xl md:text-2xl font-bold text-slate-900 mt-8 mb-3">{textLine.replace(/^###\s+/, '')}</h3>;
