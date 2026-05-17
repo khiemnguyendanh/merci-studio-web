@@ -165,6 +165,17 @@ export default function Home() {
     const [blogImageUrl, setBlogImageUrl] = useState('');
     const [blogImageCaption, setBlogImageCaption] = useState('');
     const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
+    const [bulkBlogTopics, setBulkBlogTopics] = useState('');
+    const [isBulkGeneratingBlog, setIsBulkGeneratingBlog] = useState(false);
+    const [bulkBlogProgress, setBulkBlogProgress] = useState('');
+    const [bulkGeneratedBlogs, setBulkGeneratedBlogs] = useState([]);
+    const [autoKeyword, setAutoKeyword] = useState('');
+    const [autoArticleCount, setAutoArticleCount] = useState(6);
+    const [isGeneratingTopicIdeas, setIsGeneratingTopicIdeas] = useState(false);
+    const [blogDriveFolderLink, setBlogDriveFolderLink] = useState('');
+    const [blogDriveImages, setBlogDriveImages] = useState([]);
+    const [isLoadingBlogDriveImages, setIsLoadingBlogDriveImages] = useState(false);
+
 
     // Filter Tool
     const [filterText, setFilterText] = useState('');
@@ -609,21 +620,205 @@ export default function Home() {
 
     const getAiProviderLabel = () => aiProvider === 'openai' ? 'ChatGPT' : 'Gemini';
 
+    const handleLoadBlogDriveImages = async () => {
+        const folderId = extractDriveFolderId(blogDriveFolderLink);
+        if (!folderId) return alert('Vui lòng dán link folder Google Drive chứa kho ảnh blog.');
+        if (!GOOGLE_API_KEY) return alert('Thiếu NEXT_PUBLIC_GOOGLE_API_KEY để đọc ảnh Google Drive.');
+
+        setIsLoadingBlogDriveImages(true);
+        setIsLoading(true);
+        setLoadingMessage('Đang lấy ảnh trong kho Google Drive cho blog...');
+
+        try {
+            const files = await getAllDriveImages(folderId);
+            const images = files.map(normalizeDriveImage);
+            setBlogDriveImages(images);
+
+            if (images.length === 0) {
+                alert('Folder Drive này chưa có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết đều có thể xem.');
+            } else {
+                alert(`Đã lấy ${images.length} ảnh trong kho Google Drive. AI sẽ tự dùng ảnh này làm ảnh bìa và chèn ảnh minh họa vào nội dung bài.`);
+            }
+        } catch (error) {
+            console.error('Load blog Drive images error:', error);
+            alert('Không lấy được ảnh từ kho Drive: ' + error.message);
+        } finally {
+            setIsLoadingBlogDriveImages(false);
+            setIsLoading(false);
+        }
+    };
+
+    const getBlogDriveImageUrl = (img, preferOriginal = true) => {
+        if (!img) return '';
+        return preferOriginal
+            ? (img.originalUrl || img.url || img.thumbnailUrl || '')
+            : (img.thumbnailUrl || img.url || img.originalUrl || '');
+    };
+
+    const pickBlogDriveImage = (index = 0, sourceImages = blogDriveImages) => {
+        if (!sourceImages.length) return '';
+        const safeIndex = Math.abs(index) % sourceImages.length;
+        return getBlogDriveImageUrl(sourceImages[safeIndex]);
+    };
+
+    const getBlogDriveAltText = (img, fallback = 'Ảnh minh họa Merci Studio') => {
+        const rawName = (img?.name || '').toString().replace(/\.[^/.]+$/, '').replace(/[-_]+/g, ' ').trim();
+        return rawName || fallback;
+    };
+
+    const injectDriveImagesIntoContent = (content = '', sourceImages = [], options = {}) => {
+        const images = (sourceImages || [])
+            .map((img, index) => ({
+                ...img,
+                __url: getBlogDriveImageUrl(img),
+                __alt: getBlogDriveAltText(img, `Ảnh minh họa ${index + 1} - Merci Studio`)
+            }))
+            .filter(img => img.__url);
+
+        if (!images.length) return content || '';
+
+        const maxImages = Math.min(
+            options.maxImages || 4,
+            images.length,
+            Math.max(2, Math.ceil((content.match(/^##\s+/gm) || []).length / 2) || 2)
+        );
+
+        const used = new Set();
+        const pick = (offset = 0) => {
+            for (let i = 0; i < images.length; i += 1) {
+                const candidate = images[(offset + i) % images.length];
+                if (!used.has(candidate.__url)) {
+                    used.add(candidate.__url);
+                    return candidate;
+                }
+            }
+            return images[offset % images.length];
+        };
+
+        const lines = (content || '').split('\n');
+        const output = [];
+        let inserted = 0;
+        let h2Count = 0;
+
+        for (let index = 0; index < lines.length; index += 1) {
+            const line = lines[index];
+            output.push(line);
+
+            if (/^##\s+/.test(line.trim())) {
+                h2Count += 1;
+
+                // Chèn ảnh sau H2 thứ 1, 3, 5... để bài không bị toàn chữ.
+                if (inserted < maxImages && h2Count % 2 === 1) {
+                    const img = pick(index + inserted);
+                    output.push('');
+                    output.push(`![${img.__alt}](${img.__url})`);
+                    output.push('');
+                    inserted += 1;
+                }
+            }
+        }
+
+        // Nếu bài ít heading, vẫn chèn ít nhất 2 ảnh vào giữa bài.
+        if (inserted < Math.min(2, images.length)) {
+            const paragraphs = output
+                .map((line, index) => ({ line, index }))
+                .filter(item => item.line.trim() && !item.line.trim().startsWith('#') && !item.line.trim().startsWith('!['));
+
+            const insertPositions = [
+                paragraphs[Math.floor(paragraphs.length * 0.35)]?.index,
+                paragraphs[Math.floor(paragraphs.length * 0.7)]?.index
+            ].filter(pos => typeof pos === 'number');
+
+            let offset = 0;
+            insertPositions.forEach((position) => {
+                if (inserted >= Math.min(2, images.length)) return;
+                const img = pick(position + inserted);
+                output.splice(position + 1 + offset, 0, '', `![${img.__alt}](${img.__url})`, '');
+                offset += 3;
+                inserted += 1;
+            });
+        }
+
+        return output.join('\n').replace(/\n{4,}/g, '\n\n\n').trim();
+    };
+
+    const ensureBlogDriveImagesLoaded = async () => {
+        if (blogDriveImages.length > 0) return blogDriveImages;
+
+        const folderId = extractDriveFolderId(blogDriveFolderLink);
+        if (!folderId) return [];
+
+        if (!GOOGLE_API_KEY) {
+            alert('Thiếu NEXT_PUBLIC_GOOGLE_API_KEY để đọc ảnh Google Drive.');
+            return [];
+        }
+
+        setIsLoadingBlogDriveImages(true);
+        setLoadingMessage('Đang tự lấy ảnh từ kho Google Drive để chèn vào bài viết...');
+
+        try {
+            const files = await getAllDriveImages(folderId);
+            const images = files.map(normalizeDriveImage);
+            setBlogDriveImages(images);
+            return images;
+        } catch (error) {
+            console.error('Auto load blog Drive images error:', error);
+            alert('Không lấy được ảnh từ kho Drive để chèn vào bài: ' + error.message);
+            return [];
+        } finally {
+            setIsLoadingBlogDriveImages(false);
+        }
+    };
+
+    const insertSingleImageIntoContent = (content = '', imageUrl = '', altText = 'Ảnh minh họa Merci Studio') => {
+        if (!imageUrl) return content || '';
+        const imageMarkdown = `![${altText}](${imageUrl})`;
+        const current = content || '';
+        return `${current}${current.trim() ? '\n\n' : ''}${imageMarkdown}\n`;
+    };
+
+    const handleUseBlogDriveImage = (img) => {
+        const imageUrl = getBlogDriveImageUrl(img);
+        if (!imageUrl) return;
+        setNewBlog(prev => ({
+            ...prev,
+            coverUrl: prev.coverUrl || imageUrl,
+            content: insertSingleImageIntoContent(prev.content, imageUrl, getBlogDriveAltText(img))
+        }));
+        setBlogImageUrl(imageUrl);
+    };
+
+    const handleInjectDriveImagesToCurrentBlog = async () => {
+        const images = await ensureBlogDriveImagesLoaded();
+        if (!images.length) return alert('Chưa có ảnh trong kho Google Drive để chèn vào bài.');
+        setNewBlog(prev => {
+            const contentWithImages = injectDriveImagesIntoContent(prev.content || '', images, { maxImages: 5 });
+            return {
+                ...prev,
+                coverUrl: prev.coverUrl || pickBlogDriveImage(Date.now(), images) || DEFAULT_COVER,
+                content: contentWithImages
+            };
+        });
+        alert('Đã chèn ảnh từ kho Google Drive vào nội dung bài viết.');
+    };
+
     const handleGenerateBlogWithAI = async (publishNow = false) => {
         if (!aiBlogPrompt.trim()) {
             alert(`Vui lòng nhập chủ đề bài viết cho ${getAiProviderLabel()}.`);
             return;
         }
 
-        if (publishNow && !confirm(`${getAiProviderLabel()} sẽ viết và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?`)) {
+        if (publishNow && !confirm(`${getAiProviderLabel()} sẽ viết, tự chèn ảnh từ kho Google Drive và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?`)) {
             return;
         }
 
         setIsGeneratingBlog(true);
         setIsLoading(true);
-        setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài chuẩn SEO và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp bài chuẩn SEO...`);
+        setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài, lấy ảnh kho Drive và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp và chèn ảnh kho Drive...`);
 
         try {
+            const stockImages = await ensureBlogDriveImagesLoaded();
+
             const response = await fetch('/api/generate-blog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -644,12 +839,19 @@ export default function Home() {
                 throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
             }
 
+            const rawContent = result.content || '';
+            const contentWithDriveImages = stockImages.length
+                ? injectDriveImagesIntoContent(rawContent, stockImages, { maxImages: 5 })
+                : rawContent;
+
             const generatedBlog = {
                 title: result.title,
                 slug: createSlug(result.slug || result.title),
                 metaDesc: result.metaDesc || '',
-                content: result.content || '',
-                coverUrl: result.coverUrl || newBlog.coverUrl || DEFAULT_COVER
+                content: contentWithDriveImages,
+                coverUrl: pickBlogDriveImage(Date.now(), stockImages) || result.coverUrl || newBlog.coverUrl || DEFAULT_COVER,
+                aiProvider,
+                imageStockFolder: blogDriveFolderLink || ''
             };
 
             if (publishNow) {
@@ -666,10 +868,10 @@ export default function Home() {
                 setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
                 setAiBlogPrompt('');
                 setAiBlogKeyword('');
-                alert(`${getAiProviderLabel()} đã viết và đăng bài lên blog thành công!`);
+                alert(`${getAiProviderLabel()} đã viết, chèn ảnh từ kho Drive và đăng bài lên blog thành công!`);
             } else {
                 setNewBlog(generatedBlog);
-                alert(`${getAiProviderLabel()} đã viết xong bản nháp. Hãy đọc lại rồi bấm Đăng bài.`);
+                alert(`${getAiProviderLabel()} đã viết xong bản nháp và đã tự chèn ảnh từ kho Google Drive.`);
             }
         } catch (error) {
             console.error('AI blog generation error:', error);
@@ -678,6 +880,194 @@ export default function Home() {
             setIsGeneratingBlog(false);
             setIsLoading(false);
         }
+    };
+
+
+    const parseBulkBlogTopics = () => {
+        return bulkBlogTopics
+            .split(/\r?\n/)
+            .map(line => line.trim())
+            .filter(Boolean)
+            .map(line => {
+                const parts = line.split('|').map(part => part.trim()).filter(Boolean);
+                return {
+                    topic: parts[0] || '',
+                    mainKeyword: parts[1] || parts[0] || ''
+                };
+            })
+            .filter(item => item.topic);
+    };
+
+    const handleGenerateRelatedTopics = async () => {
+        const keyword = autoKeyword.trim();
+        const count = Math.min(20, Math.max(1, Number(autoArticleCount) || 1));
+
+        if (!keyword) {
+            alert('Vui lòng nhập từ khóa gốc để AI tự tạo các bài liên quan.');
+            return;
+        }
+
+        setIsGeneratingTopicIdeas(true);
+        setIsLoading(true);
+        setLoadingMessage(`${getAiProviderLabel()} đang lên danh sách ${count} bài liên quan đến: ${keyword}`);
+
+        try {
+            const response = await fetch('/api/generate-blog-topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    provider: aiProvider,
+                    keyword,
+                    count,
+                    brandName: 'Merci Studio',
+                    serviceArea: 'Bắc Ninh, Bắc Giang, Hà Nội',
+                    services: ['ảnh cưới', 'kỷ yếu', 'couple', 'baby family', 'photobooth', 'makeup', 'váy cưới']
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !Array.isArray(result?.items) || result.items.length === 0) {
+                throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được danh sách bài liên quan.`);
+            }
+
+            const lines = result.items
+                .slice(0, count)
+                .map(item => `${item.topic || item.title || keyword} | ${item.mainKeyword || item.keyword || keyword}`)
+                .join('\n');
+
+            setBulkBlogTopics(prev => {
+                const current = prev.trim();
+                return current ? `${current}\n${lines}` : lines;
+            });
+
+            alert(`Đã tạo ${Math.min(result.items.length, count)} chủ đề liên quan. Bạn có thể chỉnh lại rồi bấm viết hàng loạt.`);
+        } catch (error) {
+            console.error('Generate related blog topics error:', error);
+            alert(`Không tạo được danh sách bài liên quan: ${error.message}`);
+        } finally {
+            setIsGeneratingTopicIdeas(false);
+            setIsLoading(false);
+        }
+    };
+
+    const generateSingleBlogData = async ({ topic, mainKeyword }, imageIndex = 0, stockImages = blogDriveImages) => {
+        const response = await fetch('/api/generate-blog', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                provider: aiProvider,
+                topic,
+                mainKeyword,
+                brandName: 'Merci Studio',
+                serviceArea: 'Bắc Ninh, Bắc Giang, Hà Nội',
+                services: ['ảnh cưới', 'kỷ yếu', 'couple', 'baby family', 'photobooth', 'makeup', 'váy cưới'],
+                tone: 'tự nhiên, chuyên nghiệp, dễ đọc, có tính chuyển đổi booking'
+            })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || !result?.title || !result?.content) {
+            throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
+        }
+
+        const rotatedImages = stockImages.length
+            ? [...stockImages.slice(imageIndex), ...stockImages.slice(0, imageIndex)]
+            : [];
+
+        return {
+            title: result.title,
+            slug: createSlug(result.slug || result.title),
+            metaDesc: result.metaDesc || '',
+            content: rotatedImages.length
+                ? injectDriveImagesIntoContent(result.content || '', rotatedImages, { maxImages: 5 })
+                : (result.content || ''),
+            coverUrl: pickBlogDriveImage(imageIndex, stockImages) || result.coverUrl || DEFAULT_COVER,
+            aiProvider,
+            sourceTopic: topic,
+            sourceKeyword: mainKeyword || topic,
+            imageStockFolder: blogDriveFolderLink || ''
+        };
+    };
+
+
+    const handleBulkGenerateBlogs = async (publishNow = false) => {
+        const items = parseBulkBlogTopics();
+        if (items.length === 0) {
+            alert('Vui lòng nhập danh sách chủ đề, mỗi dòng 1 bài. Ví dụ: Chụp ảnh cưới Bắc Ninh | chụp ảnh cưới Bắc Ninh');
+            return;
+        }
+
+        if (items.length > 20) {
+            alert('Để tránh quá tải API, mỗi lần chỉ nên tạo tối đa 20 bài. Hãy chia nhỏ danh sách.');
+            return;
+        }
+
+        if (publishNow && !confirm(`Bạn sắp dùng ${getAiProviderLabel()} viết, tự chèn ảnh kho Google Drive và đăng ${items.length} bài lên website. Tiếp tục?`)) {
+            return;
+        }
+
+        setIsBulkGeneratingBlog(true);
+        setIsLoading(true);
+        setBulkGeneratedBlogs([]);
+
+        const generated = [];
+        const failed = [];
+
+        try {
+            const stockImages = await ensureBlogDriveImagesLoaded();
+
+            for (let index = 0; index < items.length; index += 1) {
+                const item = items[index];
+                const progressText = `${getAiProviderLabel()} đang xử lý bài ${index + 1}/${items.length} và chèn ảnh kho Drive: ${item.topic}`;
+                setBulkBlogProgress(progressText);
+                setLoadingMessage(progressText);
+
+                try {
+                    const blogData = await generateSingleBlogData(item, index, stockImages);
+                    generated.push(blogData);
+                    setBulkGeneratedBlogs([...generated]);
+
+                    if (publishNow) {
+                        const now = Date.now();
+                        await setDoc(doc(db, 'merci_blogs', `blog_${now}_${index}`), {
+                            ...blogData,
+                            id: `blog_${now}_${index}`,
+                            createdAt: now,
+                            updatedAt: now
+                        });
+                    }
+                } catch (error) {
+                    console.error('Bulk blog item error:', item, error);
+                    failed.push(`${item.topic}: ${error.message}`);
+                }
+            }
+
+            if (publishNow) {
+                alert(`Đã đăng ${generated.length}/${items.length} bài.${failed.length ? `\nLỗi ${failed.length} bài:\n${failed.join('\n')}` : ''}`);
+                if (generated.length > 0) {
+                    setBulkBlogTopics('');
+                }
+            } else {
+                alert(`Đã viết nháp ${generated.length}/${items.length} bài. Bạn có thể bấm “Đưa vào form sửa” để kiểm tra từng bài rồi đăng.`);
+            }
+        } finally {
+            setIsBulkGeneratingBlog(false);
+            setIsLoading(false);
+            setBulkBlogProgress('');
+        }
+    };
+
+    const useBulkDraftInForm = (blog) => {
+        setNewBlog({
+            title: blog.title || '',
+            slug: blog.slug || '',
+            metaDesc: blog.metaDesc || '',
+            content: blog.content || '',
+            coverUrl: blog.coverUrl || ''
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     // Tải ảnh đơn có watermark - KHÔNG mở link ảnh gốc nếu đóng dấu lỗi
@@ -1806,10 +2196,12 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
-        <div className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500">
+        <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font">
             <style dangerouslySetInnerHTML={{__html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+                .vi-safe-font { font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; font-feature-settings: normal; font-variant-ligatures: normal; word-break: normal; overflow-wrap: anywhere; }
+                .blog-content, .blog-content * { font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; }
                 .masonry-grid { column-count: 2; column-gap: 0.55rem; }
                 .masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid; display: inline-block; width: 100%; }
                 @media (min-width: 640px) { .masonry-grid { column-count: 2; column-gap: 0.75rem; } }
@@ -2045,6 +2437,80 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         />
                                     </div>
 
+                                    <div className="bg-white border border-blue-100 rounded-2xl p-3 md:p-4 space-y-3">
+                                        <div className="flex items-start gap-3">
+                                            <div className="bg-emerald-600 text-white p-2 rounded-xl shrink-0">
+                                                <FolderDown size={17}/>
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-sm font-black text-slate-900">Kho ảnh Google Drive cho AI Blog</p>
+                                                <p className="text-xs text-slate-500">Dán link folder Drive chứa ảnh đẹp. Khi AI viết bài, hệ thống sẽ tự lấy ảnh trong kho này làm ảnh bìa và chèn nhiều ảnh minh họa vào giữa nội dung. Bài hàng loạt sẽ tự xoay ảnh theo từng bài.</p>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid md:grid-cols-[1fr_auto] gap-2">
+                                            <input
+                                                type="text"
+                                                placeholder="Dán link folder Google Drive chứa kho ảnh blog"
+                                                className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                                                value={blogDriveFolderLink}
+                                                onChange={e => setBlogDriveFolderLink(e.target.value)}
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={isLoadingBlogDriveImages}
+                                                onClick={handleLoadBlogDriveImages}
+                                                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <RefreshCcw size={16} className={isLoadingBlogDriveImages ? 'animate-spin' : ''}/> Lấy ảnh kho
+                                            </button>
+                                        </div>
+
+                                        {blogDriveImages.length > 0 && (
+                                            <div className="space-y-2">
+                                                <div className="flex items-center justify-between gap-2">
+                                                    <p className="text-xs font-bold text-emerald-700">Đã sẵn sàng {blogDriveImages.length} ảnh trong kho</p>
+                                                    <div className="flex items-center gap-3">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setNewBlog(prev => ({ ...prev, coverUrl: pickBlogDriveImage(Date.now()) }))}
+                                                            className="text-xs font-bold text-blue-600 hover:text-blue-800"
+                                                        >
+                                                            Lấy ngẫu nhiên làm ảnh bìa
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={handleInjectDriveImagesToCurrentBlog}
+                                                            className="text-xs font-bold text-emerald-700 hover:text-emerald-900"
+                                                        >
+                                                            Chèn ảnh vào nội dung
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                    {blogDriveImages.slice(0, 12).map((img, index) => (
+                                                        <button
+                                                            key={img.id || index}
+                                                            type="button"
+                                                            onClick={() => handleUseBlogDriveImage(img)}
+                                                            className="relative shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-500 bg-slate-100"
+                                                            title={img.name || 'Ảnh kho Drive'}
+                                                        >
+                                                            <img
+                                                                src={img.thumbnailUrl || img.url}
+                                                                alt={img.name || 'Ảnh kho Drive'}
+                                                                className="w-full h-full object-cover"
+                                                                loading="lazy"
+                                                                referrerPolicy="no-referrer"
+                                                                onError={(e) => handleImageError(e, img)}
+                                                            />
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+
                                     <div className="flex flex-col sm:flex-row gap-2">
                                         <button
                                             type="button"
@@ -2066,6 +2532,104 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
 
                                     <div className="text-[11px] md:text-xs text-slate-500 leading-relaxed">
                                         Gợi ý chủ đề: “kinh nghiệm chụp ảnh cưới ở Bắc Ninh”, “concept kỷ yếu cấp 3”, “photobooth tiệc cưới”, “váy cưới thiết kế cao cấp”.
+                                    </div>
+
+                                    <div className="border-t border-blue-100 pt-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                            <div>
+                                                <p className="text-sm font-black text-slate-900">Viết / đăng bài hàng loạt</p>
+                                                <p className="text-xs text-slate-500">Nhập 1 từ khóa, chọn số lượng bài để AI tự tạo danh sách bài liên quan.</p>
+                                            </div>
+                                            {bulkBlogProgress && (
+                                                <span className="text-[11px] font-bold text-blue-600 bg-white px-3 py-1 rounded-full border border-blue-100">
+                                                    {bulkBlogProgress}
+                                                </span>
+                                            )}
+                                        </div>
+
+                                        <div className="bg-white border border-blue-100 rounded-2xl p-3 md:p-4 space-y-3">
+                                            <div className="grid grid-cols-1 md:grid-cols-[1fr_150px] gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="Từ khóa gốc, ví dụ: chụp ảnh cưới Bắc Ninh"
+                                                    className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-sm"
+                                                    value={autoKeyword}
+                                                    onChange={e => setAutoKeyword(e.target.value)}
+                                                />
+                                                <input
+                                                    type="number"
+                                                    min={1}
+                                                    max={20}
+                                                    placeholder="Số bài"
+                                                    className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-sm font-bold"
+                                                    value={autoArticleCount}
+                                                    onChange={e => setAutoArticleCount(e.target.value)}
+                                                />
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                disabled={isGeneratingTopicIdeas}
+                                                onClick={handleGenerateRelatedTopics}
+                                                className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Wand2 size={17}/> Tự tạo danh sách bài liên quan bằng {getAiProviderLabel()}
+                                            </button>
+
+                                            <p className="text-[11px] text-slate-500 leading-relaxed">
+                                                Ví dụ nhập “chụp ảnh cưới Bắc Ninh”, chọn 10 bài. AI sẽ tự tạo các chủ đề như kinh nghiệm chuẩn bị, chi phí, concept, địa điểm, checklist... rồi đưa xuống ô hàng loạt bên dưới.
+                                            </p>
+                                        </div>
+
+                                        <textarea
+                                            rows={5}
+                                            placeholder={`VD:
+Bí kíp chụp ảnh cưới studio Bắc Ninh 2026 | chụp ảnh cưới studio Bắc Ninh
+Concept kỷ yếu cấp 3 đẹp tự nhiên | chụp ảnh kỷ yếu Bắc Ninh
+Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc cưới Bắc Ninh`}
+                                            className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-sm leading-relaxed"
+                                            value={bulkBlogTopics}
+                                            onChange={e => setBulkBlogTopics(e.target.value)}
+                                        />
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                            <button
+                                                type="button"
+                                                disabled={isBulkGeneratingBlog}
+                                                onClick={() => handleBulkGenerateBlogs(false)}
+                                                className="bg-white border-2 border-blue-100 hover:border-blue-500 disabled:opacity-50 text-slate-900 px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Wand2 size={17}/> Viết nháp hàng loạt
+                                            </button>
+                                            <button
+                                                type="button"
+                                                disabled={isBulkGeneratingBlog}
+                                                onClick={() => handleBulkGenerateBlogs(true)}
+                                                className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Zap size={17}/> Viết & đăng hàng loạt
+                                            </button>
+                                        </div>
+
+                                        {bulkGeneratedBlogs.length > 0 && (
+                                            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                                                {bulkGeneratedBlogs.map((blog, index) => (
+                                                    <div key={`${blog.slug}-${index}`} className="bg-white border border-blue-100 rounded-xl p-3 flex items-center justify-between gap-3">
+                                                        <div className="min-w-0">
+                                                            <p className="vi-safe-font font-bold text-sm text-slate-900 truncate">{index + 1}. {blog.title}</p>
+                                                            <p className="text-[11px] text-slate-500 truncate">/{blog.slug}</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => useBulkDraftInForm(blog)}
+                                                            className="shrink-0 text-xs font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-3 py-2 rounded-lg"
+                                                        >
+                                                            Đưa vào form sửa
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             )}
@@ -2416,7 +2980,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                     <div className="flex items-center gap-2 text-xs text-blue-600 font-bold tracking-widest uppercase mb-3">
                                                         <Calendar className="w-4 h-4"/> {new Date(blog.createdAt).toLocaleDateString('vi-VN')}
                                                     </div>
-                                                    <h3 className="text-xl md:text-2xl font-bold font-serif text-slate-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2">{blog.title}</h3>
+                                                    <h3 className="vi-safe-font text-xl md:text-2xl font-black font-sans text-slate-900 mb-3 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">{blog.title}</h3>
                                                     <p className="text-slate-500 text-sm leading-relaxed line-clamp-3 mb-6 flex-grow">{blog.metaDesc || blog.content}</p>
                                                     <span className="text-blue-600 font-semibold text-sm flex items-center gap-1 mt-auto">Đọc tiếp <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
                                                 </div>
@@ -2465,11 +3029,11 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     </div>
 
                                     {currentViewBlog && (
-                                        <article className="prose prose-slate prose-lg md:prose-xl max-w-none">
+                                        <article className="blog-content prose prose-slate prose-lg md:prose-xl max-w-none">
                                             <div className="flex items-center gap-2 text-sm text-blue-600 font-bold tracking-widest uppercase mb-4">
                                                 <Calendar className="w-4 h-4"/> {new Date(currentViewBlog.createdAt).toLocaleDateString('vi-VN')}
                                             </div>
-                                            <h1 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 leading-tight mb-8">
+                                            <h1 className="vi-safe-font text-3xl md:text-5xl font-black font-sans text-slate-900 leading-tight mb-8">
                                                 {currentViewBlog.title}
                                             </h1>
                                             {currentViewBlog.coverUrl && (
