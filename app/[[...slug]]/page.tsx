@@ -159,6 +159,9 @@ export default function Home() {
     const [isAddingBlog, setIsAddingBlog] = useState(false);
     const [editingBlog, setEditingBlog] = useState(null);
     const [newBlog, setNewBlog] = useState({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
+    const [aiBlogPrompt, setAiBlogPrompt] = useState('');
+    const [aiBlogKeyword, setAiBlogKeyword] = useState('');
+    const [isGeneratingBlog, setIsGeneratingBlog] = useState(false);
 
     // Filter Tool
     const [filterText, setFilterText] = useState('');
@@ -299,16 +302,47 @@ export default function Home() {
         }
     }, [albums, blogs, pendingSlug]);
 
-    // Cập nhật Title SEO khi xem Blog/Album
+    // Cập nhật Title + Meta SEO khi xem Blog/Album
     useEffect(() => {
+        const upsertMeta = (name, content) => {
+            let tag = document.querySelector(`meta[name="${name}"]`);
+            if (!tag) {
+                tag = document.createElement('meta');
+                tag.setAttribute('name', name);
+                document.head.appendChild(tag);
+            }
+            tag.setAttribute('content', content || '');
+        };
+
+        const upsertCanonical = (href) => {
+            let tag = document.querySelector('link[rel="canonical"]');
+            if (!tag) {
+                tag = document.createElement('link');
+                tag.setAttribute('rel', 'canonical');
+                document.head.appendChild(tag);
+            }
+            tag.setAttribute('href', href || window.location.href);
+        };
+
         if (activeTab === 'blog' && activeBlogId) {
             const blog = blogs.find(b => b.id === activeBlogId);
-            if (blog) document.title = `${blog.title} | Merci Studio`;
+            if (blog) {
+                const slugToUse = blog.slug || createSlug(blog.title) || blog.id;
+                document.title = `${blog.title} | Merci Studio`;
+                upsertMeta('description', blog.metaDesc || blog.title);
+                upsertCanonical(`${window.location.origin}/${slugToUse}`);
+            }
         } else if (activeTab === 'collection' && activeAlbumId) {
             const album = albums.find(a => a.id === activeAlbumId);
-            if (album) document.title = `${album.title} | Merci Studio`;
+            if (album) {
+                document.title = `${album.title} | Merci Studio`;
+                upsertMeta('description', album.sub || `${album.title} - Bộ sưu tập ảnh của Merci Studio`);
+                upsertCanonical(window.location.href);
+            }
         } else {
             document.title = 'Merci Wedding Studio';
+            upsertMeta('description', 'Merci Studio - chụp ảnh cưới, kỷ yếu, gia đình, photobooth và váy cưới.');
+            upsertCanonical(window.location.origin);
         }
     }, [activeTab, activeBlogId, activeAlbumId, blogs, albums]);
 
@@ -498,7 +532,8 @@ export default function Home() {
             metaDesc: newBlog.metaDesc || '',
             content: newBlog.content,
             coverUrl: newBlog.coverUrl || DEFAULT_COVER,
-            createdAt: editingBlog ? editingBlog.createdAt : Date.now()
+            createdAt: editingBlog ? editingBlog.createdAt : Date.now(),
+            updatedAt: Date.now()
         };
 
         try {
@@ -533,6 +568,84 @@ export default function Home() {
             coverUrl: blog.coverUrl
         });
         setIsAddingBlog(true);
+    };
+
+    const openNewBlogModal = () => {
+        setEditingBlog(null);
+        setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
+        setAiBlogPrompt('');
+        setAiBlogKeyword('');
+        setIsAddingBlog(true);
+    };
+
+    const handleGenerateBlogWithAI = async (publishNow = false) => {
+        if (!aiBlogPrompt.trim()) {
+            alert('Vui lòng nhập chủ đề bài viết cho Gemini.');
+            return;
+        }
+
+        if (publishNow && !confirm('Gemini sẽ viết và đăng bài ngay lên website. Bạn chắc chắn muốn đăng luôn?')) {
+            return;
+        }
+
+        setIsGeneratingBlog(true);
+        setIsLoading(true);
+        setLoadingMessage(publishNow ? 'Gemini đang viết bài chuẩn SEO và đăng lên blog...' : 'Gemini đang viết nháp bài chuẩn SEO...');
+
+        try {
+            const response = await fetch('/api/generate-blog', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    topic: aiBlogPrompt,
+                    mainKeyword: aiBlogKeyword,
+                    brandName: 'Merci Studio',
+                    serviceArea: 'Bắc Ninh, Bắc Giang, Hà Nội',
+                    services: ['ảnh cưới', 'kỷ yếu', 'couple', 'baby family', 'photobooth', 'makeup', 'váy cưới'],
+                    tone: 'tự nhiên, chuyên nghiệp, dễ đọc, có tính chuyển đổi booking'
+                })
+            });
+
+            const result = await response.json();
+
+            if (!response.ok || !result?.title || !result?.content) {
+                throw new Error(result?.error || 'Gemini chưa tạo được bài viết hợp lệ.');
+            }
+
+            const generatedBlog = {
+                title: result.title,
+                slug: createSlug(result.slug || result.title),
+                metaDesc: result.metaDesc || '',
+                content: result.content || '',
+                coverUrl: result.coverUrl || newBlog.coverUrl || DEFAULT_COVER
+            };
+
+            if (publishNow) {
+                const data = {
+                    id: `blog_${Date.now()}`,
+                    ...generatedBlog,
+                    createdAt: Date.now(),
+                    updatedAt: Date.now()
+                };
+
+                await setDoc(doc(db, 'merci_blogs', data.id), data);
+                setIsAddingBlog(false);
+                setEditingBlog(null);
+                setNewBlog({ title: '', slug: '', metaDesc: '', content: '', coverUrl: '' });
+                setAiBlogPrompt('');
+                setAiBlogKeyword('');
+                alert('Gemini đã viết và đăng bài lên blog thành công!');
+            } else {
+                setNewBlog(generatedBlog);
+                alert('Gemini đã viết xong bản nháp. Hãy đọc lại rồi bấm Đăng bài.');
+            }
+        } catch (error) {
+            console.error('Gemini blog generation error:', error);
+            alert('Không tạo được bài viết Gemini: ' + error.message);
+        } finally {
+            setIsGeneratingBlog(false);
+            setIsLoading(false);
+        }
     };
 
     // Tải ảnh đơn có watermark - KHÔNG mở link ảnh gốc nếu đóng dấu lỗi
@@ -1680,28 +1793,6 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                 </div>
             )}
 
-            {/* Nút trượt nhanh về đầu / cuối trang */}
-            <div className="fixed right-3 bottom-24 md:right-6 md:bottom-8 z-[80] flex flex-col gap-2">
-                <button
-                    type="button"
-                    onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                    className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-slate-900 text-white shadow-xl border border-white/20 flex items-center justify-center active:scale-95 hover:bg-blue-600 transition-all"
-                    title="Về đầu trang"
-                    aria-label="Về đầu trang"
-                >
-                    <ArrowUp className="w-5 h-5" />
-                </button>
-                <button
-                    type="button"
-                    onClick={() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'smooth' })}
-                    className="w-11 h-11 md:w-12 md:h-12 rounded-full bg-white text-slate-900 shadow-xl border border-slate-200 flex items-center justify-center active:scale-95 hover:bg-blue-600 hover:text-white transition-all"
-                    title="Xuống cuối trang"
-                    aria-label="Xuống cuối trang"
-                >
-                    <ArrowDown className="w-5 h-5" />
-                </button>
-            </div>
-
             {/* Client Login / Register Modal */}
             {showClientLoginModal && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
@@ -1882,9 +1973,63 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                     <div className="bg-white p-6 md:p-8 rounded-3xl w-full max-w-3xl max-h-[90vh] overflow-y-auto shadow-2xl animate-in zoom-in-95">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-2xl text-slate-900">{editingBlog ? 'Sửa Bài Viết' : 'Viết Blog Mới'}</h3>
-                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); setNewBlog({title: '', slug: '', metaDesc: '', content: '', coverUrl: ''}); }} className="text-slate-400 hover:text-slate-700"><X /></button>
+                            <button onClick={() => { setIsAddingBlog(false); setEditingBlog(null); setNewBlog({title: '', slug: '', metaDesc: '', content: '', coverUrl: ''}); setAiBlogPrompt(''); setAiBlogKeyword(''); }} className="text-slate-400 hover:text-slate-700"><X /></button>
                         </div>
                         <div className="space-y-4">
+                            {!editingBlog && (
+                                <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 md:p-5 space-y-3">
+                                    <div className="flex items-start gap-3">
+                                        <div className="bg-blue-600 text-white p-2 rounded-xl shrink-0">
+                                            <Wand2 size={18}/>
+                                        </div>
+                                        <div>
+                                            <p className="font-bold text-slate-900">Gemini AI viết bài chuẩn SEO</p>
+                                            <p className="text-xs md:text-sm text-slate-500">Nhập chủ đề, Gemini sẽ tự tạo tiêu đề, slug, meta description và nội dung có H2/H3 để bạn duyệt trước khi đăng.</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid md:grid-cols-3 gap-3">
+                                        <input
+                                            type="text"
+                                            placeholder="VD: Chụp ảnh cưới ở Bắc Ninh cần chuẩn bị gì?"
+                                            className="md:col-span-2 w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                                            value={aiBlogPrompt}
+                                            onChange={e => setAiBlogPrompt(e.target.value)}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Từ khóa chính"
+                                            className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
+                                            value={aiBlogKeyword}
+                                            onChange={e => setAiBlogKeyword(e.target.value)}
+                                        />
+                                    </div>
+
+                                    <div className="flex flex-col sm:flex-row gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={isGeneratingBlog}
+                                            onClick={() => handleGenerateBlogWithAI(false)}
+                                            className="flex-1 bg-slate-900 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Wand2 size={17}/> Gemini viết nháp
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={isGeneratingBlog}
+                                            onClick={() => handleGenerateBlogWithAI(true)}
+                                            className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <Zap size={17}/> Gemini viết & đăng ngay
+                                        </button>
+                                    </div>
+
+                                    <div className="text-[11px] md:text-xs text-slate-500 leading-relaxed">
+                                        Gợi ý chủ đề: “kinh nghiệm chụp ảnh cưới ở Bắc Ninh”, “concept kỷ yếu cấp 3”, “photobooth tiệc cưới”, “váy cưới thiết kế cao cấp”.
+                                    </div>
+                                </div>
+                            )}
+
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">TIÊU ĐỀ BÀI VIẾT (*)</label>
                                 <input type="text" placeholder="Kinh nghiệm chụp ảnh cưới..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.title} onChange={e => setNewBlog({...newBlog, title: e.target.value})} />
@@ -1900,6 +2045,11 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">LINK ẢNH BÌA</label>
                                 <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.coverUrl} onChange={e => setNewBlog({...newBlog, coverUrl: e.target.value})} />
+                                {(newBlog.coverUrl || editingBlog?.coverUrl) && (
+                                    <div className="mt-3 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 aspect-[16/7]">
+                                        <img src={newBlog.coverUrl || DEFAULT_COVER} alt="Xem trước ảnh bìa" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = DEFAULT_COVER; }} />
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2">NỘI DUNG BÀI VIẾT (Mỗi lần xuống dòng là 1 đoạn văn)</label>
@@ -2136,10 +2286,10 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
                                                     <ArrowUp className="w-4 h-4" />
                                                 </button>
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
+                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
                                                     <ArrowDown className="w-4 h-4" />
                                                 </button>
                                                 <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110" title="Xóa Video">
@@ -2166,7 +2316,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     <div className="flex justify-between items-center">
                                         <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Blog Cưới</h2>
                                         {isAdmin && (
-                                            <button onClick={() => setIsAddingBlog(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
+                                            <button onClick={openNewBlogModal} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
                                                 <FileText size={18}/> <span className="hidden sm:inline">Viết bài mới</span>
                                             </button>
                                         )}
@@ -2219,17 +2369,29 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             <ArrowLeft size={20}/> Quay lại danh sách
                                         </button>
                                         
-                                        <button onClick={() => {
-                                            const slugToUse = currentViewBlog?.slug || createSlug(currentViewBlog?.title) || currentViewBlog?.id;
-                                            const link = `${window.location.origin}/${slugToUse}`;
-                                            if(navigator.clipboard && window.isSecureContext) {
-                                                navigator.clipboard.writeText(link).then(() => alert("Đã copy link bài viết này!"));
-                                            } else {
-                                                prompt("Copy link:", link);
-                                            }
-                                        }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
-                                            <LinkIcon size={16}/> Copy Link
-                                        </button>
+                                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                                            {isAdmin && currentViewBlog && (
+                                                <>
+                                                    <button onClick={(e) => openEditBlog(currentViewBlog, e)} className="flex items-center gap-2 text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
+                                                        <Edit size={16}/> Sửa bài
+                                                    </button>
+                                                    <button onClick={(e) => handleDeleteBlog(currentViewBlog.id, e)} className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
+                                                        <Trash2 size={16}/> Xóa
+                                                    </button>
+                                                </>
+                                            )}
+                                            <button onClick={() => {
+                                                const slugToUse = currentViewBlog?.slug || createSlug(currentViewBlog?.title) || currentViewBlog?.id;
+                                                const link = `${window.location.origin}/${slugToUse}`;
+                                                if(navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(link).then(() => alert("Đã copy link bài viết này!"));
+                                                } else {
+                                                    prompt("Copy link:", link);
+                                                }
+                                            }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
+                                                <LinkIcon size={16}/> Copy Link
+                                            </button>
+                                        </div>
                                     </div>
 
                                     {currentViewBlog && (
@@ -2246,11 +2408,26 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 </div>
                                             )}
                                             
-                                            {/* Phần nội dung bài viết hỗ trợ xuống dòng */}
-                                            <div className="text-slate-700 leading-relaxed space-y-6 text-base md:text-lg">
-                                                {currentViewBlog.content.split('\n').map((paragraph, idx) => (
-                                                    paragraph.trim() ? <p key={idx}>{paragraph}</p> : <br key={idx}/>
-                                                ))}
+                                            {/* Phần nội dung bài viết hỗ trợ Markdown đơn giản để tốt hơn cho SEO */}
+                                            <div className="text-slate-700 leading-relaxed space-y-5 text-base md:text-lg">
+                                                {currentViewBlog.content.split('\n').map((line, idx) => {
+                                                    const textLine = line.trim();
+                                                    if (!textLine) return <br key={idx}/>;
+
+                                                    if (textLine.startsWith('### ')) {
+                                                        return <h3 key={idx} className="text-xl md:text-2xl font-bold text-slate-900 mt-8 mb-3">{textLine.replace(/^###\s+/, '')}</h3>;
+                                                    }
+
+                                                    if (textLine.startsWith('## ')) {
+                                                        return <h2 key={idx} className="text-2xl md:text-3xl font-bold text-slate-900 mt-10 mb-4">{textLine.replace(/^##\s+/, '')}</h2>;
+                                                    }
+
+                                                    if (textLine.startsWith('- ')) {
+                                                        return <p key={idx} className="pl-4 border-l-4 border-blue-100">• {textLine.replace(/^-\s+/, '')}</p>;
+                                                    }
+
+                                                    return <p key={idx}>{textLine}</p>;
+                                                })}
                                             </div>
                                         </article>
                                     )}
@@ -2301,7 +2478,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         </div>
                                     )}
 
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 md:gap-6">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div key={a.id} onClick={() => {
                                                 setActiveAlbumId(a.id); 
@@ -2311,14 +2488,14 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 const slugToUse = a.slug || createSlug(a.title) || a.id;
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer relative">
-                                                <div className="aspect-[3/4] rounded-2xl md:rounded-[2rem] overflow-hidden mb-2 md:mb-4 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
+                                                <div className="aspect-[4/5] rounded-[2rem] md:rounded-[2.5rem] overflow-hidden mb-4 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
-                                                    <div className="absolute top-2 md:top-5 left-2 md:left-5 bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm max-w-[80%] truncate">{a.category}</div>
+                                                    <div className="absolute top-4 md:top-6 left-4 md:left-6 bg-white/95 backdrop-blur-md px-3 md:px-4 py-1 md:py-1.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
                                                     
                                                     {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
-                                                        <div className="absolute top-2 md:top-5 right-2 md:right-5 z-20 flex flex-col gap-1.5 md:gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
+                                                        <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
                                                             {activeCategory === 'Tất cả' && (
                                                                 <>
@@ -2330,17 +2507,17 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                                     </button>
                                                                 </>
                                                             )}
-                                                            <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-1.5 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
+                                                            <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
                                                                 <Edit className="w-4 h-4" />
                                                             </button>
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute bottom-3 md:bottom-6 left-3 md:left-6 right-3 md:right-6 text-white">
-                                                        <h3 className="text-base md:text-2xl font-bold font-serif mb-1 md:mb-2 leading-tight line-clamp-2">{a.title}</h3>
+                                                    <div className="absolute bottom-6 md:bottom-8 left-6 md:left-8 right-6 md:right-8 text-white">
+                                                        <h3 className="text-2xl md:text-3xl font-bold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
-                                                            {a.sub && <p className="text-[8px] md:text-xs opacity-70 truncate max-w-[45%]">{a.sub}</p>}
+                                                            <p className="text-[10px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                            {a.sub && <p className="text-[10px] md:text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
                                                         </div>
                                                     </div>
                                                 </div>
