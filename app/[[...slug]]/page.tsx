@@ -147,6 +147,13 @@ export default function Home() {
     const [albumDriveLink, setAlbumDriveLink] = useState(''); 
     const [pendingSlug, setPendingSlug] = useState(null);
 
+    // Sync Albums state
+    const [showSyncModal, setShowSyncModal] = useState(false);
+    const [syncDriveLink, setSyncDriveLink] = useState('');
+    const [syncCategory, setSyncCategory] = useState('Wedding');
+    const [isSyncingAlbums, setIsSyncingAlbums] = useState(false);
+    const [syncProgress, setSyncProgress] = useState('');
+
     // Videos
     const [videos, setVideos] = useState([]);
     const [isAddingVideo, setIsAddingVideo] = useState(false);
@@ -435,6 +442,64 @@ export default function Home() {
             setEditingAlbum(null);
         } catch (e) { alert("Đã xảy ra lỗi khi cập nhật album."); } 
         finally { setIsLoading(false); }
+    };
+
+    const handleSyncAlbumsFromDrive = async () => {
+        const folderId = extractDriveFolderId(syncDriveLink);
+        if (!folderId) return alert('Link Google Drive không hợp lệ.');
+        if (!confirm(`Hệ thống sẽ lấy toàn bộ thư mục con bên trong thư mục này và tạo thành Album mới. Những thư mục đã tồn tại sẽ bị bỏ qua. Bạn chắc chắn chứ?`)) return;
+
+        setIsSyncingAlbums(true);
+        setSyncProgress('Đang quét thư mục con...');
+
+        try {
+            const childFolders = await getDriveChildFolders(folderId);
+            if (!childFolders.length) {
+                alert('Thư mục này không có thư mục con nào hoặc bạn chưa cấp quyền xem bất kỳ ai.');
+                setIsSyncingAlbums(false);
+                setSyncProgress('');
+                return;
+            }
+
+            let addedCount = 0;
+            for (const folder of childFolders) {
+                const folderLink = `https://drive.google.com/drive/folders/${folder.id}`;
+                
+                const exists = albums.some(a => 
+                    (a.driveLink && a.driveLink.includes(folder.id)) || 
+                    a.title.trim().toLowerCase() === folder.name.trim().toLowerCase()
+                );
+
+                if (!exists) {
+                    setSyncProgress(`Đang thêm: ${folder.name}...`);
+                    const newId = `album_${Date.now()}_${folder.id}`;
+                    const albumData = {
+                        id: newId,
+                        title: folder.name,
+                        sub: 'Bộ sưu tập',
+                        category: syncCategory,
+                        driveLink: folderLink,
+                        slug: createSlug(folder.name),
+                        createdAt: Date.now(),
+                        updatedAt: Date.now(),
+                        order: Date.now()
+                    };
+                    await setDoc(doc(db, 'merci_albums', newId), albumData);
+                    addedCount++;
+                }
+            }
+
+            setSyncProgress('');
+            alert(`Đồng bộ hoàn tất. Đã thêm mới ${addedCount} album.`);
+            setSyncDriveLink('');
+            setShowSyncModal(false);
+        } catch (error) {
+            console.error('Lỗi đồng bộ album:', error);
+            alert('Lỗi đồng bộ: ' + error.message);
+            setSyncProgress('');
+        } finally {
+            setIsSyncingAlbums(false);
+        }
     };
 
     const handleDeleteAlbum = async (id) => {
@@ -2464,6 +2529,43 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                 </div>
             )}
 
+            {/* Sync Drive Albums Modal */}
+            {showSyncModal && (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-white p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl animate-in zoom-in-95">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-2xl">Đồng Bộ Drive</h3>
+                            <button onClick={() => setShowSyncModal(false)} className="text-slate-400 hover:text-slate-700"><X /></button>
+                        </div>
+                        <p className="text-sm text-slate-500 leading-relaxed">
+                            Nhập link thư mục Drive Gốc. Web sẽ quét toàn bộ thư mục con bên trong để tạo thành các Album mới.
+                        </p>
+                        
+                        <div className="space-y-4">
+                            <input type="text" placeholder="Link Google Drive (Thư mục gốc)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-emerald-500 transition-colors" value={syncDriveLink} onChange={e => setSyncDriveLink(e.target.value)} />
+                            
+                            <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={syncCategory} onChange={e => setSyncCategory(e.target.value)}>
+                                {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                        </div>
+
+                        {syncProgress && (
+                            <p className="text-sm font-bold text-emerald-600 animate-pulse text-center bg-emerald-50 py-2 rounded-xl border border-emerald-100">
+                                {syncProgress}
+                            </p>
+                        )}
+
+                        <div className="flex justify-end gap-3 pt-4">
+                            <button onClick={() => setShowSyncModal(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
+                            <button disabled={isSyncingAlbums} onClick={handleSyncAlbumsFromDrive} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all">
+                                {isSyncingAlbums ? <RefreshCcw size={16} className="animate-spin"/> : <FolderDown size={16}/>}
+                                {isSyncingAlbums ? 'Đang chạy...' : 'Bắt đầu đồng bộ'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Create Album Modal */}
             {isCreatingAlbum && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
@@ -3395,9 +3497,14 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <div className="flex justify-between items-center">
                                         <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Bộ Sưu Tập</h2>
                                         {isAdmin && (
-                                            <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
-                                                <Plus size={18}/> <span className="hidden sm:inline">Album mới</span>
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={() => setShowSyncModal(true)} className="bg-emerald-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-700 text-sm md:text-base">
+                                                    <FolderDown size={18}/> <span className="hidden sm:inline">Đồng bộ Drive</span>
+                                                </button>
+                                                <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
+                                                    <Plus size={18}/> <span className="hidden sm:inline">Album mới</span>
+                                                </button>
+                                            </div>
                                         )}
                                     </div>
                                     
