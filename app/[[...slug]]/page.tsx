@@ -173,6 +173,13 @@ export default function Home() {
     const [autoKeyword, setAutoKeyword] = useState('');
     const [autoArticleCount, setAutoArticleCount] = useState(6);
     const [isGeneratingTopicIdeas, setIsGeneratingTopicIdeas] = useState(false);
+    
+    // Trend Search States
+    const [trendKeyword, setTrendKeyword] = useState('');
+    const [isSearchingTrends, setIsSearchingTrends] = useState(false);
+    const [searchTrendsResult, setSearchTrendsResult] = useState([]);
+    const [isGeneratingTrendTopics, setIsGeneratingTrendTopics] = useState(false);
+
     const [blogDriveFolderLink, setBlogDriveFolderLink] = useState('');
     const [blogDriveImages, setBlogDriveImages] = useState([]);
     const [blogDriveSubfolders, setBlogDriveSubfolders] = useState([]);
@@ -894,6 +901,52 @@ export default function Home() {
         }
     };
 
+    const handleSearchTrends = async () => {
+        const kw = trendKeyword.trim();
+        if (!kw) return alert('Vui lòng nhập chủ đề tìm kiếm trend.');
+        setIsSearchingTrends(true);
+        setSearchTrendsResult([]);
+        try {
+            const res = await fetch('/api/search-trends', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ keyword: kw })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            setSearchTrendsResult(data.items || []);
+        } catch (error) {
+            console.error('handleSearchTrends:', error);
+            alert('Lỗi: ' + error.message);
+        } finally {
+            setIsSearchingTrends(false);
+        }
+    };
+
+    const handleGenerateTrendTopics = async (trend) => {
+        if (!confirm(`Tạo ý tưởng bài viết từ trend: "${trend.title}"?`)) return;
+        setIsGeneratingTrendTopics(true);
+        try {
+            const res = await fetch('/api/generate-trend-topics', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    trendTitle: trend.title
+                })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+            
+            const newTopics = data.items.map((i) => `${i.topic} | ${i.mainKeyword}`).join('\n');
+            setBulkBlogTopics(prev => prev ? prev + '\n' + newTopics : newTopics);
+            alert(`Đã thêm ${data.items.length} ý tưởng vào ô nhập hàng loạt bên dưới!`);
+        } catch (error) {
+            console.error('handleGenerateTrendTopics:', error);
+            alert('Lỗi: ' + error.message);
+        } finally {
+            setIsGeneratingTrendTopics(false);
+        }
+    };
 
     const parseBulkBlogTopics = () => {
         return bulkBlogTopics
@@ -2647,6 +2700,58 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
 
                                     <div className="text-[11px] md:text-xs text-slate-500 leading-relaxed">
                                         Gợi ý chủ đề: “kinh nghiệm chụp ảnh cưới ở Bắc Ninh”, “concept kỷ yếu cấp 3”, “photobooth tiệc cưới”, “váy cưới thiết kế cao cấp”.
+                                    </div>
+
+                                    <div className="border-t border-purple-100 pt-4 space-y-3">
+                                        <div className="flex items-center justify-between gap-3 flex-wrap">
+                                            <div>
+                                                <p className="text-sm font-black text-purple-900">Tìm Trend Mới Nhất (AI Google Search)</p>
+                                                <p className="text-xs text-purple-600">Nhập chủ đề để AI lướt web tìm xu hướng nóng hổi nhất trong ngày.</p>
+                                            </div>
+                                        </div>
+                                        
+                                        <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 md:p-4 space-y-3">
+                                            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
+                                                <input
+                                                    type="text"
+                                                    placeholder="VD: mùa kỷ yếu, váy cưới, giới trẻ..."
+                                                    className="w-full border-2 border-purple-100 bg-white p-3 rounded-xl outline-none focus:border-purple-500 transition-colors text-sm"
+                                                    value={trendKeyword}
+                                                    onChange={e => setTrendKeyword(e.target.value)}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    disabled={isSearchingTrends}
+                                                    onClick={handleSearchTrends}
+                                                    className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-5 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
+                                                >
+                                                    {isSearchingTrends ? <RefreshCcw className="animate-spin" size={17} /> : <Wand2 size={17}/>}
+                                                    {isSearchingTrends ? 'Đang search...' : 'Tìm Trend'}
+                                                </button>
+                                            </div>
+
+                                            {searchTrendsResult.length > 0 && (
+                                                <div className="space-y-2 mt-3">
+                                                    <p className="text-xs font-bold text-slate-700">Kết quả xu hướng:</p>
+                                                    {searchTrendsResult.map((trend, idx) => (
+                                                        <div key={idx} className="bg-white border border-purple-200 rounded-xl p-3 flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between shadow-sm">
+                                                            <div>
+                                                                <p className="text-sm font-bold text-slate-900 leading-tight">{trend.title}</p>
+                                                                <p className="text-xs text-slate-600 mt-1 line-clamp-2">{trend.description}</p>
+                                                            </div>
+                                                            <button
+                                                                type="button"
+                                                                disabled={isGeneratingTrendTopics}
+                                                                onClick={() => handleGenerateTrendTopics(trend)}
+                                                                className="shrink-0 bg-purple-50 border border-purple-200 hover:bg-purple-100 text-purple-700 px-3 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap"
+                                                            >
+                                                                {isGeneratingTrendTopics ? 'Đang tạo...' : 'Tạo ý tưởng'}
+                                                            </button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     <div className="border-t border-blue-100 pt-4 space-y-3">
