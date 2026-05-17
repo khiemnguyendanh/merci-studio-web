@@ -17,10 +17,7 @@ function createSlug(str = '') {
 
 function safeJsonParse(text = '') {
     const raw = String(text || '').trim();
-
-    try {
-        return JSON.parse(raw);
-    } catch (_) {}
+    try { return JSON.parse(raw); } catch (_) {}
 
     const cleaned = raw
         .replace(/^```json\s*/i, '')
@@ -28,9 +25,7 @@ function safeJsonParse(text = '') {
         .replace(/```$/i, '')
         .trim();
 
-    try {
-        return JSON.parse(cleaned);
-    } catch (_) {}
+    try { return JSON.parse(cleaned); } catch (_) {}
 
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
@@ -38,14 +33,17 @@ function safeJsonParse(text = '') {
     throw new Error('AI không trả về JSON hợp lệ.');
 }
 
-function buildPrompt({
-    topic,
-    mainKeyword,
-    brandName,
-    serviceArea,
-    services,
-    tone
-}) {
+function normalizeHashtags(input) {
+    const raw = Array.isArray(input) ? input : String(input || '').split(/[,\n#]+/);
+    return Array.from(new Set(
+        raw
+            .map(tag => String(tag || '').replace(/^#/, '').trim())
+            .filter(Boolean)
+            .map(tag => tag.length > 40 ? tag.slice(0, 40) : tag)
+    )).slice(0, 8);
+}
+
+function buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, tone }) {
     return [
         'Bạn là Senior Content Marketer + SEO Specialist chuyên viết bài cho studio ảnh cưới, kỷ yếu, photobooth, makeup và váy cưới tại Việt Nam.',
         '',
@@ -71,7 +69,8 @@ function buildPrompt({
         '  "slug": "slug-khong-dau",',
         '  "metaDesc": "Mô tả SEO",',
         '  "content": "Nội dung Markdown đầy đủ",',
-        '  "coverUrl": ""',
+        '  "coverUrl": "",',
+        '  "hashtags": ["hashtag 1", "hashtag 2"]',
         '}',
         '',
         'YÊU CẦU SEO:',
@@ -116,6 +115,14 @@ function buildPrompt({
         '- Đặt ảnh sau các mục H2 quan trọng.',
         '- Alt ảnh phải tự nhiên, có liên quan nội dung và có thể chứa từ khóa.',
         '',
+        'YÊU CẦU HASHTAG:',
+        '- Tạo 4-8 hashtag phù hợp với bài viết.',
+        '- Hashtag không có dấu # ở đầu.',
+        '- Có ít nhất 1 hashtag theo dịch vụ.',
+        '- Có ít nhất 1 hashtag theo khu vực local.',
+        '- Không tạo hashtag quá dài.',
+        '- Ví dụ: chụp ảnh cưới, Bắc Ninh, studio ảnh cưới, kỷ yếu, photobooth.',
+        '',
         'YÊU CẦU NỘI DUNG:',
         '- Không bịa giá cụ thể.',
         '- Không bịa khuyến mãi.',
@@ -139,18 +146,13 @@ function normalizeArticle(parsed, topic) {
     const metaDesc = String(parsed?.metaDesc || '').trim().slice(0, 170);
     const content = String(parsed?.content || '').trim();
     const coverUrl = String(parsed?.coverUrl || '').trim();
+    const hashtags = normalizeHashtags(parsed?.hashtags || []);
 
     if (!title || !content) {
         throw new Error('AI trả về thiếu title hoặc content.');
     }
 
-    return {
-        title,
-        slug,
-        metaDesc,
-        content,
-        coverUrl
-    };
+    return { title, slug, metaDesc, content, coverUrl, hashtags };
 }
 
 function getGeminiText(data) {
@@ -167,23 +169,15 @@ async function generateWithGemini(prompt) {
     }
 
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-
     const url =
         `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` +
         `?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`;
 
     const response = await fetch(url, {
         method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            contents: [
-                {
-                    role: 'user',
-                    parts: [{ text: prompt }]
-                }
-            ],
+            contents: [{ role: 'user', parts: [{ text: prompt }] }],
             generationConfig: {
                 temperature: 0.8,
                 maxOutputTokens: 6000,
@@ -200,11 +194,7 @@ async function generateWithGemini(prompt) {
     }
 
     const outputText = getGeminiText(data);
-
-    if (!outputText) {
-        throw new Error('Gemini chưa trả về nội dung bài viết.');
-    }
-
+    if (!outputText) throw new Error('Gemini chưa trả về nội dung bài viết.');
     return safeJsonParse(outputText);
 }
 
@@ -224,14 +214,8 @@ async function generateWithOpenAI(prompt) {
         body: JSON.stringify({
             model,
             input: [
-                {
-                    role: 'system',
-                    content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm giải thích ngoài JSON.'
-                },
-                {
-                    role: 'user',
-                    content: prompt
-                }
+                { role: 'system', content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm giải thích ngoài JSON.' },
+                { role: 'user', content: prompt }
             ],
             temperature: 0.8,
             max_output_tokens: 6000,
@@ -248,9 +232,10 @@ async function generateWithOpenAI(prompt) {
                             slug: { type: 'string' },
                             metaDesc: { type: 'string' },
                             content: { type: 'string' },
-                            coverUrl: { type: 'string' }
+                            coverUrl: { type: 'string' },
+                            hashtags: { type: 'array', items: { type: 'string' } }
                         },
-                        required: ['title', 'slug', 'metaDesc', 'content', 'coverUrl']
+                        required: ['title', 'slug', 'metaDesc', 'content', 'coverUrl', 'hashtags']
                     }
                 }
             }
@@ -272,10 +257,7 @@ async function generateWithOpenAI(prompt) {
             .join('')
             .trim();
 
-    if (!outputText) {
-        throw new Error('OpenAI chưa trả về nội dung bài viết.');
-    }
-
+    if (!outputText) throw new Error('OpenAI chưa trả về nội dung bài viết.');
     return safeJsonParse(outputText);
 }
 
@@ -289,51 +271,24 @@ export async function POST(request) {
 
         const brandName = body.brandName || body.brand || 'Merci Studio';
         const serviceArea = body.serviceArea || 'Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội';
-
         const services = Array.isArray(body.services)
             ? body.services.join(', ')
-            : body.services ||
-              'chụp ảnh cưới, chụp ảnh kỷ yếu, chụp ảnh couple, chụp ảnh baby/family, photobooth tiệc cưới và sự kiện, makeup, váy cưới';
-
-        const tone =
-            body.tone ||
-            'sinh động, chuyên nghiệp như marketer, chuẩn SEO, dễ đọc, có cảm xúc, có emoji vừa phải, có CTA inbox/đặt lịch';
+            : body.services || 'chụp ảnh cưới, chụp ảnh kỷ yếu, chụp ảnh couple, chụp ảnh baby/family, photobooth tiệc cưới và sự kiện, makeup, váy cưới';
+        const tone = body.tone || 'sinh động, chuyên nghiệp như marketer, chuẩn SEO, dễ đọc, có cảm xúc, có emoji vừa phải, có CTA inbox/đặt lịch';
 
         if (!topic) {
-            return Response.json(
-                { error: 'Vui lòng nhập chủ đề bài viết.' },
-                { status: 400 }
-            );
+            return Response.json({ error: 'Vui lòng nhập chủ đề bài viết.' }, { status: 400 });
         }
 
-        const prompt = buildPrompt({
-            topic,
-            mainKeyword,
-            brandName,
-            serviceArea,
-            services,
-            tone
-        });
-
-        const parsed =
-            provider === 'openai' || provider === 'chatgpt'
-                ? await generateWithOpenAI(prompt)
-                : await generateWithGemini(prompt);
+        const prompt = buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, tone });
+        const parsed = provider === 'openai' || provider === 'chatgpt'
+            ? await generateWithOpenAI(prompt)
+            : await generateWithGemini(prompt);
 
         const article = normalizeArticle(parsed, topic);
-
-        return Response.json({
-            provider,
-            ...article
-        });
+        return Response.json({ provider, ...article });
     } catch (error) {
         console.error('Generate blog route error:', error);
-
-        return Response.json(
-            {
-                error: error.message || 'Không tạo được bài viết.'
-            },
-            { status: 500 }
-        );
+        return Response.json({ error: error.message || 'Không tạo được bài viết.' }, { status: 500 });
     }
 }
