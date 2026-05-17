@@ -59,19 +59,8 @@ function buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, ton
         '',
         'YÊU CẦU OUTPUT:',
         '- Chỉ trả về JSON hợp lệ.',
-        '- Không markdown code fence.',
+        '- Không markdown code fence ngoài content.',
         '- Không giải thích ngoài JSON.',
-        '- Không viết text ngoài JSON.',
-        '',
-        'JSON phải đúng cấu trúc sau:',
-        '{',
-        '  "title": "Tiêu đề SEO",',
-        '  "slug": "slug-khong-dau",',
-        '  "metaDesc": "Mô tả SEO",',
-        '  "content": "Nội dung Markdown đầy đủ",',
-        '  "coverUrl": "",',
-        '  "hashtags": ["hashtag 1", "hashtag 2"]',
-        '}',
         '',
         'YÊU CẦU SEO:',
         '- title dài khoảng 50-65 ký tự, có từ khóa chính, không dùng emoji.',
@@ -86,7 +75,6 @@ function buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, ton
         '- Viết sinh động, có cảm xúc, không giống văn AI.',
         '- Mở bài phải chạm insight khách hàng.',
         '- Có ví dụ thực tế, tình huống khách hàng thường gặp.',
-        '- Có lợi ích rõ ràng cho người đọc.',
         '- Có CTA mềm ở giữa bài nếu phù hợp.',
         '- Có CTA mạnh hơn ở cuối bài.',
         '- Văn phong thân thiện, tư vấn, gần gũi nhưng chuyên nghiệp.',
@@ -111,7 +99,6 @@ function buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, ton
         '- Bắt buộc chèn 2-4 vị trí ảnh minh họa trong content.',
         '- Dùng đúng cú pháp Markdown:',
         '![Mô tả ảnh phù hợp với đoạn nội dung](LINK_ANH_CAN_THAY)',
-        '- Không tự bịa link ảnh thật.',
         '- Đặt ảnh sau các mục H2 quan trọng.',
         '- Alt ảnh phải tự nhiên, có liên quan nội dung và có thể chứa từ khóa.',
         '',
@@ -132,11 +119,8 @@ function buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, ton
         '',
         'YÊU CẦU COVER:',
         '- coverUrl để chuỗi rỗng "".',
-        '- Không tự tạo link ảnh.',
         '',
-        `CTA cuối bài: mời khách inbox/đặt lịch với ${brandName}, nhắc khu vực ${serviceArea}, dùng emoji vừa phải.`,
-        '',
-        'Hãy viết bài hoàn chỉnh theo đúng yêu cầu trên.'
+        `CTA cuối bài: mời khách inbox/đặt lịch với ${brandName}, nhắc khu vực ${serviceArea}, dùng emoji vừa phải.`
     ].join('\n');
 }
 
@@ -163,101 +147,81 @@ function getGeminiText(data) {
         .trim();
 }
 
-async function generateWithGemini(prompt) {
-    if (!process.env.GEMINI_API_KEY) {
-        throw new Error('Thiếu GEMINI_API_KEY trong .env.local hoặc Vercel Environment Variables.');
+// Global state for key rotation
+let currentKeyIndex = 0;
+
+function getGeminiKeys() {
+    return [
+        process.env.GEMINI_API_KEY_1 || process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_2,
+        process.env.GEMINI_API_KEY_3,
+    ].filter(k => k && k !== 'your_second_gemini_key_here' && k !== 'your_third_gemini_key_here');
+}
+
+async function fetchWithGeminiRotation(prompt, generationConfig) {
+    const keys = getGeminiKeys();
+    if (keys.length === 0) {
+        throw new Error('Thiếu GEMINI_API_KEY trong biến môi trường.');
     }
 
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-    const url =
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent` +
-        `?key=${encodeURIComponent(process.env.GEMINI_API_KEY)}`;
+    let lastError = null;
 
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents: [{ role: 'user', parts: [{ text: prompt }] }],
-            generationConfig: {
-                temperature: 0.8,
-                maxOutputTokens: 6000,
-                responseMimeType: 'application/json'
+    for (let i = 0; i < keys.length; i++) {
+        const keyToUse = keys[currentKeyIndex];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(keyToUse)}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.warn(`[Blog] Gemini key ${currentKeyIndex + 1} lỗi ${response.status}:`, data?.error?.message);
+                currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+                lastError = new Error(data?.error?.message || `Lỗi ${response.status}`);
+                continue; // Try next key
             }
-        })
-    });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('Gemini API error:', data);
-        throw new Error(data?.error?.message || 'Gemini API lỗi, vui lòng thử lại.');
+            return data;
+        } catch (error) {
+            console.error(`[Blog] Lỗi fetch Gemini với key ${currentKeyIndex + 1}:`, error.message);
+            currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+            lastError = error;
+        }
     }
+
+    throw new Error(lastError?.message || 'Tất cả Gemini API keys đều bị lỗi hoặc quá giới hạn (Rate Limit).');
+}
+
+async function generateWithGemini(prompt) {
+    const data = await fetchWithGeminiRotation(prompt, {
+        temperature: 0.8,
+        maxOutputTokens: 8192,
+        responseMimeType: 'application/json',
+        responseSchema: {
+            type: "OBJECT",
+            properties: {
+                title: { type: "STRING" },
+                slug: { type: "STRING" },
+                metaDesc: { type: "STRING" },
+                content: { type: "STRING" },
+                coverUrl: { type: "STRING" },
+                hashtags: { type: "ARRAY", items: { type: "STRING" } }
+            },
+            required: ["title", "slug", "metaDesc", "content", "coverUrl", "hashtags"]
+        }
+    });
 
     const outputText = getGeminiText(data);
     if (!outputText) throw new Error('Gemini chưa trả về nội dung bài viết.');
-    return safeJsonParse(outputText);
-}
-
-async function generateWithOpenAI(prompt) {
-    if (!process.env.OPENAI_API_KEY) {
-        throw new Error('Thiếu OPENAI_API_KEY trong .env.local hoặc Vercel Environment Variables.');
-    }
-
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${process.env.OPENAI_API_KEY}`
-        },
-        body: JSON.stringify({
-            model,
-            input: [
-                { role: 'system', content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm giải thích ngoài JSON.' },
-                { role: 'user', content: prompt }
-            ],
-            temperature: 0.8,
-            max_output_tokens: 6000,
-            text: {
-                format: {
-                    type: 'json_schema',
-                    name: 'seo_blog_article',
-                    strict: true,
-                    schema: {
-                        type: 'object',
-                        additionalProperties: false,
-                        properties: {
-                            title: { type: 'string' },
-                            slug: { type: 'string' },
-                            metaDesc: { type: 'string' },
-                            content: { type: 'string' },
-                            coverUrl: { type: 'string' },
-                            hashtags: { type: 'array', items: { type: 'string' } }
-                        },
-                        required: ['title', 'slug', 'metaDesc', 'content', 'coverUrl', 'hashtags']
-                    }
-                }
-            }
-        })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('OpenAI API error:', data);
-        throw new Error(data?.error?.message || 'OpenAI API lỗi, vui lòng thử lại.');
-    }
-
-    const outputText =
-        data?.output_text ||
-        (data?.output || [])
-            .flatMap(item => item?.content || [])
-            .map(part => part?.text || '')
-            .join('')
-            .trim();
-
-    if (!outputText) throw new Error('OpenAI chưa trả về nội dung bài viết.');
     return safeJsonParse(outputText);
 }
 
@@ -265,7 +229,7 @@ export async function POST(request) {
     try {
         const body = await request.json();
 
-        const provider = String(body.provider || 'gemini').toLowerCase();
+        const provider = 'gemini'; // Force Gemini
         const topic = String(body.topic || '').trim();
         const mainKeyword = String(body.mainKeyword || body.keyword || '').trim();
 
@@ -281,9 +245,7 @@ export async function POST(request) {
         }
 
         const prompt = buildPrompt({ topic, mainKeyword, brandName, serviceArea, services, tone });
-        const parsed = provider === 'openai' || provider === 'chatgpt'
-            ? await generateWithOpenAI(prompt)
-            : await generateWithGemini(prompt);
+        const parsed = await generateWithGemini(prompt);
 
         const article = normalizeArticle(parsed, topic);
         return Response.json({ provider, ...article });

@@ -175,6 +175,7 @@ export default function Home() {
     const [isGeneratingTopicIdeas, setIsGeneratingTopicIdeas] = useState(false);
     const [blogDriveFolderLink, setBlogDriveFolderLink] = useState('');
     const [blogDriveImages, setBlogDriveImages] = useState([]);
+    const [blogDriveSubfolders, setBlogDriveSubfolders] = useState([]);
     const [isLoadingBlogDriveImages, setIsLoadingBlogDriveImages] = useState(false);
 
 
@@ -671,25 +672,106 @@ export default function Home() {
 
     const getAiProviderLabel = () => aiProvider === 'openai' ? 'ChatGPT' : 'Gemini';
 
+    const getDriveChildFolders = async (parentFolderId) => {
+        if (!GOOGLE_API_KEY || !parentFolderId) return [];
+
+        const childFolders = [];
+        let pageToken = '';
+
+        do {
+            const q = `'${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
+            const url =
+                `https://www.googleapis.com/drive/v3/files` +
+                `?q=${encodeURIComponent(q)}` +
+                `&key=${GOOGLE_API_KEY}` +
+                `&fields=nextPageToken,files(id,name,mimeType)` +
+                `&pageSize=100` +
+                `&orderBy=name` +
+                (pageToken ? `&pageToken=${pageToken}` : '');
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.error) {
+                console.error('Google Drive child folder error:', data.error);
+                throw new Error(data.error.message || 'Không lấy được folder con Google Drive');
+            }
+
+            childFolders.push(...(data.files || []));
+            pageToken = data.nextPageToken || '';
+        } while (pageToken);
+
+        return childFolders;
+    };
+
     const handleLoadBlogDriveImages = async () => {
         const folderId = extractDriveFolderId(blogDriveFolderLink);
-        if (!folderId) return alert('Vui lòng dán link folder Google Drive chứa kho ảnh blog.');
+        if (!folderId) return alert('Vui lòng dán link folder Google Drive cha hoặc folder kho ảnh blog.');
         if (!GOOGLE_API_KEY) return alert('Thiếu NEXT_PUBLIC_GOOGLE_API_KEY để đọc ảnh Google Drive.');
 
         setIsLoadingBlogDriveImages(true);
         setIsLoading(true);
-        setLoadingMessage('Đang lấy ảnh trong kho Google Drive cho blog...');
+        setLoadingMessage('Đang lấy kho ảnh Google Drive cho blog...');
 
         try {
-            const files = await getAllDriveImages(folderId);
-            const images = files.map(normalizeDriveImage);
-            setBlogDriveImages(images);
+            const childFolders = await getDriveChildFolders(folderId);
+            const readySubfolders = [];
+            const allImages = [];
 
-            if (images.length === 0) {
-                alert('Folder Drive này chưa có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết đều có thể xem.');
-            } else {
-                alert(`Đã lấy ${images.length} ảnh trong kho Google Drive. AI sẽ tự lấy ảnh bìa từ kho này khi viết bài.`);
+            if (childFolders.length > 0) {
+                for (let index = 0; index < childFolders.length; index += 1) {
+                    const folder = childFolders[index];
+                    setLoadingMessage(`Đang lấy ảnh folder con ${index + 1}/${childFolders.length}: ${folder.name || 'Folder con'}`);
+
+                    try {
+                        const files = await getAllDriveImages(folder.id);
+                        const images = files.map(file => ({
+                            ...normalizeDriveImage(file),
+                            sourceFolderId: folder.id,
+                            sourceFolderName: folder.name || `Folder con ${index + 1}`
+                        }));
+
+                        if (images.length > 0) {
+                            readySubfolders.push({
+                                id: folder.id,
+                                name: folder.name || `Folder con ${index + 1}`,
+                                images
+                            });
+                            allImages.push(...images);
+                        }
+                    } catch (error) {
+                        console.warn('Không lấy được ảnh folder con:', folder, error);
+                    }
+                }
             }
+
+            // Nếu folder cha không có folder con hoặc folder con không có ảnh,
+            // dùng chính folder đã dán như một kho ảnh phẳng.
+            if (allImages.length === 0) {
+                setLoadingMessage('Đang lấy ảnh trực tiếp trong folder đã dán...');
+                const files = await getAllDriveImages(folderId);
+                const parentInfo = await getDriveFolderInfo(folderId);
+                const images = files.map(file => ({
+                    ...normalizeDriveImage(file),
+                    sourceFolderId: folderId,
+                    sourceFolderName: parentInfo?.name || 'Kho ảnh blog'
+                }));
+
+                setBlogDriveImages(images);
+                setBlogDriveSubfolders([]);
+
+                if (images.length === 0) {
+                    alert('Folder Drive này chưa có ảnh hoặc chưa bật quyền chia sẻ: Bất kỳ ai có liên kết đều có thể xem.');
+                } else {
+                    alert(`Đã lấy ${images.length} ảnh trong kho. Bài hàng loạt sẽ tự xoay ảnh trong kho này.`);
+                }
+                return;
+            }
+
+            setBlogDriveImages(allImages);
+            setBlogDriveSubfolders(readySubfolders);
+
+            alert(`Đã lấy ${allImages.length} ảnh từ ${readySubfolders.length} folder con. Khi viết hàng loạt, mỗi bài sẽ tự lấy ảnh trong 1 folder con riêng.`);
         } catch (error) {
             console.error('Load blog Drive images error:', error);
             alert('Không lấy được ảnh từ kho Drive: ' + error.message);
@@ -699,11 +781,36 @@ export default function Home() {
         }
     };
 
-    const pickBlogDriveImage = (index = 0) => {
-        if (!blogDriveImages.length) return '';
-        const safeIndex = Math.abs(index) % blogDriveImages.length;
-        const img = blogDriveImages[safeIndex];
+    const getBlogDriveImagesForArticle = (articleIndex = null) => {
+        const foldersWithImages = (blogDriveSubfolders || []).filter(folder => Array.isArray(folder.images) && folder.images.length > 0);
+
+        if (foldersWithImages.length > 0 && articleIndex !== null && articleIndex !== undefined) {
+            const folderIndex = Math.abs(Number(articleIndex) || 0) % foldersWithImages.length;
+            return foldersWithImages[folderIndex].images;
+        }
+
+        return blogDriveImages || [];
+    };
+
+    const getBlogDriveFolderNameForArticle = (articleIndex = 0) => {
+        const foldersWithImages = (blogDriveSubfolders || []).filter(folder => Array.isArray(folder.images) && folder.images.length > 0);
+        if (!foldersWithImages.length) return '';
+        const folderIndex = Math.abs(Number(articleIndex) || 0) % foldersWithImages.length;
+        return foldersWithImages[folderIndex]?.name || '';
+    };
+
+    const getBlogDriveImageUrl = (index = 0, articleIndex = null) => {
+        const imagePool = getBlogDriveImagesForArticle(articleIndex);
+        if (!imagePool.length) return '';
+
+        const safeIndex = Math.abs(Number(index) || 0) % imagePool.length;
+        const img = imagePool[safeIndex];
+
         return img?.originalUrl || img?.url || img?.thumbnailUrl || '';
+    };
+
+    const pickBlogDriveImage = (index = 0, articleIndex = null) => {
+        return getBlogDriveImageUrl(index, articleIndex);
     };
 
     const handleUseBlogDriveImage = (img) => {
@@ -748,13 +855,13 @@ export default function Home() {
                 throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
             }
 
-            const coverFromDrive = getBlogDriveImageUrl(Date.now());
+            const coverFromDrive = getBlogDriveImageUrl(0, 0);
 
             const generatedBlog = {
                 title: result.title,
                 slug: createSlug(result.slug || result.title),
                 metaDesc: result.metaDesc || '',
-                content: injectDriveImagesIntoBlogContent(result.content || '', result.title, Date.now() + 1),
+                content: injectDriveImagesIntoBlogContent(result.content || '', result.title, 1, 0),
                 coverUrl: result.coverUrl || coverFromDrive || newBlog.coverUrl || DEFAULT_COVER,
                 hashtags: normalizeBlogHashtags(result.hashtags || [aiBlogKeyword || aiBlogPrompt, 'Merci Studio', 'Bắc Ninh'])
             };
@@ -864,20 +971,13 @@ export default function Home() {
             .trim();
     };
 
-    const getBlogDriveImageUrl = (index = 0) => {
-        if (!blogDriveImages.length) return '';
-
-        const safeIndex = Math.abs(Number(index) || 0) % blogDriveImages.length;
-        const img = blogDriveImages[safeIndex];
-
-        return img?.originalUrl || img?.url || img?.thumbnailUrl || '';
-    };
-
-    const injectDriveImagesIntoBlogContent = (content = '', title = 'Merci Studio', startIndex = 0) => {
+    const injectDriveImagesIntoBlogContent = (content = '', title = 'Merci Studio', startIndex = 0, articleIndex = null) => {
         let cleanContent = cleanAiContent(content);
 
+        const imagePool = getBlogDriveImagesForArticle(articleIndex);
+
         // Nếu chưa nạp kho ảnh Drive, xóa các placeholder ảnh để bài không hiện link lỗi.
-        if (!blogDriveImages.length) {
+        if (!imagePool.length) {
             return cleanContent
                 .replace(/^!\[(.*?)\]\(LINK_ANH_CAN_THAY\)\s*$/gim, '')
                 .replace(/^!\[(.*?)\]\(link_anh_can_thay\)\s*$/gim, '')
@@ -893,7 +993,7 @@ export default function Home() {
         cleanContent = cleanContent.replace(
             /^!\[(.*?)\]\((LINK_ANH_CAN_THAY|link_anh_can_thay|IMAGE_URL|image_url|)\)\s*$/gim,
             (_, alt) => {
-                const imageUrl = getBlogDriveImageUrl(imageCursor++);
+                const imageUrl = getBlogDriveImageUrl(imageCursor++, articleIndex);
                 if (!imageUrl) return '';
                 return `![${alt || title}](${imageUrl})`;
             }
@@ -910,7 +1010,7 @@ export default function Home() {
         let insertedCount = 0;
 
         const maxImages = Math.min(
-            blogDriveImages.length,
+            imagePool.length,
             lines.length > 90 ? 4 : 3
         );
 
@@ -923,7 +1023,7 @@ export default function Home() {
 
                 // Chèn ảnh sau H2 số 1, 3, 5... để trải đều bài.
                 if (insertedCount < maxImages && h2Count % 2 === 1) {
-                    const imageUrl = getBlogDriveImageUrl(imageCursor++);
+                    const imageUrl = getBlogDriveImageUrl(imageCursor++, articleIndex);
                     if (imageUrl) {
                         const alt = `${title} - hình ảnh minh họa ${insertedCount + 1}`;
                         nextLines.push('');
@@ -937,7 +1037,7 @@ export default function Home() {
 
         // Nếu bài ít H2, chèn ít nhất 1 ảnh sau đoạn mở bài.
         if (insertedCount === 0) {
-            const imageUrl = getBlogDriveImageUrl(imageCursor++);
+            const imageUrl = getBlogDriveImageUrl(imageCursor++, articleIndex);
             if (imageUrl) {
                 const firstBlankIndex = nextLines.findIndex((line, index) => index > 0 && !line.trim());
                 const insertAt = firstBlankIndex > 0 ? firstBlankIndex + 1 : Math.min(3, nextLines.length);
@@ -989,19 +1089,21 @@ export default function Home() {
             throw new Error(`${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
         }
 
-        const coverFromDrive = getBlogDriveImageUrl(imageIndex);
+        const coverFromDrive = getBlogDriveImageUrl(0, imageIndex);
         const coverUrl = result.coverUrl || coverFromDrive || DEFAULT_COVER;
+        const sourceImageFolderName = getBlogDriveFolderNameForArticle(imageIndex);
 
         return {
             title: result.title,
             slug: createSlug(result.slug || result.title),
             metaDesc: result.metaDesc || '',
-            content: injectDriveImagesIntoBlogContent(result.content || '', result.title, imageIndex + 1),
+            content: injectDriveImagesIntoBlogContent(result.content || '', result.title, 1, imageIndex),
             coverUrl,
             hashtags: normalizeBlogHashtags(result.hashtags || [mainKeyword || topic, 'Merci Studio', 'Bắc Ninh']),
             aiProvider,
             sourceTopic: topic,
-            sourceKeyword: mainKeyword || topic
+            sourceKeyword: mainKeyword || topic,
+            sourceImageFolderName
         };
     };
 
@@ -2457,14 +2559,14 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-sm font-black text-slate-900">Kho ảnh Google Drive cho AI Blog</p>
-                                                <p className="text-xs text-slate-500">Dán link folder Drive chứa ảnh đẹp. Khi AI viết bài, hệ thống sẽ tự lấy ảnh trong kho này làm ảnh bìa. Bài hàng loạt sẽ tự xoay ảnh theo từng bài.</p>
+                                                <p className="text-xs text-slate-500">Dán link folder Drive cha có nhiều folder con. Khi viết/đăng hàng loạt, mỗi bài sẽ tự lấy ảnh trong một folder con riêng. Nếu folder không có folder con, hệ thống sẽ dùng ảnh trực tiếp trong folder đó.</p>
                                             </div>
                                         </div>
 
                                         <div className="grid md:grid-cols-[1fr_auto] gap-2">
                                             <input
                                                 type="text"
-                                                placeholder="Dán link folder Google Drive chứa kho ảnh blog"
+                                                placeholder="Dán link folder Google Drive cha chứa nhiều folder con ảnh"
                                                 className="w-full border-2 border-blue-100 bg-white p-3 rounded-xl outline-none focus:border-blue-500 transition-colors"
                                                 value={blogDriveFolderLink}
                                                 onChange={e => setBlogDriveFolderLink(e.target.value)}
@@ -2482,7 +2584,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         {blogDriveImages.length > 0 && (
                                             <div className="space-y-2">
                                                 <div className="flex items-center justify-between gap-2">
-                                                    <p className="text-xs font-bold text-emerald-700">Đã sẵn sàng {blogDriveImages.length} ảnh trong kho</p>
+                                                    <p className="text-xs font-bold text-emerald-700">Đã sẵn sàng {blogDriveImages.length} ảnh{blogDriveSubfolders.length > 0 ? ` / ${blogDriveSubfolders.length} folder con` : ''}</p>
                                                     <button
                                                         type="button"
                                                         onClick={() => setNewBlog(prev => ({ ...prev, coverUrl: pickBlogDriveImage(Date.now()) }))}
@@ -2491,6 +2593,15 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                         Lấy ngẫu nhiên làm ảnh bìa
                                                     </button>
                                                 </div>
+                                                {blogDriveSubfolders.length > 0 && (
+                                                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                        {blogDriveSubfolders.slice(0, 10).map((folder, index) => (
+                                                            <span key={folder.id || index} className="shrink-0 text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+                                                                {folder.name} · {folder.images?.length || 0} ảnh
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
                                                 <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                     {blogDriveImages.slice(0, 12).map((img, index) => (
                                                         <button

@@ -1,15 +1,21 @@
 export const runtime = 'nodejs';
 
-function extractJson(text = '') {
-    const clean = text.replace(/```json/g, '').replace(/```/g, '').trim();
-    const first = clean.indexOf('{');
-    const last = clean.lastIndexOf('}');
+function safeJsonParse(text = '') {
+    const raw = String(text || '').trim();
+    try { return JSON.parse(raw); } catch (_) {}
 
-    if (first === -1 || last === -1) {
-        throw new Error('AI không trả về JSON hợp lệ.');
-    }
+    const cleaned = raw
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```$/i, '')
+        .trim();
 
-    return JSON.parse(clean.slice(first, last + 1));
+    try { return JSON.parse(cleaned); } catch (_) {}
+
+    const match = cleaned.match(/\{[\s\S]*\}/);
+    if (match) return JSON.parse(match[0]);
+
+    throw new Error('AI không trả về JSON hợp lệ.');
 }
 
 function clampCount(value) {
@@ -36,101 +42,97 @@ Yêu cầu:
 - Không tạo chủ đề quá chung chung.
 
 Chỉ trả về JSON hợp lệ, không thêm giải thích ngoài JSON.
-
-Cấu trúc JSON:
-{
-  "items": [
-    {
-      "topic": "Chủ đề bài viết",
-      "mainKeyword": "từ khóa chính"
-    }
-  ]
-}
 `;
 }
 
-async function generateTopicsWithGemini({ prompt }) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+// Global state for key rotation
+let currentKeyIndex = 0;
 
-    if (!apiKey) throw new Error('Thiếu GEMINI_API_KEY trong biến môi trường.');
-
-    const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-goog-api-key': apiKey
-            },
-            body: JSON.stringify({
-                contents: [{ role: 'user', parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.8,
-                    maxOutputTokens: 3000,
-                    responseMimeType: 'application/json'
-                }
-            })
-        }
-    );
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('Gemini topic API error:', data);
-        throw new Error(data?.error?.message || 'Gemini API lỗi.');
-    }
-
-    const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('\n').trim() || '';
-    if (!text) throw new Error('Gemini không trả về danh sách chủ đề.');
-
-    return extractJson(text);
+function getGeminiKeys() {
+    return [
+        process.env.GEMINI_API_KEY_1 || process.env.GEMINI_API_KEY,
+        process.env.GEMINI_API_KEY_2,
+        process.env.GEMINI_API_KEY_3,
+    ].filter(k => k && k !== 'your_second_gemini_key_here' && k !== 'your_third_gemini_key_here');
 }
 
-async function generateTopicsWithOpenAI({ prompt }) {
-    const apiKey = process.env.OPENAI_API_KEY;
-    const model = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
-
-    if (!apiKey) throw new Error('Thiếu OPENAI_API_KEY trong biến môi trường.');
-
-    const response = await fetch('https://api.openai.com/v1/responses', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${apiKey}`
-        },
-        body: JSON.stringify({
-            model,
-            input: [
-                {
-                    role: 'system',
-                    content: 'Bạn là chuyên gia SEO content tiếng Việt. Luôn trả về JSON hợp lệ, không thêm markdown ngoài JSON.'
-                },
-                { role: 'user', content: prompt }
-            ],
-            temperature: 0.8,
-            max_output_tokens: 3000,
-            text: { format: { type: 'json_object' } }
-        })
-    });
-
-    const data = await response.json();
-
-    if (!response.ok) {
-        console.error('OpenAI topic API error:', data);
-        throw new Error(data?.error?.message || 'OpenAI API lỗi.');
+async function fetchWithGeminiRotation(prompt, generationConfig) {
+    const keys = getGeminiKeys();
+    if (keys.length === 0) {
+        throw new Error('Thiếu GEMINI_API_KEY trong biến môi trường.');
     }
 
-    const text = data?.output_text || data?.output?.[0]?.content?.[0]?.text || '';
-    if (!text) throw new Error('OpenAI không trả về danh sách chủ đề.');
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    let lastError = null;
 
-    return extractJson(text);
+    for (let i = 0; i < keys.length; i++) {
+        const keyToUse = keys[currentKeyIndex];
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(keyToUse)}`;
+        
+        try {
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+                    generationConfig
+                })
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                console.warn(`[Topics] Gemini key ${currentKeyIndex + 1} lỗi ${response.status}:`, data?.error?.message);
+                currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+                lastError = new Error(data?.error?.message || `Lỗi ${response.status}`);
+                continue; // Try next key
+            }
+
+            return data;
+        } catch (error) {
+            console.error(`[Topics] Lỗi fetch Gemini với key ${currentKeyIndex + 1}:`, error.message);
+            currentKeyIndex = (currentKeyIndex + 1) % keys.length;
+            lastError = error;
+        }
+    }
+
+    throw new Error(lastError?.message || 'Tất cả Gemini API keys đều bị lỗi hoặc quá giới hạn (Rate Limit).');
+}
+
+async function generateTopicsWithGemini({ prompt }) {
+    const data = await fetchWithGeminiRotation(prompt, {
+        temperature: 0.8,
+        maxOutputTokens: 3000,
+        responseMimeType: 'application/json',
+        responseSchema: {
+            type: "OBJECT",
+            properties: {
+                items: {
+                    type: "ARRAY",
+                    items: {
+                        type: "OBJECT",
+                        properties: {
+                            topic: { type: "STRING" },
+                            mainKeyword: { type: "STRING" }
+                        },
+                        required: ["topic", "mainKeyword"]
+                    }
+                }
+            },
+            required: ["items"]
+        }
+    });
+
+    const text = data?.candidates?.[0]?.content?.parts?.map(part => part.text || '').join('\\n').trim() || '';
+    if (!text) throw new Error('Gemini không trả về danh sách chủ đề.');
+
+    return safeJsonParse(text);
 }
 
 export async function POST(request) {
     try {
         const body = await request.json();
-        const provider = (body.provider || 'gemini').toLowerCase();
+        const provider = 'gemini'; // Force Gemini
         const keyword = (body.keyword || '').trim();
         const count = clampCount(body.count);
 
@@ -146,14 +148,7 @@ export async function POST(request) {
             services: body.services
         });
 
-        let result;
-        if (provider === 'openai' || provider === 'chatgpt') {
-            result = await generateTopicsWithOpenAI({ prompt });
-        } else if (provider === 'gemini') {
-            result = await generateTopicsWithGemini({ prompt });
-        } else {
-            return Response.json({ error: 'Provider không hợp lệ. Chỉ dùng: gemini hoặc openai.' }, { status: 400 });
-        }
+        const result = await generateTopicsWithGemini({ prompt });
 
         const items = Array.isArray(result?.items) ? result.items : [];
         const cleanedItems = items
