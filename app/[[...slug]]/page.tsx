@@ -2263,7 +2263,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                         ))}
                                     </div>
 
-                                    {activeCategory !== 'Tất cả' && (
+                                    {isAdmin && activeCategory !== 'Tất cả' && (
                                         <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
                                             <div>
                                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Link gửi khách theo hashtag</p>
