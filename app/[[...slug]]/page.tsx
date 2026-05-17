@@ -2,6 +2,8 @@
 /* eslint-disable */
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
+import Script from 'next/script';
+import dynamic from 'next/dynamic';
 import { 
     Camera, Wand2, Copy, ArrowRight, Heart, 
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
@@ -32,6 +34,10 @@ if (typeof window !== 'undefined') {
     auth = getAuth(app);
     db = getFirestore(app);
 }
+
+
+const ImageLightbox = dynamic(() => import('@/components/ImageLightbox'), { ssr: false });
+const VideoLightbox = dynamic(() => import('@/components/VideoLightbox'), { ssr: false });
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
@@ -208,12 +214,7 @@ export default function Home() {
     // === EFFECTS ===
     useEffect(() => { 
         setMounted(true); 
-        if (!document.getElementById('jszip-script')) {
-            const script = document.createElement('script');
-            script.id = 'jszip-script';
-            script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
-            document.head.appendChild(script);
-        }
+        
     }, []);
 
     useEffect(() => {
@@ -283,9 +284,9 @@ export default function Home() {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, [mounted]);
 
+    // Albums - Cần load ngay vì xuất hiện ở Home và cần cho pendingSlug
     useEffect(() => {
         if (!mounted || !db) return;
-        
         const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
                 const data = d.data();
@@ -294,6 +295,13 @@ export default function Home() {
             fetched.sort((a, b) => b.order - a.order);
             setAlbums(fetched);
         });
+        return () => unsubAlbums();
+    }, [mounted]);
+
+    // Videos - Chỉ load khi vào tab Video hoặc là Admin
+    useEffect(() => {
+        if (!mounted || !db) return;
+        if (activeTab !== 'video' && !isAdmin) return;
 
         const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
@@ -303,15 +311,21 @@ export default function Home() {
             fetched.sort((a, b) => b.order - a.order);
             setVideos(fetched);
         });
+        return () => unsubVideos();
+    }, [mounted, activeTab, isAdmin]);
+
+    // Blogs - Load khi vào tab Blog, có pendingSlug hoặc là Admin
+    useEffect(() => {
+        if (!mounted || !db) return;
+        if (activeTab !== 'blog' && !pendingSlug && !isAdmin) return;
 
         const unsubBlogs = onSnapshot(collection(db, 'merci_blogs'), (snapshot) => {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            fetched.sort((a, b) => b.createdAt - a.createdAt); // Sắp xếp bài mới nhất lên đầu
+            fetched.sort((a, b) => b.createdAt - a.createdAt);
             setBlogs(fetched);
         });
-
-        return () => { unsubAlbums(); unsubVideos(); unsubBlogs(); };
-    }, [mounted]);
+        return () => unsubBlogs();
+    }, [mounted, activeTab, pendingSlug, isAdmin]);
 
     // Hiển thị Album hoặc Blog dựa trên Link URL đẹp
     useEffect(() => {
@@ -2430,6 +2444,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
 
     return (
         <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font">
+            <Script strategy="lazyOnload" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" />
             <style dangerouslySetInnerHTML={{__html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -2766,7 +2781,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                             className="relative shrink-0 w-20 h-14 rounded-xl overflow-hidden border-2 border-transparent hover:border-blue-500 bg-slate-100"
                                                             title={img.name || 'Ảnh kho Drive'}
                                                         >
-                                                            <img
+                                                            <img loading="lazy" decoding="async"
                                                                 src={img.thumbnailUrl || img.url}
                                                                 alt={img.name || 'Ảnh kho Drive'}
                                                                 className="w-full h-full object-cover"
@@ -2973,7 +2988,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.coverUrl} onChange={e => setNewBlog({...newBlog, coverUrl: e.target.value})} />
                                 {(newBlog.coverUrl || editingBlog?.coverUrl) && (
                                     <div className="mt-3 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 aspect-[16/7]">
-                                        <img src={newBlog.coverUrl || DEFAULT_COVER} alt="Xem trước ảnh bìa" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = DEFAULT_COVER; }} />
+                                        <img loading="lazy" decoding="async" src={newBlog.coverUrl || DEFAULT_COVER} alt="Xem trước ảnh bìa" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = DEFAULT_COVER; }} />
                                     </div>
                                 )}
                             </div>
@@ -3112,7 +3127,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                 {/* Avatar */}
                                 <div className="relative w-28 h-28 mx-auto rounded-full overflow-hidden shadow-xl ring-4 ring-white mt-4">
-                                    <img src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar" referrerPolicy="no-referrer"/>
+                                    <img loading="lazy" decoding="async" src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar" referrerPolicy="no-referrer"/>
                                 </div>
                                 
                                 {/* Title & Bio */}
@@ -3238,7 +3253,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                 )}
                             </div>
-                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" referrerPolicy="no-referrer" />
+                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                         </div>
                     )}
 
@@ -3257,7 +3272,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                 {videos.length > 0 ? videos.map(vid => (
                                     <div key={vid.id} onClick={() => setVideoModal({isOpen: true, youtubeId: vid.youtubeId})} className="group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900">
-                                        <img src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
+                                        <img loading="lazy" decoding="async" src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
                                             <PlayCircle className="w-16 h-16 text-white/80 group-hover:text-white transition-all group-hover:scale-110 drop-shadow-lg" />
                                         </div>
@@ -3337,7 +3352,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 window.history.pushState({}, '', `/${slugToUse}`);
                                             }} className="group cursor-pointer bg-white rounded-2xl md:rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
                                                 <div className="aspect-[4/3] md:aspect-[16/10] overflow-hidden relative">
-                                                    <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_PROMO; }} />
+                                                    <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_PROMO; }} />
                                                     {isAdmin && (
                                                         <div className="absolute top-4 right-4 z-20 flex gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             <button onClick={(e) => openEditBlog(blog, e)} className="bg-white/90 p-2 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110">
@@ -3445,7 +3460,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             )}
                                             {currentViewBlog.coverUrl && (
                                                 <div className="w-full aspect-[21/9] rounded-2xl overflow-hidden mb-10 shadow-md">
-                                                    <img src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} referrerPolicy="no-referrer" />
+                                                    <img loading="lazy" decoding="async" src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} referrerPolicy="no-referrer" />
                                                 </div>
                                             )}
                                             
@@ -3461,7 +3476,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         const imageUrl = imageMatch[2];
                                                         return (
                                                             <figure key={idx} className="my-8">
-                                                                <img src={imageUrl} alt={altText} className="w-full rounded-2xl shadow-sm object-cover" loading="lazy" referrerPolicy="no-referrer" />
+                                                                <img src={imageUrl} alt={altText} className="w-full rounded-2xl shadow-sm object-cover" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                                                                 {altText && <figcaption className="text-center text-sm text-slate-400 mt-2">{altText}</figcaption>}
                                                             </figure>
                                                         );
@@ -3856,7 +3871,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 const originalIndex = galleryStartIndex + idx;
                                                 return (
                                                     <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
-                                                        <img 
+                                                        <img loading="lazy" decoding="async" 
                                                             src={img.url || getDriveThumbUrl(img.id, 'w1200')} 
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
                                                             alt={img.name || "Gallery"} 
@@ -3921,71 +3936,20 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
             </main>
 
             {/* LIGHTBOX FOR GALLERY & ALBUMS */}
-            {lightboxData.isOpen && lightboxData.images.length > 0 && (
-                <div 
-                    className="fixed inset-0 z-[200] bg-black/95 md:bg-black/98 backdrop-blur-md md:backdrop-blur-xl flex items-center justify-center p-0 md:p-4 animate-in fade-in duration-300"
-                    onTouchStart={(e) => {
-                        setTouchEnd(null);
-                        setTouchStart(e.targetTouches[0].clientX);
-                    }}
-                    onTouchMove={(e) => setTouchEnd(e.targetTouches[0].clientX)}
-                    onTouchEnd={() => {
-                        if (!touchStart || !touchEnd) return;
-                        const distance = touchStart - touchEnd;
-                        const isLeftSwipe = distance > 50;
-                        const isRightSwipe = distance < -50;
-                        if (isLeftSwipe) nextImg();
-                        if (isRightSwipe) prevImg();
-                    }}
-                >
-                    <div className="absolute top-4 md:top-6 left-4 md:left-6 text-white/50 font-mono text-xs md:text-sm tracking-widest pointer-events-none z-[210]">
-                        {lightboxData.index + 1} / {lightboxData.images.length}
-                    </div>
-
-                    <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-4 md:top-6 right-4 md:right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-6 h-6 md:w-8 md:h-8"/></button>
-                    
-                    <img 
-                        key={lightboxData.index}
-                        src={lightboxData.images[lightboxData.index]?.originalUrl || lightboxData.images[lightboxData.index]?.url || getDriveThumbUrl(lightboxData.images[lightboxData.index]?.id, 'w2400')} 
-                        onError={(e) => {
-                            // Nếu ảnh gốc chất lượng cao (=s0) bị Google Drive chặn, tự động lùi về ảnh xem trước (=w600)
-                            const fallbackSrc = lightboxData.images[lightboxData.index]?.url;
-                            if (e.target.src !== fallbackSrc) {
-                                e.target.src = fallbackSrc;
-                            }
-                        }}
-                        className="w-full h-full md:max-w-full md:max-h-full object-contain md:shadow-2xl animate-in zoom-in-95 duration-300 select-none pointer-events-none" 
-                        alt="Zoomed"
-                        draggable={false}
-                        referrerPolicy="no-referrer"
-                    />
-                    
-                    <button className="absolute left-2 md:left-6 text-white/30 hover:text-white p-3 md:p-4 rounded-full hidden sm:block hover:bg-white/10 transition-all z-[210]" onClick={prevImg}><ArrowLeft className="w-8 h-8 md:w-14 md:h-14" /></button>
-                    <button className="absolute right-2 md:right-6 text-white/30 hover:text-white p-3 md:p-4 rounded-full hidden sm:block hover:bg-white/10 transition-all z-[210]" onClick={nextImg}><ArrowRight className="w-8 h-8 md:w-14 md:h-14" /></button>
-                    
-                    {/* Hướng dẫn vuốt trên Mobile */}
-                    <div className="absolute bottom-6 sm:hidden w-full flex justify-center text-white/30 text-xs tracking-widest pointer-events-none z-[210] items-center gap-2">
-                        <ArrowLeft className="w-3 h-3"/> Vuốt để chuyển ảnh <ArrowRight className="w-3 h-3"/>
-                    </div>
-                </div>
-            )}
+            <ImageLightbox 
+                lightboxData={lightboxData} 
+                setLightboxData={setLightboxData} 
+                touchStart={touchStart} 
+                setTouchStart={setTouchStart} 
+                touchEnd={touchEnd} 
+                setTouchEnd={setTouchEnd} 
+                nextImg={nextImg} 
+                prevImg={prevImg} 
+                getDriveThumbUrl={getDriveThumbUrl} 
+            />
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
-            {videoModal.isOpen && (
-                <div className="fixed inset-0 z-[300] bg-black/95 backdrop-blur-xl flex items-center justify-center p-4 animate-in fade-in duration-300">
-                    <button onClick={() => setVideoModal({isOpen: false, youtubeId: ''})} className="absolute top-6 right-6 text-white/50 hover:text-white transition-all z-[310] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-8 h-8"/></button>
-                    <div className="w-full max-w-5xl aspect-video rounded-2xl md:rounded-[2rem] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 bg-black">
-                        <iframe 
-                            width="100%" 
-                            height="100%" 
-                            src={`https://www.youtube.com/embed/${videoModal.youtubeId}?autoplay=1`} 
-                            frameBorder="0" 
-                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                            allowFullScreen>
-                        </iframe>
-                    </div>
-                </div>
-            )}
+            <VideoLightbox videoModal={videoModal} setVideoModal={setVideoModal} />
             <div className="fixed right-4 bottom-5 z-50 flex flex-col gap-2">
                 <button
                     type="button"
