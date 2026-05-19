@@ -805,52 +805,125 @@ export default function Home() {
     const handleSyncAlbumsFromDrive = async () => {
         const folderId = extractDriveFolderId(syncDriveLink);
         if (!folderId) return alert('Link Google Drive không hợp lệ.');
-        if (!confirm(`Hệ thống sẽ lấy toàn bộ thư mục con bên trong thư mục này và tạo thành Album mới. Những thư mục đã tồn tại sẽ bị bỏ qua. Bạn chắc chắn chứ?`)) return;
+        if (!GOOGLE_API_KEY) return alert('Thiếu Google API Key!');
+
+        const albumCategories = normalizeAlbumCategories(syncCategory || 'Wedding');
+        const categoryList = albumCategories.length ? albumCategories : ['Wedding'];
+
+        if (!confirm(
+            `Hệ thống sẽ quét toàn bộ thư mục con trong Drive gốc, tạo/cập nhật album và tự nạp ảnh luôn vào từng album.\n\n` +
+            `Bạn sẽ không cần vào từng album bấm Reload Drive nữa.\n\nTiếp tục?`
+        )) return;
 
         setIsSyncingAlbums(true);
+        setIsLoading(true);
         setSyncProgress('Đang quét thư mục con...');
+        setLoadingMessage('Đang quét thư mục con Google Drive...');
 
         try {
             const childFolders = await getDriveChildFolders(folderId);
+
             if (!childFolders.length) {
-                alert('Thư mục này không có thư mục con nào hoặc bạn chưa cấp quyền xem bất kỳ ai.');
+                alert('Thư mục này không có thư mục con nào hoặc bạn chưa cấp quyền xem: Bất kỳ ai có liên kết đều có thể xem.');
                 setIsSyncingAlbums(false);
+                setIsLoading(false);
                 setSyncProgress('');
                 return;
             }
 
             let addedCount = 0;
-            for (const folder of childFolders) {
+            let updatedCount = 0;
+            let emptyCount = 0;
+            let errorCount = 0;
+
+            for (let index = 0; index < childFolders.length; index += 1) {
+                const folder = childFolders[index];
                 const folderLink = `https://drive.google.com/drive/folders/${folder.id}`;
 
-                const exists = albums.some(a =>
-                    (a.driveLink && a.driveLink.includes(folder.id)) ||
-                    a.title.trim().toLowerCase() === folder.name.trim().toLowerCase()
-                );
+                setSyncProgress(`Đang đồng bộ ${index + 1}/${childFolders.length}: ${folder.name}...`);
+                setLoadingMessage(`Đang lấy ảnh album ${index + 1}/${childFolders.length}: ${folder.name}...`);
 
-                if (!exists) {
-                    setSyncProgress(`Đang thêm: ${folder.name}...`);
-                    const newId = `album_${Date.now()}_${folder.id}`;
-                    const albumCategories = normalizeAlbumCategories(syncCategory || 'Wedding');
-                    const albumData = {
-                        id: newId,
-                        title: folder.name,
-                        sub: 'Bộ sưu tập',
-                        category: albumCategories[0] || 'Wedding',
-                        categories: albumCategories.length ? albumCategories : ['Wedding'],
-                        driveLink: folderLink,
-                        slug: createSlug(folder.name),
-                        createdAt: Date.now(),
-                        updatedAt: Date.now(),
-                        order: Date.now()
-                    };
-                    await setDoc(doc(db, 'merci_albums', newId), albumData);
-                    addedCount++;
+                try {
+                    const files = await getAllDriveImages(folder.id);
+                    const newImgs = files.map(normalizeDriveImage);
+
+                    if (!newImgs.length) {
+                        emptyCount += 1;
+                    }
+
+                    const existingAlbum = albums.find(a =>
+                        (a.driveLink && a.driveLink.includes(folder.id)) ||
+                        a.id === `album_drive_${folder.id}` ||
+                        (a.title || '').trim().toLowerCase() === (folder.name || '').trim().toLowerCase()
+                    );
+
+                    const existingCoverId = existingAlbum
+                        ? (existingAlbum.images || []).find(img =>
+                            img.url === existingAlbum.coverUrl ||
+                            img.originalUrl === existingAlbum.coverUrl ||
+                            img.id === existingAlbum.coverId
+                        )?.id
+                        : '';
+
+                    const coverStillExists = existingCoverId
+                        ? newImgs.find(img => img.id === existingCoverId)
+                        : null;
+
+                    const coverImage = coverStillExists || newImgs[0];
+
+                    if (existingAlbum) {
+                        await updateDoc(doc(db, 'merci_albums', existingAlbum.id), {
+                            title: existingAlbum.title || folder.name,
+                            slug: existingAlbum.slug || createSlug(existingAlbum.title || folder.name),
+                            sub: existingAlbum.sub || 'Bộ sưu tập',
+                            category: existingAlbum.category || categoryList[0] || 'Wedding',
+                            categories: getAlbumCategories(existingAlbum).length
+                                ? getAlbumCategories(existingAlbum)
+                                : categoryList,
+                            driveLink: folderLink,
+                            images: newImgs,
+                            coverUrl: coverImage?.url || existingAlbum.coverUrl || DEFAULT_COVER,
+                            coverId: coverImage?.id || existingAlbum.coverId || '',
+                            updatedAt: Date.now()
+                        });
+
+                        updatedCount += 1;
+                    } else {
+                        const newId = `album_drive_${folder.id}`;
+                        const albumData = {
+                            id: newId,
+                            title: folder.name,
+                            sub: 'Bộ sưu tập',
+                            category: categoryList[0] || 'Wedding',
+                            categories: categoryList,
+                            driveLink: folderLink,
+                            images: newImgs,
+                            coverUrl: coverImage?.url || DEFAULT_COVER,
+                            coverId: coverImage?.id || '',
+                            slug: createSlug(folder.name),
+                            createdAt: Date.now(),
+                            updatedAt: Date.now(),
+                            order: Date.now() - index
+                        };
+
+                        await setDoc(doc(db, 'merci_albums', newId), albumData);
+                        addedCount += 1;
+                    }
+                } catch (folderError) {
+                    errorCount += 1;
+                    console.error('Lỗi đồng bộ folder:', folder, folderError);
                 }
             }
 
             setSyncProgress('');
-            alert(`Đồng bộ hoàn tất. Đã thêm mới ${addedCount} album.`);
+            alert(
+                `Đồng bộ Drive hoàn tất!\n\n` +
+                `Album mới: ${addedCount}\n` +
+                `Album đã cập nhật ảnh: ${updatedCount}\n` +
+                `Folder không có ảnh: ${emptyCount}` +
+                `${errorCount ? `\nFolder lỗi: ${errorCount}` : ''}`
+            );
+
             setSyncDriveLink('');
             setShowSyncModal(false);
         } catch (error) {
@@ -859,6 +932,8 @@ export default function Home() {
             setSyncProgress('');
         } finally {
             setIsSyncingAlbums(false);
+            setIsLoading(false);
+            setLoadingMessage('');
         }
     };
 
