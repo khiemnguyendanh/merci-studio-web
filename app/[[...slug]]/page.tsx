@@ -317,7 +317,7 @@ const ADMIN_EMAILS = Array.from(new Set([
 ]));
 
 // Danh mục Album
-const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự cưới', 'Concept', 'Trẻ con và gia đình'];
+const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Phóng sự cưới', 'Kỷ Yếu', 'Baby / Family', 'Event', 'Concept'];
 
 // Component Icon Facebook 
 const FacebookIcon = ({ className }) => (
@@ -376,7 +376,7 @@ const getCategoryFromHash = (hash) => {
     return ALBUM_CATEGORIES.find(cat => createSlug(cat) === cleanHash) || cleanHash || '';
 };
 
-const normalizeAlbumCategories = (input) => {
+const normalizeTextList = (input) => {
     const raw = Array.isArray(input)
         ? input
         : String(input || '')
@@ -395,28 +395,62 @@ const normalizeAlbumCategories = (input) => {
     return unique;
 };
 
-const getAlbumCategories = (albumOrInput) => {
-    if (!albumOrInput) return [];
+const normalizeAlbumCategories = (input) => normalizeTextList(input);
+const normalizeAlbumHashtags = (input) => normalizeTextList(input);
 
-    if (Array.isArray(albumOrInput) || typeof albumOrInput === 'string') {
-        return normalizeAlbumCategories(albumOrInput);
+const getAlbumMainCategory = (albumOrInput, fallback = 'Wedding') => {
+    if (!albumOrInput) return fallback;
+
+    if (typeof albumOrInput === 'string') {
+        return normalizeAlbumCategories(albumOrInput)[0] || fallback;
     }
 
-    const fromArray = normalizeAlbumCategories(albumOrInput.categories || []);
-    const fromLegacy = normalizeAlbumCategories(albumOrInput.category || '');
+    const legacyCategories = normalizeAlbumCategories(albumOrInput.categories || []);
+    const legacyCategory = normalizeAlbumCategories(albumOrInput.category || '');
+    const category = legacyCategory[0] || legacyCategories[0] || fallback;
 
-    return normalizeAlbumCategories([...fromArray, ...fromLegacy]);
+    return category || fallback;
+};
+
+const getAlbumCategories = (albumOrInput) => {
+    const category = getAlbumMainCategory(albumOrInput, '');
+    return category ? [category] : [];
 };
 
 const getAlbumCategoryText = (albumOrInput, fallback = 'Wedding') => {
-    const tags = getAlbumCategories(albumOrInput);
-    return (tags.length ? tags : [fallback]).join(', ');
+    return getAlbumMainCategory(albumOrInput, fallback);
+};
+
+const getAlbumHashtags = (albumOrInput) => {
+    if (!albumOrInput) return [];
+
+    if (Array.isArray(albumOrInput) || typeof albumOrInput === 'string') {
+        return normalizeAlbumHashtags(albumOrInput);
+    }
+
+    // Ưu tiên field hashtag mới. Nếu album cũ chưa có hashtag thì trả rỗng,
+    // không trộn danh mục chính vào hashtag nữa.
+    return normalizeAlbumHashtags(albumOrInput.hashtags || albumOrInput.tags || []);
 };
 
 const albumMatchesCategory = (album, category) => {
     if (!category || category === 'Tất cả') return true;
-    return getAlbumCategories(album).some(tag =>
-        tag === category || createSlug(tag) === createSlug(category)
+    const mainCategory = getAlbumMainCategory(album, '');
+    return mainCategory === category || createSlug(mainCategory) === createSlug(category);
+};
+
+const albumMatchesHashtagQuery = (album, query) => {
+    const terms = normalizeAlbumHashtags(query);
+    if (!terms.length) return true;
+
+    const albumHashtags = getAlbumHashtags(album);
+    if (!albumHashtags.length) return false;
+
+    return terms.some(term =>
+        albumHashtags.some(tag =>
+            createSlug(tag).includes(createSlug(term)) ||
+            createSlug(term).includes(createSlug(tag))
+        )
     );
 };
 
@@ -455,9 +489,10 @@ export default function Home() {
     const [albums, setAlbums] = useState([]);
     const [activeAlbumId, setActiveAlbumId] = useState(null);
     const [activeCategory, setActiveCategory] = useState('Tất cả');
+    const [albumHashtagQuery, setAlbumHashtagQuery] = useState('');
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
     const [editingAlbum, setEditingAlbum] = useState(null);
-    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding', driveLink: '' });
+    const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding', hashtags: '', driveLink: '' });
     const [albumDriveLink, setAlbumDriveLink] = useState('');
     const [pendingSlug, setPendingSlug] = useState(null);
 
@@ -465,6 +500,7 @@ export default function Home() {
     const [showSyncModal, setShowSyncModal] = useState(false);
     const [syncDriveLink, setSyncDriveLink] = useState('');
     const [syncCategory, setSyncCategory] = useState('Wedding');
+    const [syncHashtags, setSyncHashtags] = useState('');
     const [isSyncingAlbums, setIsSyncingAlbums] = useState(false);
     const [syncProgress, setSyncProgress] = useState('');
 
@@ -761,14 +797,16 @@ export default function Home() {
     const handleCreateAlbum = async () => {
         if (!newAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
-        const albumCategories = normalizeAlbumCategories(newAlbum.category || 'Wedding');
+        const mainCategory = getAlbumMainCategory(newAlbum.category || 'Wedding', 'Wedding');
+        const albumHashtags = normalizeAlbumHashtags(newAlbum.hashtags || '');
         const data = {
             id: `album_${Date.now()}`,
             title: newAlbum.title,
             slug: createSlug(newAlbum.title) || `album-${Date.now()}`,
             sub: newAlbum.sub,
-            category: albumCategories[0] || 'Wedding',
-            categories: albumCategories.length ? albumCategories : ['Wedding'],
+            category: mainCategory,
+            categories: [mainCategory],
+            hashtags: albumHashtags,
             images: [],
             coverUrl: DEFAULT_COVER,
             order: Date.now(),
@@ -777,20 +815,22 @@ export default function Home() {
         await saveAlbumData(data);
         setIsCreatingAlbum(false);
         setIsLoading(false);
-        setNewAlbum({ title: '', sub: '', category: 'Wedding', driveLink: '' });
+        setNewAlbum({ title: '', sub: '', category: 'Wedding', hashtags: '', driveLink: '' });
     };
 
     const handleUpdateAlbum = async () => {
         if (!editingAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
         try {
-            const albumCategories = normalizeAlbumCategories(editingAlbum.category || editingAlbum.categories || 'Wedding');
+            const mainCategory = getAlbumMainCategory(editingAlbum.category || editingAlbum.categories || 'Wedding', 'Wedding');
+            const albumHashtags = normalizeAlbumHashtags(editingAlbum.hashtags || '');
             await updateDoc(doc(db, 'merci_albums', editingAlbum.id), {
                 title: editingAlbum.title,
                 slug: createSlug(editingAlbum.title) || editingAlbum.slug,
                 sub: editingAlbum.sub,
-                category: albumCategories[0] || 'Wedding',
-                categories: albumCategories.length ? albumCategories : ['Wedding'],
+                category: mainCategory,
+                categories: [mainCategory],
+                hashtags: albumHashtags,
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
                 driveLink: editingAlbum.driveLink || ''
             });
@@ -807,8 +847,9 @@ export default function Home() {
         if (!folderId) return alert('Link Google Drive không hợp lệ.');
         if (!GOOGLE_API_KEY) return alert('Thiếu Google API Key!');
 
-        const albumCategories = normalizeAlbumCategories(syncCategory || 'Wedding');
-        const categoryList = albumCategories.length ? albumCategories : ['Wedding'];
+        const mainCategory = getAlbumMainCategory(syncCategory || 'Wedding', 'Wedding');
+        const categoryList = [mainCategory];
+        const syncAlbumHashtags = normalizeAlbumHashtags(syncHashtags || '');
 
         if (!confirm(
             `Hệ thống sẽ quét toàn bộ thư mục con trong Drive gốc, tạo/cập nhật album và tự nạp ảnh luôn vào từng album.\n\n` +
@@ -876,10 +917,11 @@ export default function Home() {
                             title: existingAlbum.title || folder.name,
                             slug: existingAlbum.slug || createSlug(existingAlbum.title || folder.name),
                             sub: existingAlbum.sub || 'Bộ sưu tập',
-                            category: existingAlbum.category || categoryList[0] || 'Wedding',
-                            categories: getAlbumCategories(existingAlbum).length
-                                ? getAlbumCategories(existingAlbum)
-                                : categoryList,
+                            category: getAlbumMainCategory(existingAlbum, categoryList[0] || 'Wedding'),
+                            categories: [getAlbumMainCategory(existingAlbum, categoryList[0] || 'Wedding')],
+                            hashtags: getAlbumHashtags(existingAlbum).length
+                                ? getAlbumHashtags(existingAlbum)
+                                : syncAlbumHashtags,
                             driveLink: folderLink,
                             images: newImgs,
                             coverUrl: coverImage?.url || existingAlbum.coverUrl || DEFAULT_COVER,
@@ -896,6 +938,7 @@ export default function Home() {
                             sub: 'Bộ sưu tập',
                             category: categoryList[0] || 'Wedding',
                             categories: categoryList,
+                            hashtags: syncAlbumHashtags,
                             driveLink: folderLink,
                             images: newImgs,
                             coverUrl: coverImage?.url || DEFAULT_COVER,
@@ -925,6 +968,7 @@ export default function Home() {
             );
 
             setSyncDriveLink('');
+            setSyncHashtags('');
             setShowSyncModal(false);
         } catch (error) {
             console.error('Lỗi đồng bộ album:', error);
@@ -2860,11 +2904,15 @@ export default function Home() {
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
     const albumCategoryFilters = ['Tất cả', ...Array.from(new Set([
         ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
-        ...albums.flatMap(a => getAlbumCategories(a)).filter(Boolean)
+        ...albums.map(a => getAlbumMainCategory(a, '')).filter(Boolean)
     ]))];
-    const filteredAlbums = activeCategory === 'Tất cả'
-        ? albums
-        : albums.filter(a => albumMatchesCategory(a, activeCategory));
+    const albumHashtagFilters = Array.from(new Set(
+        albums.flatMap(a => getAlbumHashtags(a)).filter(Boolean)
+    ));
+    const filteredAlbums = albums.filter(a =>
+        albumMatchesCategory(a, activeCategory) &&
+        albumMatchesHashtagQuery(a, albumHashtagQuery)
+    );
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
@@ -3099,11 +3147,11 @@ export default function Home() {
                             <input type="text" placeholder="Link Google Drive (Thư mục gốc)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-emerald-500 transition-colors" value={syncDriveLink} onChange={e => setSyncDriveLink(e.target.value)} />
 
                             <div>
-                                <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG / DANH MỤC ALBUM</label>
+                                <label className="text-xs font-bold text-slate-500 ml-1">DANH MỤC CHÍNH</label>
                                 <input
                                     list="sync-album-category-options"
                                     type="text"
-                                    placeholder="VD: Wedding, Concept, Couple, Baby"
+                                    placeholder="VD: Wedding"
                                     className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-emerald-500 transition-colors mt-1"
                                     value={syncCategory}
                                     onChange={e => setSyncCategory(e.target.value)}
@@ -3111,7 +3159,19 @@ export default function Home() {
                                 <datalist id="sync-album-category-options">
                                     {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                 </datalist>
-                                <p className="text-xs text-slate-400 mt-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
+                                <p className="text-xs text-slate-400 mt-1">Đây là mục chính của album. Hashtag sẽ nhập riêng bên dưới.</p>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ CHO ALBUM</label>
+                                <input
+                                    type="text"
+                                    placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-emerald-500 transition-colors mt-1"
+                                    value={syncHashtags}
+                                    onChange={e => setSyncHashtags(e.target.value)}
+                                />
+                                <p className="text-xs text-slate-400 mt-1">Nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy. Ví dụ: váy cưới, beauty, ngoài trời.</p>
                             </div>
                         </div>
 
@@ -3147,7 +3207,7 @@ export default function Home() {
                                 <input
                                     list="new-album-category-options"
                                     type="text"
-                                    placeholder="VD: Wedding, Concept, Couple"
+                                    placeholder="VD: Wedding"
                                     className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
                                     value={newAlbum.category}
                                     onChange={e => setNewAlbum({ ...newAlbum, category: e.target.value })}
@@ -3155,8 +3215,19 @@ export default function Home() {
                                 <datalist id="new-album-category-options">
                                     {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                 </datalist>
-                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
+                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Đây là mục chính của album. Hashtag sẽ nhập riêng bên dưới.</p>
                             </div>
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ</label>
+                            <input
+                                type="text"
+                                placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
+                                className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1"
+                                value={newAlbum.hashtags || ''}
+                                onChange={e => setNewAlbum({ ...newAlbum, hashtags: e.target.value })}
+                            />
+                            <p className="text-[11px] text-slate-400 mt-1 ml-1">Hashtag phụ dùng để lọc/search chi tiết, không thay cho danh mục chính.</p>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => setIsCreatingAlbum(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
@@ -3191,16 +3262,28 @@ export default function Home() {
                                     <input
                                         list="edit-album-category-options"
                                         type="text"
-                                        placeholder="VD: Wedding, Concept, Couple"
+                                        placeholder="VD: Wedding"
                                         className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
-                                        value={getAlbumCategoryText(editingAlbum, '')}
+                                        value={getAlbumMainCategory(editingAlbum, '')}
                                         onChange={e => setEditingAlbum({ ...editingAlbum, category: e.target.value })}
                                     />
                                     <datalist id="edit-album-category-options">
                                         {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                     </datalist>
-                                    <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
+                                    <p className="text-[11px] text-slate-400 mt-1 ml-1">Đây là mục chính của album. Hashtag sẽ nhập riêng bên dưới.</p>
                                 </div>
+                            </div>
+
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ</label>
+                                <input
+                                    type="text"
+                                    placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1"
+                                    value={getAlbumHashtags(editingAlbum).join(', ')}
+                                    onChange={e => setEditingAlbum({ ...editingAlbum, hashtags: e.target.value })}
+                                />
+                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy.</p>
                             </div>
 
                             <div>
@@ -4149,23 +4232,63 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', '/bo-su-tap'); else window.history.pushState({}, '', `/bo-su-tap${getCategoryHash(cat)}`); }}
                                                 className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${createSlug(activeCategory) === createSlug(cat) ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
-                                                {cat === 'Tất cả' ? cat : `#${cat}`}
+                                                {cat}
                                             </button>
                                         ))}
+                                    </div>
+
+                                    <div className="bg-white border border-slate-100 rounded-2xl p-4 md:p-5 mb-6 md:mb-8 shadow-sm space-y-3">
+                                        <div className="flex flex-col md:flex-row md:items-center gap-3">
+                                            <div className="flex-1">
+                                                <label className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Lọc / search theo hashtag phụ</label>
+                                                <input
+                                                    type="text"
+                                                    placeholder="VD: váy cưới, sinh nhật, sexy, beauty..."
+                                                    value={albumHashtagQuery}
+                                                    onChange={e => setAlbumHashtagQuery(e.target.value)}
+                                                    className="w-full mt-1 border-2 border-slate-100 rounded-xl px-4 py-3 outline-none focus:border-blue-500 transition-colors text-sm font-medium"
+                                                />
+                                            </div>
+                                            {albumHashtagQuery && (
+                                                <button
+                                                    onClick={() => setAlbumHashtagQuery('')}
+                                                    className="px-4 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold text-sm transition-colors"
+                                                >
+                                                    Xóa lọc
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {albumHashtagFilters.length > 0 && (
+                                            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                                                {albumHashtagFilters.slice(0, 24).map(tag => (
+                                                    <button
+                                                        key={tag}
+                                                        onClick={() => setAlbumHashtagQuery(tag)}
+                                                        className={`px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${createSlug(albumHashtagQuery) === createSlug(tag)
+                                                            ? 'bg-blue-600 text-white shadow-md'
+                                                            : 'bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white'
+                                                            }`}
+                                                    >
+                                                        #{tag}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
 
                                     {isAdmin && activeCategory !== 'Tất cả' && (
                                         <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
                                             <div>
-                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Link gửi khách theo hashtag</p>
+                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Link gửi khách theo danh mục chính</p>
                                                 <p className="font-mono text-sm text-blue-700 truncate">{`${window.location.origin}/bo-su-tap${getCategoryHash(activeCategory)}`}</p>
                                             </div>
                                             <button onClick={() => {
                                                 const link = `${window.location.origin}/bo-su-tap${getCategoryHash(activeCategory)}`;
-                                                if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(link).then(() => alert('Đã copy link hashtag!'));
+                                                if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(link).then(() => alert('Đã copy link danh mục!'));
                                                 else prompt('Copy link:', link);
                                             }} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
-                                                <Copy className="w-4 h-4" /> Copy link #{activeCategory}
+                                                <Copy className="w-4 h-4" /> Copy link {activeCategory}
                                             </button>
                                         </div>
                                     )}
@@ -4206,16 +4329,23 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-3 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
-                                                    <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-wrap gap-1 max-w-[86%]">
-                                                        {getAlbumCategories(a).slice(0, 3).map(tag => (
-                                                            <span key={tag} className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
-                                                                {tag}
-                                                            </span>
-                                                        ))}
-                                                        {getAlbumCategories(a).length > 3 && (
-                                                            <span className="bg-slate-900/85 text-white backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-sm">
-                                                                +{getAlbumCategories(a).length - 3}
-                                                            </span>
+                                                    <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-col items-start gap-1 max-w-[88%]">
+                                                        <span className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
+                                                            {getAlbumMainCategory(a, 'Wedding')}
+                                                        </span>
+                                                        {getAlbumHashtags(a).length > 0 && (
+                                                            <div className="flex flex-wrap gap-1">
+                                                                {getAlbumHashtags(a).slice(0, 3).map(tag => (
+                                                                    <span key={tag} className="bg-blue-600/90 text-white backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] md:text-[10px] font-bold shadow-sm">
+                                                                        #{tag}
+                                                                    </span>
+                                                                ))}
+                                                                {getAlbumHashtags(a).length > 3 && (
+                                                                    <span className="bg-slate-900/85 text-white backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] md:text-[10px] font-bold shadow-sm">
+                                                                        +{getAlbumHashtags(a).length - 3}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         )}
                                                     </div>
 
@@ -4243,7 +4373,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
                                                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                                                <p className="text-sm md:text-base">Chưa có album nào trong danh mục này.</p>
+                                                <p className="text-sm md:text-base">Chưa có album nào phù hợp với bộ lọc hiện tại.</p>
                                             </div>
                                         )}
                                     </div>
