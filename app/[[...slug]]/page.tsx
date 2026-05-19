@@ -4,8 +4,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import Script from 'next/script';
 import dynamic from 'next/dynamic';
-import { 
-    Camera, Wand2, Copy, ArrowRight, Heart, 
+import {
+    Camera, Wand2, Copy, ArrowRight, Heart,
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail,
@@ -58,28 +58,28 @@ const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Phóng sự 
 // Component Icon Facebook 
 const FacebookIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/>
+        <path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z" />
     </svg>
 );
 
 const InstagramIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <rect width="20" height="20" x="2" y="2" rx="5" ry="5"/>
-        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/>
-        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/>
+        <rect width="20" height="20" x="2" y="2" rx="5" ry="5" />
+        <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+        <line x1="17.5" x2="17.51" y1="6.5" y2="6.5" />
     </svg>
 );
 
 const TikTokIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
-        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
     </svg>
 );
 
 const CheckCircleIcon = ({ className }) => (
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-        <polyline points="22 4 12 14.01 9 11.01"/>
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+        <polyline points="22 4 12 14.01 9 11.01" />
     </svg>
 );
 
@@ -98,11 +98,11 @@ const createSlug = (str) => {
         .replace(/ú|ù|ủ|ụ|ũ|ư|ứ|ừ|ử|ự|ữ/g, 'u')
         .replace(/ý|ỳ|ỷ|ỵ|ỹ/g, 'y')
         .replace(/đ/g, 'd')
-        .replace(/\s+/g, '-')           
-        .replace(/[^\w\-]+/g, '')       
-        .replace(/\-\-+/g, '-')         
-        .replace(/^-+/, '')             
-        .replace(/-+$/, '');            
+        .replace(/\s+/g, '-')
+        .replace(/[^\w\-]+/g, '')
+        .replace(/\-\-+/g, '-')
+        .replace(/^-+/, '')
+        .replace(/-+$/, '');
 };
 
 
@@ -117,6 +117,9 @@ export default function Home() {
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('home');
+    const [activeToolTab, setActiveToolTab] = useState('create'); // create | gallery | filter
+    const [draggedAlbumId, setDraggedAlbumId] = useState(null);
+    const [draggedVideoId, setDraggedVideoId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
@@ -129,7 +132,7 @@ export default function Home() {
     const [clientAuthMode, setClientAuthMode] = useState('login'); // login | register
     const [clientAuthData, setClientAuthData] = useState({ email: '', password: '' });
     const [clientAuthError, setClientAuthError] = useState('');
-    
+
     // Khách hàng & Filter
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
@@ -142,15 +145,15 @@ export default function Home() {
     const [currentSelectionKey, setCurrentSelectionKey] = useState(null);
     const [showOnlySelected, setShowOnlySelected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    
+
     // Albums (Admin & Khách)
     const [albums, setAlbums] = useState([]);
     const [activeAlbumId, setActiveAlbumId] = useState(null);
     const [activeCategory, setActiveCategory] = useState('Tất cả');
     const [isCreatingAlbum, setIsCreatingAlbum] = useState(false);
-    const [editingAlbum, setEditingAlbum] = useState(null); 
+    const [editingAlbum, setEditingAlbum] = useState(null);
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding', driveLink: '' });
-    const [albumDriveLink, setAlbumDriveLink] = useState(''); 
+    const [albumDriveLink, setAlbumDriveLink] = useState('');
     const [pendingSlug, setPendingSlug] = useState(null);
 
     // Sync Albums state
@@ -186,7 +189,7 @@ export default function Home() {
     const [autoKeyword, setAutoKeyword] = useState('');
     const [autoArticleCount, setAutoArticleCount] = useState(6);
     const [isGeneratingTopicIdeas, setIsGeneratingTopicIdeas] = useState(false);
-    
+
     // Trend Search States
     const [trendKeyword, setTrendKeyword] = useState('');
     const [isSearchingTrends, setIsSearchingTrends] = useState(false);
@@ -212,9 +215,9 @@ export default function Home() {
     const [galleryPage, setGalleryPage] = useState(1);
 
     // === EFFECTS ===
-    useEffect(() => { 
-        setMounted(true); 
-        
+    useEffect(() => {
+        setMounted(true);
+
     }, []);
 
     useEffect(() => {
@@ -245,20 +248,22 @@ export default function Home() {
             const folderId = urlParams.get('folder');
             const foldersParam = urlParams.get('folders');
             const viewMode = urlParams.get('view');
-            
+
             const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
-            
+
             if (foldersParam) {
-                setActiveTab('gallery');
+                setActiveTab('tool');
+                setActiveToolTab('gallery');
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(foldersParam.split(',').map(v => decodeURIComponent(v)).join('\n'));
             } else if (folderId) {
-                setActiveTab('gallery');
+                setActiveTab('tool');
+                setActiveToolTab('gallery');
                 setCurrentFolderId(folderId);
                 setActiveClientFolderId(folderId);
                 setCurrentSelectionKey(folderId);
                 if (viewMode === 'selected') setShowOnlySelected(true);
-                fetchDrive(folderId); 
+                fetchDrive(folderId);
             } else if (window.location.hash) {
                 const categoryFromHash = getCategoryFromHash(window.location.hash);
                 if (categoryFromHash) {
@@ -266,7 +271,26 @@ export default function Home() {
                     setActiveCategory(categoryFromHash);
                 }
             } else if (pathname && pathname !== '') {
-                setPendingSlug(pathname);
+                const staticRoutes = {
+                    'bo-su-tap': { tab: 'collection' },
+                    'video': { tab: 'videos' },
+                    'videos': { tab: 'videos' },
+                    'blog': { tab: 'blog' },
+                    'tool': { tab: 'tool', tool: 'create' },
+                    'cong-cu': { tab: 'tool', tool: 'create' },
+                    'tao-trang': { tab: 'tool', tool: 'create' },
+                    'chon-anh': { tab: 'tool', tool: 'gallery' },
+                    'loc-anh': { tab: 'tool', tool: 'filter' }
+                };
+                const route = staticRoutes[pathname];
+                if (route) {
+                    setActiveTab(route.tab);
+                    if (route.tool) setActiveToolTab(route.tool);
+                    setActiveAlbumId(null);
+                    setActiveBlogId(null);
+                } else {
+                    setPendingSlug(pathname);
+                }
             }
         } catch (e) { console.warn("URL Parsing bypass"); }
     }, [mounted]);
@@ -332,7 +356,7 @@ export default function Home() {
         if (pendingSlug) {
             const foundAlbum = albums.find(a => a.slug === pendingSlug || createSlug(a.title) === pendingSlug || a.id === pendingSlug);
             const foundBlog = blogs.find(b => b.slug === pendingSlug || createSlug(b.title) === pendingSlug || b.id === pendingSlug);
-            
+
             if (foundAlbum) {
                 setActiveTab('collection');
                 setActiveAlbumId(foundAlbum.id);
@@ -421,13 +445,13 @@ export default function Home() {
     const handleCreateAlbum = async () => {
         if (!newAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
-        const data = { 
-            id: `album_${Date.now()}`, 
+        const data = {
+            id: `album_${Date.now()}`,
             title: newAlbum.title,
-            slug: createSlug(newAlbum.title) || `album-${Date.now()}`, 
+            slug: createSlug(newAlbum.title) || `album-${Date.now()}`,
             sub: newAlbum.sub,
             category: newAlbum.category,
-            images: [], 
+            images: [],
             coverUrl: DEFAULT_COVER,
             order: Date.now(),
             driveLink: ''
@@ -444,17 +468,17 @@ export default function Home() {
         try {
             await updateDoc(doc(db, 'merci_albums', editingAlbum.id), {
                 title: editingAlbum.title,
-                slug: createSlug(editingAlbum.title) || editingAlbum.slug, 
+                slug: createSlug(editingAlbum.title) || editingAlbum.slug,
                 sub: editingAlbum.sub,
                 category: editingAlbum.category,
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
                 driveLink: editingAlbum.driveLink || ''
             });
-            if(activeAlbumId === editingAlbum.id) {
+            if (activeAlbumId === editingAlbum.id) {
                 setAlbumDriveLink(editingAlbum.driveLink || '');
             }
             setEditingAlbum(null);
-        } catch (e) { alert("Đã xảy ra lỗi khi cập nhật album."); } 
+        } catch (e) { alert("Đã xảy ra lỗi khi cập nhật album."); }
         finally { setIsLoading(false); }
     };
 
@@ -478,9 +502,9 @@ export default function Home() {
             let addedCount = 0;
             for (const folder of childFolders) {
                 const folderLink = `https://drive.google.com/drive/folders/${folder.id}`;
-                
-                const exists = albums.some(a => 
-                    (a.driveLink && a.driveLink.includes(folder.id)) || 
+
+                const exists = albums.some(a =>
+                    (a.driveLink && a.driveLink.includes(folder.id)) ||
                     a.title.trim().toLowerCase() === folder.name.trim().toLowerCase()
                 );
 
@@ -523,18 +547,18 @@ export default function Home() {
             await deleteDoc(doc(db, 'merci_albums', id));
             setEditingAlbum(null);
             if (activeAlbumId === id) setActiveAlbumId(null);
-        } catch (e) { alert("Lỗi khi xóa album."); } 
+        } catch (e) { alert("Lỗi khi xóa album."); }
         finally { setIsLoading(false); }
     };
 
     const handleSetCover = async (e, imageUrl) => {
-        e.stopPropagation(); 
+        e.stopPropagation();
         if (!activeAlbumId) return;
         setIsLoading(true);
         try {
             await updateDoc(doc(db, 'merci_albums', activeAlbumId), { coverUrl: imageUrl, coverId: activeAlbumId ? (albumImages.find(img => img.url === imageUrl)?.id || '') : '' });
             alert("Đã đặt ảnh này làm Ảnh Bìa thành công!");
-        } catch (error) { alert("Lỗi khi cập nhật ảnh bìa."); } 
+        } catch (error) { alert("Lỗi khi cập nhật ảnh bìa."); }
         finally { setIsLoading(false); }
     };
 
@@ -558,7 +582,7 @@ export default function Home() {
         try {
             await updateDoc(doc(db, 'merci_albums', currentItem.id), { order: order2 });
             await updateDoc(doc(db, 'merci_albums', targetItem.id), { order: order1 });
-        } catch (err) { alert("Lỗi khi đổi vị trí."); } 
+        } catch (err) { alert("Lỗi khi đổi vị trí."); }
         finally { setIsLoading(false); }
     };
 
@@ -593,7 +617,7 @@ export default function Home() {
     const handleDeleteVideo = async (id, e) => {
         e.stopPropagation();
         if (!confirm("Xóa video này?")) return;
-        try { await deleteDoc(doc(db, 'merci_videos', id)); } catch(e) { alert("Lỗi xóa video."); }
+        try { await deleteDoc(doc(db, 'merci_videos', id)); } catch (e) { alert("Lỗi xóa video."); }
     };
 
     const handleMoveVideo = async (id, direction, e) => {
@@ -616,7 +640,7 @@ export default function Home() {
         try {
             await updateDoc(doc(db, 'merci_videos', currentItem.id), { order: order2 });
             await updateDoc(doc(db, 'merci_videos', targetItem.id), { order: order1 });
-        } catch (err) { alert("Lỗi khi đổi vị trí."); } 
+        } catch (err) { alert("Lỗi khi đổi vị trí."); }
         finally { setIsLoading(false); }
     };
 
@@ -672,9 +696,9 @@ export default function Home() {
     const handleSaveBlog = async () => {
         if (!newBlog.title || !newBlog.content) return alert("Vui lòng nhập tiêu đề và nội dung!");
         setIsLoading(true);
-        
+
         const generatedSlug = newBlog.slug ? createSlug(newBlog.slug) : createSlug(newBlog.title);
-        
+
         const data = {
             id: editingBlog ? editingBlog.id : `blog_${Date.now()}`,
             title: newBlog.title,
@@ -700,11 +724,11 @@ export default function Home() {
         e.stopPropagation();
         if (!confirm("Xóa bài viết này?")) return;
         setIsLoading(true);
-        try { 
-            await deleteDoc(doc(db, 'merci_blogs', id)); 
+        try {
+            await deleteDoc(doc(db, 'merci_blogs', id));
             if (activeBlogId === id) setActiveBlogId(null);
-        } 
-        catch(e) { alert("Lỗi xóa bài viết."); }
+        }
+        catch (e) { alert("Lỗi xóa bài viết."); }
         finally { setIsLoading(false); }
     };
 
@@ -1015,7 +1039,7 @@ export default function Home() {
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
-            
+
             const newTopics = data.items.map((i) => `${i.topic} | ${i.mainKeyword}`).join('\n');
             setBulkBlogTopics(prev => prev ? prev + '\n' + newTopics : newTopics);
             alert(`Đã thêm ${data.items.length} ý tưởng vào ô nhập hàng loạt bên dưới!`);
@@ -1421,105 +1445,105 @@ export default function Home() {
     };
 
     const getFileNameWithoutExt = (name = 'image') => {
-    return name.replace(/\.[^/.]+$/, '') || 'image';
-};
+        return name.replace(/\.[^/.]+$/, '') || 'image';
+    };
 
-const downloadBlob = (blob, fileName) => {
-    const a = document.createElement('a');
-    const objectUrl = URL.createObjectURL(blob);
-    a.href = objectUrl;
-    a.download = fileName;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(objectUrl);
-};
+    const downloadBlob = (blob, fileName) => {
+        const a = document.createElement('a');
+        const objectUrl = URL.createObjectURL(blob);
+        a.href = objectUrl;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(objectUrl);
+    };
 
-// Chỉ dùng cho BỘ SƯU TẬP: tải ảnh có chữ nhỏ Merci Studio
-const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
-    if (event) event.stopPropagation();
+    // Chỉ dùng cho BỘ SƯU TẬP: tải ảnh có chữ nhỏ Merci Studio
+    const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
+        if (event) event.stopPropagation();
 
-    setIsLoading(true);
-    setLoadingMessage('Đang chèn chữ Merci Studio...');
+        setIsLoading(true);
+        setLoadingMessage('Đang chèn chữ Merci Studio...');
 
-    try {
-        const imageId =
-            typeof imageOrUrl === 'object'
-                ? imageOrUrl?.id
-                : '';
+        try {
+            const imageId =
+                typeof imageOrUrl === 'object'
+                    ? imageOrUrl?.id
+                    : '';
 
-        const sourceUrl = imageId
-            ? `/api/drive-image?id=${encodeURIComponent(imageId)}`
-            : imageOrUrl;
+            const sourceUrl = imageId
+                ? `/api/drive-image?id=${encodeURIComponent(imageId)}`
+                : imageOrUrl;
 
-        const response = await fetch(sourceUrl, { cache: 'no-store' });
+            const response = await fetch(sourceUrl, { cache: 'no-store' });
 
-        if (!response.ok) {
-            throw new Error(`Không tải được ảnh: ${response.status}`);
-        }
+            if (!response.ok) {
+                throw new Error(`Không tải được ảnh: ${response.status}`);
+            }
 
-        const blob = await response.blob();
+            const blob = await response.blob();
 
-        let bitmap;
-        if ('createImageBitmap' in window) {
-            bitmap = await createImageBitmap(blob);
-        } else {
-            bitmap = await new Promise((resolve, reject) => {
-                const img = new Image();
-                img.onload = () => resolve(img);
-                img.onerror = reject;
-                img.src = URL.createObjectURL(blob);
+            let bitmap;
+            if ('createImageBitmap' in window) {
+                bitmap = await createImageBitmap(blob);
+            } else {
+                bitmap = await new Promise((resolve, reject) => {
+                    const img = new Image();
+                    img.onload = () => resolve(img);
+                    img.onerror = reject;
+                    img.src = URL.createObjectURL(blob);
+                });
+            }
+
+            const width = bitmap.width;
+            const height = bitmap.height;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Không tạo được canvas');
+
+            ctx.drawImage(bitmap, 0, 0, width, height);
+
+            // Chữ nhỏ phía dưới
+            const fontSize = Math.max(18, Math.round(width * 0.018));
+            const padding = Math.max(18, Math.round(width * 0.018));
+
+            ctx.save();
+            ctx.font = `500 ${fontSize}px Arial, sans-serif`;
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'bottom';
+            ctx.shadowColor = 'rgba(0,0,0,0.45)';
+            ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.18));
+            ctx.fillStyle = 'rgba(255,255,255,0.82)';
+            ctx.fillText('Merci Studio', width - padding, height - padding);
+            ctx.restore();
+
+            const outputBlob = await new Promise((resolve, reject) => {
+                canvas.toBlob(
+                    (result) => {
+                        if (result) resolve(result);
+                        else reject(new Error('Không xuất được ảnh đã chèn chữ'));
+                    },
+                    'image/jpeg',
+                    0.98
+                );
             });
-        }
 
-        const width = bitmap.width;
-        const height = bitmap.height;
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-
-        const ctx = canvas.getContext('2d');
-        if (!ctx) throw new Error('Không tạo được canvas');
-
-        ctx.drawImage(bitmap, 0, 0, width, height);
-
-        // Chữ nhỏ phía dưới
-        const fontSize = Math.max(18, Math.round(width * 0.018));
-        const padding = Math.max(18, Math.round(width * 0.018));
-
-        ctx.save();
-        ctx.font = `500 ${fontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'right';
-        ctx.textBaseline = 'bottom';
-        ctx.shadowColor = 'rgba(0,0,0,0.45)';
-        ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.18));
-        ctx.fillStyle = 'rgba(255,255,255,0.82)';
-        ctx.fillText('Merci Studio', width - padding, height - padding);
-        ctx.restore();
-
-        const outputBlob = await new Promise((resolve, reject) => {
-            canvas.toBlob(
-                (result) => {
-                    if (result) resolve(result);
-                    else reject(new Error('Không xuất được ảnh đã chèn chữ'));
-                },
-                'image/jpeg',
-                0.98
+            downloadBlob(
+                outputBlob,
+                `${getFileNameWithoutExt(imageName || (typeof imageOrUrl === 'object' ? imageOrUrl?.name : 'image'))}_merci_studio.jpg`
             );
-        });
-
-        downloadBlob(
-            outputBlob,
-            `${getFileNameWithoutExt(imageName || (typeof imageOrUrl === 'object' ? imageOrUrl?.name : 'image'))}_merci_studio.jpg`
-        );
-    } catch (error) {
-        console.error('Watermark download error:', error);
-        alert('Ảnh này chưa tải được bản có chữ Merci Studio. Hãy kiểm tra quyền chia sẻ Google Drive hoặc thử reload album.');
-    } finally {
-        setIsLoading(false);
-    }
-};
+        } catch (error) {
+            console.error('Watermark download error:', error);
+            alert('Ảnh này chưa tải được bản có chữ Merci Studio. Hãy kiểm tra quyền chia sẻ Google Drive hoặc thử reload album.');
+        } finally {
+            setIsLoading(false);
+        }
+    };
 
     // === GOOGLE DRIVE HELPER: LẤY TOÀN BỘ ẢNH, KHÔNG BỊ GIỚI HẠN 100 ẢNH ===
     const getAllDriveImages = async (folderId) => {
@@ -1660,14 +1684,14 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
     };
 
     const normalizeDriveImage = (f) => ({
-    id: f.id,
-    name: f.name,
-    mimeType: f.mimeType || '',
-    url: getDriveThumbUrl(f.id, 'w1200'),
-    originalUrl: getDriveThumbUrl(f.id, 'w2400'),
-    downloadUrl: f.webContentLink || getDriveDownloadUrl(f.id),
-    thumbnailUrl: f.thumbnailLink || getDriveThumbUrl(f.id, 'w600')
-});
+        id: f.id,
+        name: f.name,
+        mimeType: f.mimeType || '',
+        url: getDriveThumbUrl(f.id, 'w1200'),
+        originalUrl: getDriveThumbUrl(f.id, 'w2400'),
+        downloadUrl: f.webContentLink || getDriveDownloadUrl(f.id),
+        thumbnailUrl: f.thumbnailLink || getDriveThumbUrl(f.id, 'w600')
+    });
 
     const handleImageError = (e, img) => {
         const target = e.currentTarget;
@@ -1694,10 +1718,10 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
 
         const sourceDriveLink = albumDriveLink.trim() || currentAlbum.driveLink || '';
         if (!sourceDriveLink) return alert("Vui lòng dán link thư mục Google Drive!");
-        
+
         setIsLoading(true);
         setLoadingMessage('Đang reload album từ Google Drive...');
-        
+
         const folderId = extractDriveFolderId(sourceDriveLink);
 
         try {
@@ -1944,8 +1968,8 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                 selectedIds: Array.from(newSelectedSet),
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-        } catch(e) {}
-        setTimeout(() => setIsSaving(false), 500); 
+        } catch (e) { }
+        setTimeout(() => setIsSaving(false), 500);
     };
 
     const loadClientSelectionFromDB = async (folderId) => {
@@ -1955,7 +1979,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
             if (docSnap.exists() && docSnap.data().selectedIds) {
                 return new Set(docSnap.data().selectedIds);
             }
-        } catch(e) {}
+        } catch (e) { }
         return new Set();
     };
 
@@ -2102,7 +2126,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
     };
 
     const toggleImageSelect = (id, event) => {
-        if(event) event.stopPropagation();
+        if (event) event.stopPropagation();
         setSelectedImages(prev => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
@@ -2115,7 +2139,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         if (!currentFolderId) return;
         const foldersForLink = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Folder 1' }];
         const newLink = buildClientPageLink(foldersForLink, 'selected');
-        
+
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(newLink).then(() => alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh."));
         } else {
@@ -2192,7 +2216,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         try {
             const JSZip = window.JSZip;
             const zip = new JSZip();
-            const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0,10);
+            const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0, 10);
             const imgFolder = zip.folder(folderName);
             const selectedIds = Array.from(selectedImages);
             const selectedIdSet = new Set(selectedIds);
@@ -2253,7 +2277,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         try {
             const JSZip = window.JSZip;
             const zip = new JSZip();
-            const rootName = "Merci_Toan_Bo_Anh_" + new Date().toISOString().slice(0,10);
+            const rootName = "Merci_Toan_Bo_Anh_" + new Date().toISOString().slice(0, 10);
             const rootFolder = zip.folder(rootName);
             let totalDownloaded = 0;
 
@@ -2303,24 +2327,24 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         }
     };
 
-    const selectSourceFolder = async () => { 
-        try { 
+    const selectSourceFolder = async () => {
+        try {
             if (window.showDirectoryPicker) {
-                setSourceHandle(await window.showDirectoryPicker()); 
+                setSourceHandle(await window.showDirectoryPicker());
             } else {
                 alert("Trình duyệt của bạn không hỗ trợ tính năng chọn thư mục.");
             }
-        } catch (e) { } 
+        } catch (e) { }
     };
 
-    const selectDestFolder = async () => { 
-        try { 
+    const selectDestFolder = async () => {
+        try {
             if (window.showDirectoryPicker) {
-                setDestHandle(await window.showDirectoryPicker()); 
+                setDestHandle(await window.showDirectoryPicker());
             } else {
                 alert("Trình duyệt của bạn không hỗ trợ tính năng chọn thư mục.");
             }
-        } catch (e) { } 
+        } catch (e) { }
     };
 
     const handleCopyFiles = async () => {
@@ -2347,7 +2371,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                 }
             }
             alert(`Hoàn thành! Đã chép ${count} ảnh.`);
-        } catch (e) { alert("Lỗi chép file. Hãy kiểm tra quyền truy cập thư mục."); } 
+        } catch (e) { alert("Lỗi chép file. Hãy kiểm tra quyền truy cập thư mục."); }
         finally { setIsLoading(false); }
     };
 
@@ -2440,12 +2464,77 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         );
     };
 
+
+    const getTabPath = (tabId, toolTab = activeToolTab) => {
+        const paths = {
+            home: '/',
+            collection: '/bo-su-tap',
+            videos: '/video',
+            blog: '/blog',
+            tool: toolTab === 'gallery' ? '/chon-anh' : toolTab === 'filter' ? '/loc-anh' : '/tao-trang'
+        };
+        return paths[tabId] || '/';
+    };
+
+    const goToTab = (tabId, toolTab = activeToolTab) => {
+        setActiveTab(tabId);
+        if (tabId === 'tool') setActiveToolTab(toolTab || 'create');
+        setActiveAlbumId(null);
+        setActiveBlogId(null);
+        const nextPath = getTabPath(tabId, toolTab || activeToolTab);
+        window.history.pushState({}, document.title, nextPath);
+    };
+
+    const handleDragReorderAlbum = async (targetAlbumId) => {
+        if (!isAdmin || !draggedAlbumId || draggedAlbumId === targetAlbumId) return;
+        if (activeCategory !== 'Tất cả') return alert('Kéo thả sắp xếp chỉ dùng ở danh mục Tất cả để tránh sai thứ tự tổng.');
+
+        const dragged = albums.find(item => item.id === draggedAlbumId);
+        const target = albums.find(item => item.id === targetAlbumId);
+        if (!dragged || !target || !db) return;
+
+        setIsLoading(true);
+        setLoadingMessage('Đang cập nhật thứ tự album...');
+        try {
+            await updateDoc(doc(db, 'merci_albums', dragged.id), { order: target.order ?? 0 });
+            await updateDoc(doc(db, 'merci_albums', target.id), { order: dragged.order ?? 0 });
+        } catch (error) {
+            console.error('Drag reorder album error:', error);
+            alert('Không đổi được thứ tự album. Hãy thử lại.');
+        } finally {
+            setDraggedAlbumId(null);
+            setIsLoading(false);
+        }
+    };
+
+    const handleDragReorderVideo = async (targetVideoId) => {
+        if (!isAdmin || !draggedVideoId || draggedVideoId === targetVideoId) return;
+
+        const dragged = videos.find(item => item.id === draggedVideoId);
+        const target = videos.find(item => item.id === targetVideoId);
+        if (!dragged || !target || !db) return;
+
+        setIsLoading(true);
+        setLoadingMessage('Đang cập nhật thứ tự video...');
+        try {
+            await updateDoc(doc(db, 'merci_videos', dragged.id), { order: target.order ?? 0 });
+            await updateDoc(doc(db, 'merci_videos', target.id), { order: dragged.order ?? 0 });
+        } catch (error) {
+            console.error('Drag reorder video error:', error);
+            alert('Không đổi được thứ tự video. Hãy thử lại.');
+        } finally {
+            setDraggedVideoId(null);
+            setIsLoading(false);
+        }
+    };
+
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
         <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font">
             <Script strategy="lazyOnload" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" />
-            <style dangerouslySetInnerHTML={{__html: `
+            <style dangerouslySetInnerHTML={{
+                __html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
                 .vi-safe-font { font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; font-feature-settings: normal; font-variant-ligatures: normal; word-break: normal; overflow-wrap: anywhere; }
@@ -2496,7 +2585,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     placeholder="ban@vidu.com"
                                     className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
                                     value={clientAuthData.email}
-                                    onChange={e => setClientAuthData({...clientAuthData, email: e.target.value})}
+                                    onChange={e => setClientAuthData({ ...clientAuthData, email: e.target.value })}
                                 />
                             </div>
                             <div>
@@ -2506,7 +2595,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     placeholder="••••••••"
                                     className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
                                     value={clientAuthData.password}
-                                    onChange={e => setClientAuthData({...clientAuthData, password: e.target.value})}
+                                    onChange={e => setClientAuthData({ ...clientAuthData, password: e.target.value })}
                                 />
                                 {clientAuthMode === 'login' && <button type="button" className="block ml-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Quên mật khẩu?</button>}
                             </div>
@@ -2536,8 +2625,8 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                         </div>
                         <form onSubmit={handleLogin} className="space-y-4">
                             {loginError && <p className="text-red-500 text-sm font-medium">{loginError}</p>}
-                            <input type="email" placeholder="Email Admin" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.email} onChange={e => setLoginData({...loginData, email: e.target.value})} />
-                            <input type="password" placeholder="Mật khẩu Firebase" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.password} onChange={e => setLoginData({...loginData, password: e.target.value})} />
+                            <input type="email" placeholder="Email Admin" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.email} onChange={e => setLoginData({ ...loginData, email: e.target.value })} />
+                            <input type="password" placeholder="Mật khẩu Firebase" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
                             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Vào hệ thống</button>
                         </form>
                     </div>
@@ -2555,10 +2644,10 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                         <p className="text-sm text-slate-500 leading-relaxed">
                             Nhập link thư mục Drive Gốc. Web sẽ quét toàn bộ thư mục con bên trong để tạo thành các Album mới.
                         </p>
-                        
+
                         <div className="space-y-4">
                             <input type="text" placeholder="Link Google Drive (Thư mục gốc)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-emerald-500 transition-colors" value={syncDriveLink} onChange={e => setSyncDriveLink(e.target.value)} />
-                            
+
                             <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={syncCategory} onChange={e => setSyncCategory(e.target.value)}>
                                 {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
@@ -2573,7 +2662,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                         <div className="flex justify-end gap-3 pt-4">
                             <button onClick={() => setShowSyncModal(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
                             <button disabled={isSyncingAlbums} onClick={handleSyncAlbumsFromDrive} className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-6 py-2 rounded-xl font-bold shadow-lg shadow-emerald-500/30 flex items-center gap-2 transition-all">
-                                {isSyncingAlbums ? <RefreshCcw size={16} className="animate-spin"/> : <FolderDown size={16}/>}
+                                {isSyncingAlbums ? <RefreshCcw size={16} className="animate-spin" /> : <FolderDown size={16} />}
                                 {isSyncingAlbums ? 'Đang chạy...' : 'Bắt đầu đồng bộ'}
                             </button>
                         </div>
@@ -2589,10 +2678,10 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                             <h3 className="font-bold text-2xl">Tạo Album Mới</h3>
                             <button onClick={() => setIsCreatingAlbum(false)} className="text-slate-400 hover:text-slate-700"><X /></button>
                         </div>
-                        <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({...newAlbum, title: e.target.value})} />
+                        <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({ ...newAlbum, title: e.target.value })} />
                         <div className="grid grid-cols-2 gap-4">
-                            <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({...newAlbum, sub: e.target.value})} />
-                            <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={newAlbum.category} onChange={e => setNewAlbum({...newAlbum, category: e.target.value})}>
+                            <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({ ...newAlbum, sub: e.target.value })} />
+                            <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={newAlbum.category} onChange={e => setNewAlbum({ ...newAlbum, category: e.target.value })}>
                                 {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
                             </select>
                         </div>
@@ -2612,21 +2701,21 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                             <h3 className="font-bold text-2xl text-blue-600">Sửa Album</h3>
                             <button onClick={() => setEditingAlbum(null)} className="text-slate-400 hover:text-slate-700"><X /></button>
                         </div>
-                        
+
                         <div className="space-y-4">
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">TÊN ALBUM</label>
-                                <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.title} onChange={e => setEditingAlbum({...editingAlbum, title: e.target.value})} />
+                                <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.title} onChange={e => setEditingAlbum({ ...editingAlbum, title: e.target.value })} />
                             </div>
-                            
+
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 ml-1">MÔ TẢ PHỤ</label>
-                                    <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.sub || ''} onChange={e => setEditingAlbum({...editingAlbum, sub: e.target.value})} />
+                                    <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.sub || ''} onChange={e => setEditingAlbum({ ...editingAlbum, sub: e.target.value })} />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 ml-1">DANH MỤC</label>
-                                    <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={editingAlbum.category} onChange={e => setEditingAlbum({...editingAlbum, category: e.target.value})}>
+                                    <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={editingAlbum.category} onChange={e => setEditingAlbum({ ...editingAlbum, category: e.target.value })}>
                                         {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
                                     </select>
                                 </div>
@@ -2634,18 +2723,18 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">LINK ẢNH BÌA</label>
-                                <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.coverUrl || ''} onChange={e => setEditingAlbum({...editingAlbum, coverUrl: e.target.value})} />
+                                <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.coverUrl || ''} onChange={e => setEditingAlbum({ ...editingAlbum, coverUrl: e.target.value })} />
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">LINK GOOGLE DRIVE (Tùy chọn)</label>
-                                <input type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.driveLink || ''} onChange={e => setEditingAlbum({...editingAlbum, driveLink: e.target.value})} />
+                                <input type="text" placeholder="https://drive.google.com/..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={editingAlbum.driveLink || ''} onChange={e => setEditingAlbum({ ...editingAlbum, driveLink: e.target.value })} />
                             </div>
                         </div>
 
                         <div className="flex justify-between items-center gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => handleDeleteAlbum(editingAlbum.id)} className="bg-red-50 hover:bg-red-100 text-red-600 px-4 py-2.5 rounded-xl font-bold transition-colors flex items-center gap-2">
-                                <Trash2 className="w-4 h-4"/> Xóa
+                                <Trash2 className="w-4 h-4" /> Xóa
                             </button>
                             <div className="flex gap-2">
                                 <button onClick={() => setEditingAlbum(null)} className="px-4 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
@@ -2665,8 +2754,8 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                             <button onClick={() => setIsAddingVideo(false)} className="text-slate-400 hover:text-slate-700"><X /></button>
                         </div>
                         <div className="space-y-4">
-                            <input type="text" placeholder="Tiêu đề Video" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.title} onChange={e => setNewVideo({...newVideo, title: e.target.value})} />
-                            <input type="text" placeholder="Link YouTube (VD: https://youtube.com/...)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.url} onChange={e => setNewVideo({...newVideo, url: e.target.value})} />
+                            <input type="text" placeholder="Tiêu đề Video" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.title} onChange={e => setNewVideo({ ...newVideo, title: e.target.value })} />
+                            <input type="text" placeholder="Link YouTube (VD: https://youtube.com/...)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={newVideo.url} onChange={e => setNewVideo({ ...newVideo, url: e.target.value })} />
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => setIsAddingVideo(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
@@ -2689,7 +2778,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                 <div className="bg-blue-50 border border-blue-100 rounded-2xl p-4 md:p-5 space-y-3">
                                     <div className="flex items-start gap-3">
                                         <div className="bg-blue-600 text-white p-2 rounded-xl shrink-0">
-                                            <Wand2 size={18}/>
+                                            <Wand2 size={18} />
                                         </div>
                                         <div>
                                             <p className="font-bold text-slate-900">AI viết bài chuẩn SEO</p>
@@ -2725,7 +2814,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                     <div className="bg-white border border-blue-100 rounded-2xl p-3 md:p-4 space-y-3">
                                         <div className="flex items-start gap-3">
                                             <div className="bg-emerald-600 text-white p-2 rounded-xl shrink-0">
-                                                <FolderDown size={17}/>
+                                                <FolderDown size={17} />
                                             </div>
                                             <div className="min-w-0">
                                                 <p className="text-sm font-black text-slate-900">Kho ảnh Google Drive cho AI Blog</p>
@@ -2747,7 +2836,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 onClick={handleLoadBlogDriveImages}
                                                 className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                             >
-                                                <RefreshCcw size={16} className={isLoadingBlogDriveImages ? 'animate-spin' : ''}/> Lấy ảnh kho
+                                                <RefreshCcw size={16} className={isLoadingBlogDriveImages ? 'animate-spin' : ''} /> Lấy ảnh kho
                                             </button>
                                         </div>
 
@@ -2803,7 +2892,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             onClick={() => handleGenerateBlogWithAI(false)}
                                             className="flex-1 bg-slate-900 hover:bg-blue-600 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                         >
-                                            <Wand2 size={17}/> {getAiProviderLabel()} viết nháp
+                                            <Wand2 size={17} /> {getAiProviderLabel()} viết nháp
                                         </button>
                                         <button
                                             type="button"
@@ -2811,7 +2900,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                             onClick={() => handleGenerateBlogWithAI(true)}
                                             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                         >
-                                            <Zap size={17}/> {getAiProviderLabel()} viết & đăng ngay
+                                            <Zap size={17} /> {getAiProviderLabel()} viết & đăng ngay
                                         </button>
                                     </div>
 
@@ -2826,7 +2915,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 <p className="text-xs text-purple-600">Nhập chủ đề để AI lướt web tìm xu hướng nóng hổi nhất trong ngày.</p>
                                             </div>
                                         </div>
-                                        
+
                                         <div className="bg-purple-50 border border-purple-100 rounded-2xl p-3 md:p-4 space-y-3">
                                             <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-2">
                                                 <input
@@ -2842,7 +2931,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                     onClick={handleSearchTrends}
                                                     className="bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-5 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                                 >
-                                                    {isSearchingTrends ? <RefreshCcw className="animate-spin" size={17} /> : <Wand2 size={17}/>}
+                                                    {isSearchingTrends ? <RefreshCcw className="animate-spin" size={17} /> : <Wand2 size={17} />}
                                                     {isSearchingTrends ? 'Đang search...' : 'Tìm Trend'}
                                                 </button>
                                             </div>
@@ -2910,7 +2999,7 @@ const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
                                                 onClick={handleGenerateRelatedTopics}
                                                 className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                             >
-                                                <Wand2 size={17}/> Tự tạo danh sách bài liên quan bằng {getAiProviderLabel()}
+                                                <Wand2 size={17} /> Tự tạo danh sách bài liên quan bằng {getAiProviderLabel()}
                                             </button>
 
                                             <p className="text-[11px] text-slate-500 leading-relaxed">
@@ -2936,7 +3025,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 onClick={() => handleBulkGenerateBlogs(false)}
                                                 className="bg-white border-2 border-blue-100 hover:border-blue-500 disabled:opacity-50 text-slate-900 px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                             >
-                                                <Wand2 size={17}/> Viết nháp hàng loạt
+                                                <Wand2 size={17} /> Viết nháp hàng loạt
                                             </button>
                                             <button
                                                 type="button"
@@ -2944,7 +3033,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 onClick={() => handleBulkGenerateBlogs(true)}
                                                 className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                             >
-                                                <Zap size={17}/> Viết & đăng hàng loạt
+                                                <Zap size={17} /> Viết & đăng hàng loạt
                                             </button>
                                         </div>
 
@@ -2973,19 +3062,19 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">TIÊU ĐỀ BÀI VIẾT (*)</label>
-                                <input type="text" placeholder="Kinh nghiệm chụp ảnh cưới..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.title} onChange={e => setNewBlog({...newBlog, title: e.target.value})} />
+                                <input type="text" placeholder="Kinh nghiệm chụp ảnh cưới..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.title} onChange={e => setNewBlog({ ...newBlog, title: e.target.value })} />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">ĐƯỜNG DẪN TÙY CHỈNH (SLUG - Để trống sẽ tự tạo)</label>
-                                <input type="text" placeholder="kinh-nghiem-chup-anh-cuoi" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.slug} onChange={e => setNewBlog({...newBlog, slug: e.target.value})} />
+                                <input type="text" placeholder="kinh-nghiem-chup-anh-cuoi" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.slug} onChange={e => setNewBlog({ ...newBlog, slug: e.target.value })} />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">MÔ TẢ NGẮN (META DESCRIPTION - Tốt cho SEO)</label>
-                                <textarea rows={2} placeholder="Tóm tắt ngắn gọn nội dung bài viết..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.metaDesc} onChange={e => setNewBlog({...newBlog, metaDesc: e.target.value})} />
+                                <textarea rows={2} placeholder="Tóm tắt ngắn gọn nội dung bài viết..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.metaDesc} onChange={e => setNewBlog({ ...newBlog, metaDesc: e.target.value })} />
                             </div>
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">LINK ẢNH BÌA</label>
-                                <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.coverUrl} onChange={e => setNewBlog({...newBlog, coverUrl: e.target.value})} />
+                                <input type="text" placeholder="https://..." className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1" value={newBlog.coverUrl} onChange={e => setNewBlog({ ...newBlog, coverUrl: e.target.value })} />
                                 {(newBlog.coverUrl || editingBlog?.coverUrl) && (
                                     <div className="mt-3 rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 aspect-[16/7]">
                                         <img loading="lazy" decoding="async" src={newBlog.coverUrl || DEFAULT_COVER} alt="Xem trước ảnh bìa" className="w-full h-full object-cover" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = DEFAULT_COVER; }} />
@@ -3042,14 +3131,14 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         onClick={handleInsertBlogImage}
                                         className="bg-slate-900 hover:bg-blue-600 text-white px-4 py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2"
                                     >
-                                        <ImageIcon size={17}/> Chèn ảnh
+                                        <ImageIcon size={17} /> Chèn ảnh
                                     </button>
                                 </div>
                             </div>
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1 flex items-center gap-2">NỘI DUNG BÀI VIẾT (Hỗ trợ ## H2, ### H3, - bullet, ![alt](link ảnh))</label>
-                                <textarea rows={10} placeholder="Nhập nội dung bài viết vào đây..." className="w-full border-2 border-slate-100 p-4 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1 leading-relaxed" value={newBlog.content} onChange={e => setNewBlog({...newBlog, content: e.target.value})} />
+                                <textarea rows={10} placeholder="Nhập nội dung bài viết vào đây..." className="w-full border-2 border-slate-100 p-4 rounded-xl outline-none focus:border-blue-500 transition-colors mt-1 leading-relaxed" value={newBlog.content} onChange={e => setNewBlog({ ...newBlog, content: e.target.value })} />
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-6 mt-4 border-t border-slate-100">
@@ -3066,10 +3155,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
                         <div className="flex justify-between items-center w-full md:w-auto">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
-                                setActiveTab('home');
-                                setActiveAlbumId(null);
-                                setActiveBlogId(null);
-                                window.history.pushState({}, document.title, '/'); 
+                                goToTab('home');
                             }}>
                                 <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                                     <Camera className="text-white" size={20} />
@@ -3077,7 +3163,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
                             <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-                                <User size={18}/> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
+                                <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                         </div>
 
@@ -3085,19 +3171,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
-                                    { id: 'create', label: 'Tạo trang' },
+                                    { id: 'tool', label: 'Tool' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
                                     { id: 'videos', label: 'Video' },
-                                    { id: 'blog', label: 'Blog' },
-                                    { id: 'gallery', label: 'Chọn ảnh' },
-                                    { id: 'filter', label: 'Lọc ảnh' }
+                                    { id: 'blog', label: 'Blog' }
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => { 
-                                        setActiveTab(t.id); 
-                                        setActiveAlbumId(null); 
-                                        setActiveBlogId(null);
-                                        window.history.pushState({}, document.title, '/'); 
-                                    }} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => goToTab(t.id)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -3106,7 +3185,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                         <div className="hidden md:flex items-center gap-2">
                             <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border transition-colors ${isAdmin ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
-                                <User size={18}/> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
+                                <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
                         </div>
                     </div>
@@ -3116,20 +3195,20 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
             {/* Main Content */}
             <main className="flex-grow w-full">
                 <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
-                    
+
                     {/* --- TAB: BIO HOME TỐI GIẢN --- */}
                     {activeTab === 'home' && (
                         <div className="min-h-[80vh] flex flex-col items-center justify-center py-10 px-4 animate-in zoom-in-95 duration-700">
                             <div className="w-full max-w-sm space-y-8 text-center bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
-                                
+
                                 {/* Background Design Element */}
                                 <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-100 via-pink-50 to-white -z-10"></div>
 
                                 {/* Avatar */}
                                 <div className="relative w-28 h-28 mx-auto rounded-full overflow-hidden shadow-xl ring-4 ring-white mt-4">
-                                    <img loading="lazy" decoding="async" src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar" referrerPolicy="no-referrer"/>
+                                    <img loading="lazy" decoding="async" src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Avatar" referrerPolicy="no-referrer" />
                                 </div>
-                                
+
                                 {/* Title & Bio */}
                                 <div>
                                     <h1 className="text-3xl font-bold font-serif text-slate-900 mb-2">Merci Studio</h1>
@@ -3138,30 +3217,30 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                 {/* Link Buttons */}
                                 <div className="space-y-4">
-                                    <button onClick={() => setActiveTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
-                                        <ImageIcon className="w-5 h-5"/> Xem Bộ Sưu Tập Ảnh
-                                    </button>
-                                    
-                                    <button onClick={() => setActiveTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
-                                        <PlayCircle className="w-5 h-5 text-red-500"/> Xem Phim Phóng Sự
+                                    <button onClick={() => goToTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
+                                        <ImageIcon className="w-5 h-5" /> Xem Bộ Sưu Tập Ảnh
                                     </button>
 
-                                    <button onClick={() => setActiveTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
-                                        <BookOpen className="w-5 h-5"/> Blog Cưới & Kinh Nghiệm
+                                    <button onClick={() => setActiveTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
+                                        <PlayCircle className="w-5 h-5 text-red-500" /> Xem Phim Phóng Sự
                                     </button>
-                                    
+
+                                    <button onClick={() => goToTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
+                                        <BookOpen className="w-5 h-5" /> Blog Cưới & Kinh Nghiệm
+                                    </button>
+
                                     <div className="grid grid-cols-2 gap-4">
                                         <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex flex-col items-center justify-center gap-2 shadow-sm">
-                                            <FacebookIcon className="w-6 h-6"/> <span className="text-xs">Facebook</span>
+                                            <FacebookIcon className="w-6 h-6" /> <span className="text-xs">Facebook</span>
                                         </a>
-                                        
+
                                         <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="py-4 px-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-black hover:text-white transition-colors flex flex-col items-center justify-center gap-2 shadow-sm">
-                                            <TikTokIcon className="w-6 h-6"/> <span className="text-xs">TikTok</span>
+                                            <TikTokIcon className="w-6 h-6" /> <span className="text-xs">TikTok</span>
                                         </a>
                                     </div>
-                                    
+
                                     <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="w-full py-4 px-4 bg-pink-50 text-pink-600 rounded-2xl font-bold hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-sm">
-                                        <InstagramIcon className="w-5 h-5"/> Follow Instagram
+                                        <InstagramIcon className="w-5 h-5" /> Follow Instagram
                                     </a>
                                 </div>
 
@@ -3170,22 +3249,22 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Tiện ích Khách hàng & Studio</h3>
                                     {!user ? (
                                         <button onClick={() => openClientAuth('login')} className="w-full mb-3 py-3 px-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 shadow-sm">
-                                            <User className="w-5 h-5"/> Đăng nhập / đăng ký khách hàng
+                                            <User className="w-5 h-5" /> Đăng nhập / đăng ký khách hàng
                                         </button>
                                     ) : (
                                         <div className="w-full mb-3 py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm text-xs">
-                                            <CheckCircleIcon className="w-5 h-5"/> Đã đăng nhập: {user.email}
+                                            <CheckCircleIcon className="w-5 h-5" /> Đã đăng nhập: {user.email}
                                         </div>
                                     )}
                                     <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => setActiveTab('create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
-                                            <Wand2 className="w-5 h-5"/> <span className="text-[11px]">Tạo Trang</span>
+                                        <button onClick={() => goToTab('tool', 'create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                            <Wand2 className="w-5 h-5" /> <span className="text-[11px]">Tạo Trang</span>
                                         </button>
-                                        <button onClick={() => setActiveTab('gallery')} className="py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
-                                            <ImageIcon className="w-5 h-5"/> <span className="text-[11px]">Chọn Ảnh</span>
+                                        <button onClick={() => goToTab('tool', 'gallery')} className="py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                            <ImageIcon className="w-5 h-5" /> <span className="text-[11px]">Chọn Ảnh</span>
                                         </button>
-                                        <button onClick={() => setActiveTab('filter')} className="col-span-2 py-3 px-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm">
-                                            <Zap className="w-5 h-5"/> <span className="text-xs">Công Cụ Lọc Ảnh</span>
+                                        <button onClick={() => goToTab('tool', 'filter')} className="col-span-2 py-3 px-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                            <Zap className="w-5 h-5" /> <span className="text-xs">Công Cụ Lọc Ảnh</span>
                                         </button>
                                     </div>
                                 </div>
@@ -3193,13 +3272,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 {/* Contact Footer */}
                                 <div className="pt-6 border-t border-slate-100">
                                     <div className="text-[11px] text-slate-500 space-y-3 font-medium">
-                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 244 Đội Cấn, Ba Đình, HN</p>
-                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400"/> 650 Thân Nhân Trung, Việt Yên, BN</p>
-                                        <p className="flex items-center justify-center gap-2"><Phone className="w-4 h-4 text-green-500"/> 0888.999.545 - 0877.999.545</p>
-                                        <p className="flex items-center justify-center gap-2 truncate"><Mail className="w-4 h-4 text-purple-400 shrink-0"/> vaycuoidouyin@gmail.com</p>
+                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400" /> 244 Đội Cấn, Ba Đình, HN</p>
+                                        <p className="flex items-center justify-center gap-2"><MapPin className="w-4 h-4 text-blue-400" /> 650 Thân Nhân Trung, Việt Yên, BN</p>
+                                        <p className="flex items-center justify-center gap-2"><Phone className="w-4 h-4 text-green-500" /> 0888.999.545 - 0877.999.545</p>
+                                        <p className="flex items-center justify-center gap-2 truncate"><Mail className="w-4 h-4 text-purple-400 shrink-0" /> vaycuoidouyin@gmail.com</p>
                                     </div>
                                 </div>
-                                
+
                                 {/* Nút đăng nhập nhanh */}
                                 <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
                                     <User size={16} />
@@ -3208,15 +3287,45 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
                     )}
 
+
+                    {/* --- TAB: TOOL (Tạo trang / Chọn ảnh / Lọc ảnh) --- */}
+                    {activeTab === 'tool' && (
+                        <div className="mb-6 md:mb-8 bg-white border border-slate-100 rounded-[2rem] p-3 md:p-4 shadow-sm sticky top-[92px] md:top-[88px] z-30">
+                            <div className="flex gap-2 overflow-x-auto no-scrollbar">
+                                {[
+                                    { id: 'create', label: 'Tạo trang', icon: Wand2, path: '/tao-trang' },
+                                    { id: 'gallery', label: 'Chọn ảnh', icon: ImageIcon, path: '/chon-anh' },
+                                    { id: 'filter', label: 'Lọc ảnh', icon: Zap, path: '/loc-anh' }
+                                ].map(item => {
+                                    const Icon = item.icon;
+                                    return (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => {
+                                                setActiveToolTab(item.id);
+                                                setActiveAlbumId(null);
+                                                setActiveBlogId(null);
+                                                window.history.pushState({}, document.title, item.path);
+                                            }}
+                                            className={`shrink-0 flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-2xl text-sm font-black transition-all ${activeToolTab === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-100'}`}
+                                        >
+                                            <Icon className="w-4 h-4" /> {item.label}
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
                     {/* --- TAB: TẠO TRANG --- */}
-                    {activeTab === 'create' && (
+                    {activeTab === 'tool' && activeToolTab === 'create' && (
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-10 md:gap-16 items-center">
                             <div className="space-y-6 md:space-y-8 animate-in slide-in-from-left duration-500">
                                 <h2 className="text-4xl md:text-6xl font-bold leading-tight text-slate-900 tracking-tight">Gửi album chọn ảnh <span className="text-blue-600">ngay lập tức.</span></h2>
                                 <p className="text-slate-500 text-base md:text-xl leading-relaxed">Tiết kiệm thời gian tối đa cho Studio và Khách hàng với hệ thống chọn ảnh thông minh tích hợp Google Drive API.</p>
                                 {!user && (
                                     <button onClick={() => openClientAuth('login')} className="bg-white border-2 border-slate-100 px-5 py-3 rounded-2xl font-bold text-slate-700 hover:border-blue-300 hover:text-blue-600 transition-all shadow-sm flex items-center gap-2 w-fit">
-                                        <User className="w-5 h-5"/> Đăng nhập / đăng ký khách hàng
+                                        <User className="w-5 h-5" /> Đăng nhập / đăng ký khách hàng
                                     </button>
                                 )}
                                 <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
@@ -3243,7 +3352,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <span className="text-xs md:text-sm font-mono text-blue-800 truncate bg-white px-3 py-2 rounded-lg border border-blue-200 flex-1">{clientLink}</span>
                                                 <button onClick={() => {
                                                     if (navigator.clipboard) {
-                                                        navigator.clipboard.writeText(clientLink).then(()=> alert("Đã copy!"));
+                                                        navigator.clipboard.writeText(clientLink).then(() => alert("Đã copy!"));
                                                     } else {
                                                         prompt("Copy link:", clientLink);
                                                     }
@@ -3264,14 +3373,22 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Phim Phóng Sự & Concept</h2>
                                 {isAdmin && (
                                     <button onClick={() => setIsAddingVideo(true)} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
-                                        <Plus size={18}/> <span className="hidden sm:inline">Thêm Video</span>
+                                        <Plus size={18} /> <span className="hidden sm:inline">Thêm Video</span>
                                     </button>
                                 )}
                             </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                 {videos.length > 0 ? videos.map(vid => (
-                                    <div key={vid.id} onClick={() => setVideoModal({isOpen: true, youtubeId: vid.youtubeId})} className="group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900">
+                                    <div
+                                        key={vid.id}
+                                        draggable={isAdmin}
+                                        onDragStart={(e) => { e.stopPropagation(); setDraggedVideoId(vid.id); e.dataTransfer.effectAllowed = 'move'; }}
+                                        onDragOver={(e) => { if (isAdmin) e.preventDefault(); }}
+                                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDragReorderVideo(vid.id); }}
+                                        onClick={() => setVideoModal({ isOpen: true, youtubeId: vid.youtubeId })}
+                                        className={`group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900 ${draggedVideoId === vid.id ? 'ring-4 ring-blue-400 scale-[0.98] opacity-70' : ''}`}
+                                    >
                                         <img loading="lazy" decoding="async" src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
                                             <PlayCircle className="w-16 h-16 text-white/80 group-hover:text-white transition-all group-hover:scale-110 drop-shadow-lg" />
@@ -3282,12 +3399,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
-                                                    <ArrowUp className="w-4 h-4" />
-                                                </button>
-                                                <button onClick={(e) => handleMoveVideo(vid.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
-                                                    <ArrowDown className="w-4 h-4" />
-                                                </button>
+                                                <div className="bg-white/90 px-3 py-2 rounded-full text-slate-700 shadow-lg text-[11px] font-black cursor-grab active:cursor-grabbing" title="Giữ và kéo video để sắp xếp">
+                                                    Kéo
+                                                </div>
                                                 <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110" title="Xóa Video">
                                                     <Trash2 className="w-4 h-4" />
                                                 </button>
@@ -3296,7 +3410,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                 )) : (
                                     <div className="col-span-full text-center py-20 text-slate-400">
-                                        <PlayCircle className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                        <PlayCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm md:text-base">Chưa có video nào.</p>
                                     </div>
                                 )}
@@ -3316,7 +3430,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         </div>
                                         {isAdmin && (
                                             <button onClick={openNewBlogModal} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
-                                                <FileText size={18}/> <span className="hidden sm:inline">Viết bài mới</span>
+                                                <FileText size={18} /> <span className="hidden sm:inline">Viết bài mới</span>
                                             </button>
                                         )}
                                     </div>
@@ -3366,7 +3480,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 </div>
                                                 <div className="p-3 md:p-6 flex flex-col flex-grow">
                                                     <div className="flex items-center gap-2 text-[10px] md:text-xs text-blue-600 font-bold tracking-widest uppercase mb-2 md:mb-3">
-                                                        <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4"/> {new Date(blog.createdAt).toLocaleDateString('vi-VN')}
+                                                        <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4" /> {new Date(blog.createdAt).toLocaleDateString('vi-VN')}
                                                     </div>
                                                     {getBlogHashtags(blog).length > 0 && (
                                                         <div className="flex flex-wrap gap-1 mb-2">
@@ -3392,7 +3506,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </div>
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
-                                                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                                 <p className="text-sm md:text-base">Chưa có bài viết nào với hashtag này.</p>
                                             </div>
                                         )}
@@ -3403,32 +3517,32 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <div className="flex items-center justify-between mb-8 pb-8 border-b border-slate-100">
                                         <button onClick={() => {
                                             setActiveBlogId(null);
-                                            window.history.pushState({}, document.title, '/'); 
+                                            window.history.pushState({}, document.title, '/');
                                         }} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium">
-                                            <ArrowLeft size={20}/> Quay lại danh sách
+                                            <ArrowLeft size={20} /> Quay lại danh sách
                                         </button>
-                                        
+
                                         <div className="flex items-center gap-2 flex-wrap justify-end">
                                             {isAdmin && currentViewBlog && (
                                                 <>
                                                     <button onClick={(e) => openEditBlog(currentViewBlog, e)} className="flex items-center gap-2 text-slate-700 bg-slate-100 hover:bg-slate-200 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
-                                                        <Edit size={16}/> Sửa bài
+                                                        <Edit size={16} /> Sửa bài
                                                     </button>
                                                     <button onClick={(e) => handleDeleteBlog(currentViewBlog.id, e)} className="flex items-center gap-2 text-red-600 bg-red-50 hover:bg-red-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
-                                                        <Trash2 size={16}/> Xóa
+                                                        <Trash2 size={16} /> Xóa
                                                     </button>
                                                 </>
                                             )}
                                             <button onClick={() => {
                                                 const slugToUse = currentViewBlog?.slug || createSlug(currentViewBlog?.title) || currentViewBlog?.id;
                                                 const link = `${window.location.origin}/${slugToUse}`;
-                                                if(navigator.clipboard && window.isSecureContext) {
+                                                if (navigator.clipboard && window.isSecureContext) {
                                                     navigator.clipboard.writeText(link).then(() => alert("Đã copy link bài viết này!"));
                                                 } else {
                                                     prompt("Copy link:", link);
                                                 }
                                             }} className="flex items-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 rounded-xl transition-all font-semibold text-sm">
-                                                <LinkIcon size={16}/> Copy Link
+                                                <LinkIcon size={16} /> Copy Link
                                             </button>
                                         </div>
                                     </div>
@@ -3436,7 +3550,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     {currentViewBlog && (
                                         <article className="blog-content prose prose-slate prose-lg md:prose-xl max-w-none">
                                             <div className="flex items-center gap-2 text-sm text-blue-600 font-bold tracking-widest uppercase mb-4">
-                                                <Calendar className="w-4 h-4"/> {new Date(currentViewBlog.createdAt).toLocaleDateString('vi-VN')}
+                                                <Calendar className="w-4 h-4" /> {new Date(currentViewBlog.createdAt).toLocaleDateString('vi-VN')}
                                             </div>
                                             <h1 className="vi-safe-font text-3xl md:text-5xl font-black font-sans text-slate-900 leading-tight mb-8">
                                                 {currentViewBlog.title}
@@ -3463,12 +3577,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     <img loading="lazy" decoding="async" src={currentViewBlog.coverUrl} className="w-full h-full object-cover" alt={currentViewBlog.title} referrerPolicy="no-referrer" />
                                                 </div>
                                             )}
-                                            
+
                                             {/* Phần nội dung bài viết hỗ trợ Markdown đơn giản để tốt hơn cho SEO */}
                                             <div className="text-slate-700 leading-relaxed space-y-5 text-base md:text-lg">
                                                 {currentViewBlog.content.split('\n').map((line, idx) => {
                                                     const textLine = line.trim();
-                                                    if (!textLine) return <br key={idx}/>;
+                                                    if (!textLine) return <br key={idx} />;
 
                                                     const imageMatch = textLine.match(/^!\[(.*?)\]\((.*?)\)$/);
                                                     if (imageMatch) {
@@ -3514,20 +3628,20 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         {isAdmin && (
                                             <div className="flex items-center gap-2">
                                                 <button onClick={() => setShowSyncModal(true)} className="bg-emerald-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-700 text-sm md:text-base">
-                                                    <FolderDown size={18}/> <span className="hidden sm:inline">Đồng bộ Drive</span>
+                                                    <FolderDown size={18} /> <span className="hidden sm:inline">Đồng bộ Drive</span>
                                                 </button>
                                                 <button onClick={() => setIsCreatingAlbum(true)} className="bg-blue-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
-                                                    <Plus size={18}/> <span className="hidden sm:inline">Album mới</span>
+                                                    <Plus size={18} /> <span className="hidden sm:inline">Album mới</span>
                                                 </button>
                                             </div>
                                         )}
                                     </div>
-                                    
+
                                     <div className="flex overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar pb-2">
                                         {ALBUM_CATEGORIES.map(cat => (
-                                            <button 
-                                                key={cat} 
-                                                onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', window.location.pathname); else window.history.pushState({}, '', `${window.location.pathname}${getCategoryHash(cat)}`); }} 
+                                            <button
+                                                key={cat}
+                                                onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', window.location.pathname); else window.history.pushState({}, '', `${window.location.pathname}${getCategoryHash(cat)}`); }}
                                                 className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat === 'Tất cả' ? cat : `#${cat}`}
@@ -3539,46 +3653,49 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <div className="bg-white border border-slate-100 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-sm">
                                             <div>
                                                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Link gửi khách theo hashtag</p>
-                                                <p className="font-mono text-sm text-blue-700 truncate">{`${window.location.origin}/${getCategoryHash(activeCategory)}`}</p>
+                                                <p className="font-mono text-sm text-blue-700 truncate">{`${window.location.origin}/bo-su-tap${getCategoryHash(activeCategory)}`}</p>
                                             </div>
                                             <button onClick={() => {
-                                                const link = `${window.location.origin}/${getCategoryHash(activeCategory)}`;
+                                                const link = `${window.location.origin}/bo-su-tap${getCategoryHash(activeCategory)}`;
                                                 if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(link).then(() => alert('Đã copy link hashtag!'));
                                                 else prompt('Copy link:', link);
                                             }} className="bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-600 transition-colors flex items-center justify-center gap-2">
-                                                <Copy className="w-4 h-4"/> Copy link #{activeCategory}
+                                                <Copy className="w-4 h-4" /> Copy link #{activeCategory}
                                             </button>
                                         </div>
                                     )}
 
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
-                                            <div key={a.id} onClick={() => {
-                                                setActiveAlbumId(a.id); 
-                                                setAlbumDriveLink(a.driveLink || '');
-                                                setLightboxData(p => ({...p, images: a.images||[]}));
-                                                // Thay đổi URL trình duyệt cho ĐẸP
-                                                const slugToUse = a.slug || createSlug(a.title) || a.id;
-                                                window.history.pushState({}, '', `/${slugToUse}`);
-                                            }} className="group cursor-pointer relative">
+                                            <div
+                                                key={a.id}
+                                                draggable={isAdmin && activeCategory === 'Tất cả'}
+                                                onDragStart={(e) => { e.stopPropagation(); setDraggedAlbumId(a.id); e.dataTransfer.effectAllowed = 'move'; }}
+                                                onDragOver={(e) => { if (isAdmin && activeCategory === 'Tất cả') e.preventDefault(); }}
+                                                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDragReorderAlbum(a.id); }}
+                                                onClick={() => {
+                                                    setActiveAlbumId(a.id);
+                                                    setAlbumDriveLink(a.driveLink || '');
+                                                    setLightboxData(p => ({ ...p, images: a.images || [] }));
+                                                    // Thay đổi URL trình duyệt cho ĐẸP
+                                                    const slugToUse = a.slug || createSlug(a.title) || a.id;
+                                                    window.history.pushState({}, '', `/${slugToUse}`);
+                                                }}
+                                                className={`group cursor-pointer relative ${draggedAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl scale-[0.98] opacity-70' : ''}`}
+                                            >
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-3 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 bg-white/95 backdrop-blur-md px-2 md:px-4 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
-                                                    
+
                                                     {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
                                                     {isAdmin && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                            {/* Chỉ hiện mũi tên Lên/Xuống nếu đang ở tab 'Tất cả' */}
+                                                            {/* Kéo thả để sắp xếp thay cho mũi tên lên/xuống */}
                                                             {activeCategory === 'Tất cả' && (
-                                                                <>
-                                                                    <button onClick={(e) => handleMoveAlbum(a.id, 'up', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Lên trên">
-                                                                        <ArrowUp className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button onClick={(e) => handleMoveAlbum(a.id, 'down', e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Xuống dưới">
-                                                                        <ArrowDown className="w-4 h-4" />
-                                                                    </button>
-                                                                </>
+                                                                <div className="bg-white/90 px-3 py-2 rounded-full text-slate-700 shadow-lg text-[11px] font-black cursor-grab active:cursor-grabbing" title="Giữ và kéo album để sắp xếp">
+                                                                    Kéo
+                                                                </div>
                                                             )}
                                                             <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
                                                                 <Edit className="w-4 h-4" />
@@ -3597,7 +3714,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </div>
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
-                                                <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30"/>
+                                                <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                                 <p className="text-sm md:text-base">Chưa có album nào trong danh mục này.</p>
                                             </div>
                                         )}
@@ -3611,34 +3728,34 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 setActiveAlbumId(null);
                                                 window.history.pushState({}, document.title, '/'); // Xóa link ảo khi Back
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
-                                                <ArrowLeft size={18}/> Quay lại
+                                                <ArrowLeft size={18} /> Quay lại
                                             </button>
-                                            
+
                                             {/* Link Album MỚI (Dạng Slug đẹp) */}
                                             <button onClick={() => {
                                                 const slugToUse = currentViewAlbum?.slug || createSlug(currentViewAlbum?.title) || currentViewAlbum?.id;
                                                 const link = `${window.location.origin}/${slugToUse}`;
-                                                if(navigator.clipboard && window.isSecureContext) {
+                                                if (navigator.clipboard && window.isSecureContext) {
                                                     navigator.clipboard.writeText(link).then(() => alert("Đã copy link Album này!"));
                                                 } else {
                                                     prompt("Copy link:", link);
                                                 }
                                             }} className="flex items-center justify-center gap-2 text-blue-600 bg-blue-50 hover:bg-blue-100 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border border-blue-100 shadow-sm transition-all font-semibold flex-1 md:flex-none text-sm md:text-base">
-                                                <LinkIcon size={18}/> <span className="hidden sm:inline">Copy Link</span>
+                                                <LinkIcon size={18} /> <span className="hidden sm:inline">Copy Link</span>
                                             </button>
                                         </div>
 
                                         {isAdmin && (
                                             <div className="flex flex-wrap items-center gap-2 md:gap-3 bg-blue-50/50 p-2 rounded-xl md:rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
-                                                <input 
-                                                    type="text" 
-                                                    placeholder="Dán link Drive..." 
-                                                    value={albumDriveLink} 
-                                                    onChange={e => setAlbumDriveLink(e.target.value)} 
+                                                <input
+                                                    type="text"
+                                                    placeholder="Dán link Drive..."
+                                                    value={albumDriveLink}
+                                                    onChange={e => setAlbumDriveLink(e.target.value)}
                                                     className="flex-1 md:w-64 px-3 md:px-4 py-2 border border-slate-200 rounded-lg md:rounded-xl outline-none text-xs md:text-sm focus:border-blue-500"
                                                 />
                                                 <button onClick={handleSyncDriveToAlbum} className="bg-white hover:bg-blue-600 hover:text-white text-blue-600 px-4 md:px-6 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-bold border border-blue-200 shadow-sm transition-all flex items-center justify-center gap-2 w-full sm:w-auto">
-                                                    <RefreshCcw size={16}/> Reload Drive
+                                                    <RefreshCcw size={16} /> Reload Drive
                                                 </button>
                                             </div>
                                         )}
@@ -3660,23 +3777,23 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         {paginatedAlbumImages.map((img: any, i: number) => {
                                             const isCover = currentViewAlbum?.coverId === img.id || currentViewAlbum?.coverUrl === img.url;
                                             const originalIndex = albumStartIndex + i;
-                                            
+
                                             return (
-                                                <div key={img.id} className="masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white" onClick={() => setLightboxData({isOpen: true, index: originalIndex, images: albumImages})}>
+                                                <div key={img.id} className="masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white" onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
                                                     <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className="w-full h-auto block transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
-                                                    
+
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-2 right-2 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
                                                         <button onClick={(e) => handleDownloadWithWatermark(img, img.name, e)} className="bg-white/90 p-1.5 md:p-3 rounded-full hover:bg-blue-600 hover:text-white transition-all shadow-xl" title="Tải ảnh">
-                                                            <Download size={14} className="md:w-5 md:h-5"/>
+                                                            <Download size={14} className="md:w-5 md:h-5" />
                                                         </button>
                                                     </div>
 
                                                     {/* Nút Đặt làm Ảnh Bìa (Chỉ hiện với Admin) */}
                                                     {isAdmin && (
                                                         <div className={`absolute top-2 left-2 md:top-4 md:left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
-                                                            <button 
-                                                                onClick={(e) => handleSetCover(e, img.url)} 
+                                                            <button
+                                                                onClick={(e) => handleSetCover(e, img.url)}
                                                                 className={`p-1.5 md:p-3 rounded-full shadow-xl transition-all ${isCover ? 'bg-yellow-400 text-white' : 'bg-white/90 text-slate-400 hover:bg-yellow-400 hover:text-white'}`}
                                                                 title={isCover ? "Đây là ảnh bìa hiện tại" : "Đặt làm ảnh bìa"}
                                                             >
@@ -3702,7 +3819,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     )}
 
                     {/* --- TAB: LỌC ẢNH --- */}
-                    {activeTab === 'filter' && (
+                    {activeTab === 'tool' && activeToolTab === 'filter' && (
                         <div className="max-w-4xl mx-auto space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
                             <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-100 space-y-6 md:space-y-10">
                                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
@@ -3730,7 +3847,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     )}
 
                     {/* --- TAB: GALLERY (Chọn ảnh) --- */}
-                    {activeTab === 'gallery' && (
+                    {activeTab === 'tool' && activeToolTab === 'gallery' && (
                         <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
                             <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm">
                                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
@@ -3740,11 +3857,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                     {!user ? (
                                         <button onClick={() => openClientAuth('login')} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                            <User className="w-4 h-4"/> Đăng nhập / đăng ký
+                                            <User className="w-4 h-4" /> Đăng nhập / đăng ký
                                         </button>
                                     ) : (
                                         <button onClick={loadSavedClientPages} className="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
-                                            <RefreshCcw className="w-4 h-4"/> Tải lại danh sách
+                                            <RefreshCcw className="w-4 h-4" /> Tải lại danh sách
                                         </button>
                                     )}
                                 </div>
@@ -3761,7 +3878,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                             className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
                                                             title="Đổi tên link chọn ảnh"
                                                         >
-                                                            <Edit className="w-3 h-3"/> Sửa tên
+                                                            <Edit className="w-3 h-3" /> Sửa tên
                                                         </button>
                                                     </div>
                                                     <p className="text-xs text-slate-500 mt-1">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
@@ -3818,8 +3935,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             <div className="flex items-center gap-2 text-pink-500 font-bold bg-pink-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl whitespace-nowrap text-sm md:text-base">
                                                 <Heart className="w-4 h-4 md:w-5 md:h-5 fill-current" /> <span>{selectedImages.size}</span> ảnh
                                             </div>
-                                            {isSaving && <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin"/> Đang lưu...</span>}
-                                            {!isSaving && <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 md:w-4 md:h-4"/> Đã lưu</span>}
+                                            {isSaving && <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin" /> Đang lưu...</span>}
+                                            {!isSaving && <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 md:w-4 md:h-4" /> Đã lưu</span>}
                                         </div>
 
                                         {/* Toggle View Mode */}
@@ -3832,25 +3949,25 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <div className="flex gap-2 w-full md:w-auto justify-end flex-wrap">
                                             <button onClick={() => {
                                                 const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
-                                                if(navigator.clipboard && window.isSecureContext) {
-                                                    navigator.clipboard.writeText(names.join('\n')).then(()=> alert("Đã copy danh sách tên file!"));
+                                                if (navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(names.join('\n')).then(() => alert("Đã copy danh sách tên file!"));
                                                 } else {
                                                     prompt("Copy danh sách:", names.join('\n'));
                                                 }
                                             }} className="bg-slate-100 hover:bg-slate-200 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Copy Tên</span>
+                                                <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Copy Tên</span>
                                             </button>
-                                            
+
                                             <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Link Chốt</span>
+                                                <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Link Chốt</span>
                                             </button>
 
                                             <button onClick={handleDownloadAllOriginal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <FolderDown className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải tất cả</span>
+                                                <FolderDown className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Tải tất cả</span>
                                             </button>
 
                                             <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2"/> <span>Tải ảnh đã chọn</span>
+                                                <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Tải ảnh đã chọn</span>
                                             </button>
                                         </div>
                                     </div>
@@ -3871,22 +3988,22 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 const originalIndex = galleryStartIndex + idx;
                                                 return (
                                                     <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
-                                                        <img loading="lazy" decoding="async" 
-                                                            src={img.url || getDriveThumbUrl(img.id, 'w1200')} 
-                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer" 
-                                                            alt={img.name || "Gallery"} 
+                                                        <img loading="lazy" decoding="async"
+                                                            src={img.url || getDriveThumbUrl(img.id, 'w1200')}
+                                                            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
+                                                            alt={img.name || "Gallery"}
                                                             loading="lazy" decoding="async"
                                                             referrerPolicy="no-referrer"
                                                             onError={(e) => handleImageError(e, img)}
-                                                            onClick={() => { setLightboxData({isOpen: true, index: originalIndex, images: displayedImages}); }}
+                                                            onClick={() => { setLightboxData({ isOpen: true, index: originalIndex, images: displayedImages }); }}
                                                         />
-                                                        
+
                                                         {/* Nút thả tim to */}
-                                                        <div 
+                                                        <div
                                                             onClick={(e) => toggleImageSelect(img.id, e)}
                                                             className={`absolute bottom-2 right-2 md:bottom-3 md:right-3 w-10 h-10 md:w-12 md:h-12 cursor-pointer rounded-full flex items-center justify-center backdrop-blur-md transition-all ${isSelected ? 'bg-pink-500 text-white scale-110 shadow-lg' : 'bg-black/40 text-white/80 hover:bg-pink-500/80 hover:text-white md:hover:scale-110'}`}
                                                         >
-                                                            <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isSelected ? 'fill-current' : ''}`}/>
+                                                            <Heart className={`w-5 h-5 md:w-6 md:h-6 ${isSelected ? 'fill-current' : ''}`} />
                                                         </div>
 
                                                         {/* Nút tải từng ảnh gốc - không watermark */}
@@ -3936,16 +4053,16 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
             </main>
 
             {/* LIGHTBOX FOR GALLERY & ALBUMS */}
-            <ImageLightbox 
-                lightboxData={lightboxData} 
-                setLightboxData={setLightboxData} 
-                touchStart={touchStart} 
-                setTouchStart={setTouchStart} 
-                touchEnd={touchEnd} 
-                setTouchEnd={setTouchEnd} 
-                nextImg={nextImg} 
-                prevImg={prevImg} 
-                getDriveThumbUrl={getDriveThumbUrl} 
+            <ImageLightbox
+                lightboxData={lightboxData}
+                setLightboxData={setLightboxData}
+                touchStart={touchStart}
+                setTouchStart={setTouchStart}
+                touchEnd={touchEnd}
+                setTouchEnd={setTouchEnd}
+                nextImg={nextImg}
+                prevImg={prevImg}
+                getDriveThumbUrl={getDriveThumbUrl}
             />
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
