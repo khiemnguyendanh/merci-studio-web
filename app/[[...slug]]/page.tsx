@@ -380,7 +380,7 @@ const normalizeTextList = (input) => {
     const raw = Array.isArray(input)
         ? input
         : String(input || '')
-            .split(/[,#\n]+/)
+            .split(/[,，、;；#\n\r]+/)
             .map(item => item.trim())
             .filter(Boolean);
 
@@ -1175,7 +1175,7 @@ export default function Home() {
         const raw = Array.isArray(input)
             ? input
             : String(input || '')
-                .split(/[,\n#]+/)
+                .split(/[,，、;；#\n\r]+/)
                 .map(item => item.trim())
                 .filter(Boolean);
 
@@ -3164,14 +3164,21 @@ export default function Home() {
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ CHO ALBUM</label>
-                                <input
-                                    type="text"
+                                <textarea
+                                    rows={2}
                                     placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
-                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-emerald-500 transition-colors mt-1"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-emerald-500 transition-colors mt-1 resize-none"
                                     value={syncHashtags}
                                     onChange={e => setSyncHashtags(e.target.value)}
                                 />
-                                <p className="text-xs text-slate-400 mt-1">Nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy. Ví dụ: váy cưới, beauty, ngoài trời.</p>
+                                {normalizeAlbumHashtags(syncHashtags).length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {normalizeAlbumHashtags(syncHashtags).map(tag => (
+                                            <span key={tag} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">#{tag}</span>
+                                        ))}
+                                    </div>
+                                )}
+                                <p className="text-xs text-slate-400 mt-1">Nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy hoặc xuống dòng. Ví dụ: váy cưới, beauty, ngoài trời.</p>
                             </div>
                         </div>
 
@@ -3220,14 +3227,21 @@ export default function Home() {
                         </div>
                         <div>
                             <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ</label>
-                            <input
-                                type="text"
+                            <textarea
+                                rows={2}
                                 placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
-                                className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1"
+                                className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1 resize-none"
                                 value={newAlbum.hashtags || ''}
                                 onChange={e => setNewAlbum({ ...newAlbum, hashtags: e.target.value })}
                             />
-                            <p className="text-[11px] text-slate-400 mt-1 ml-1">Hashtag phụ dùng để lọc/search chi tiết, không thay cho danh mục chính.</p>
+                            {normalizeAlbumHashtags(newAlbum.hashtags || '').length > 0 && (
+                                <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {normalizeAlbumHashtags(newAlbum.hashtags || '').map(tag => (
+                                        <span key={tag} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">#{tag}</span>
+                                    ))}
+                                </div>
+                            )}
+                            <p className="text-[11px] text-slate-400 mt-1 ml-1">Hashtag phụ dùng để lọc/search chi tiết, có thể nhập nhiều hashtag cách nhau bằng dấu phẩy hoặc xuống dòng.</p>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => setIsCreatingAlbum(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
@@ -3276,14 +3290,21 @@ export default function Home() {
 
                             <div>
                                 <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG PHỤ</label>
-                                <input
-                                    type="text"
+                                <textarea
+                                    rows={2}
                                     placeholder="VD: váy cưới, sinh nhật, sexy, beauty"
-                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1"
-                                    value={getAlbumHashtags(editingAlbum).join(', ')}
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-white font-medium focus:border-blue-500 transition-colors mt-1 resize-none"
+                                    value={Array.isArray(editingAlbum.hashtags) ? editingAlbum.hashtags.join(', ') : (editingAlbum.hashtags || '')}
                                     onChange={e => setEditingAlbum({ ...editingAlbum, hashtags: e.target.value })}
                                 />
-                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy.</p>
+                                {normalizeAlbumHashtags(editingAlbum.hashtags || '').length > 0 && (
+                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                        {normalizeAlbumHashtags(editingAlbum.hashtags || '').map(tag => (
+                                            <span key={tag} className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-blue-50 text-blue-600 border border-blue-100">#{tag}</span>
+                                        ))}
+                                    </div>
+                                )}
+                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag phụ, cách nhau bằng dấu phẩy hoặc xuống dòng.</p>
                             </div>
 
                             <div>
@@ -4326,27 +4347,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 }}
                                                 className={`group cursor-pointer relative transition-all duration-200 ${draggingAlbumId === a.id ? 'opacity-50 scale-95' : ''} ${dragOverAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl md:rounded-[2.5rem]' : ''}`}
                                             >
-                                                <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-3 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
+                                                <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-2 md:mb-3 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-col items-start gap-1 max-w-[88%]">
                                                         <span className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
                                                             {getAlbumMainCategory(a, 'Wedding')}
                                                         </span>
-                                                        {getAlbumHashtags(a).length > 0 && (
-                                                            <div className="flex flex-wrap gap-1">
-                                                                {getAlbumHashtags(a).slice(0, 3).map(tag => (
-                                                                    <span key={tag} className="bg-blue-600/90 text-white backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] md:text-[10px] font-bold shadow-sm">
-                                                                        #{tag}
-                                                                    </span>
-                                                                ))}
-                                                                {getAlbumHashtags(a).length > 3 && (
-                                                                    <span className="bg-slate-900/85 text-white backdrop-blur-md px-2 py-0.5 rounded-full text-[8px] md:text-[10px] font-bold shadow-sm">
-                                                                        +{getAlbumHashtags(a).length - 3}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        )}
                                                     </div>
 
                                                     {/* Các nút thao tác Admin: kéo thả + sửa */}
@@ -4369,6 +4376,21 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         </div>
                                                     </div>
                                                 </div>
+
+                                                {getAlbumHashtags(a).length > 0 && (
+                                                    <div className="px-1 md:px-2 min-h-[28px] md:min-h-[34px] flex flex-wrap items-start gap-1.5 md:gap-2">
+                                                        {getAlbumHashtags(a).slice(0, 5).map(tag => (
+                                                            <span key={tag} className="bg-blue-50 text-blue-700 border border-blue-100 px-2.5 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-extrabold shadow-sm">
+                                                                #{tag}
+                                                            </span>
+                                                        ))}
+                                                        {getAlbumHashtags(a).length > 5 && (
+                                                            <span className="bg-slate-100 text-slate-600 border border-slate-200 px-2.5 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-extrabold shadow-sm">
+                                                                +{getAlbumHashtags(a).length - 5}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
@@ -4431,14 +4453,15 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         label="Bộ sưu tập"
                                     />
 
-                                    <div className="masonry-grid">
+                                    <div className={paginatedAlbumImages.length <= 8 ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto" : "masonry-grid"}>
                                         {paginatedAlbumImages.map((img: any, i: number) => {
                                             const isCover = currentViewAlbum?.coverId === img.id || currentViewAlbum?.coverUrl === img.url;
                                             const originalIndex = albumStartIndex + i;
+                                            const isFewAlbumImages = paginatedAlbumImages.length <= 8;
 
                                             return (
-                                                <div key={img.id} className="masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white" onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
-                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className="w-full h-auto block transition-transform duration-500 group-hover:scale-105" loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
+                                                <div key={img.id} className={`${isFewAlbumImages ? 'relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5]' : 'masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white'}`} onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
+                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className={`${isFewAlbumImages ? 'w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105' : 'w-full h-auto block transition-transform duration-500 group-hover:scale-105'}`} loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
 
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-2 right-2 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
