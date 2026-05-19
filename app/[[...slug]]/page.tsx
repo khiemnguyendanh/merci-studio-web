@@ -36,7 +36,271 @@ if (typeof window !== 'undefined') {
 }
 
 
-const ImageLightbox = dynamic(() => import('@/components/ImageLightbox'), { ssr: false });
+
+const getLightboxImageUrl = (img, getDriveThumbUrl, size = 'w2400') => {
+    if (!img) return DEFAULT_COVER;
+    if (typeof img === 'string') return img;
+
+    return (
+        img.originalUrl ||
+        img.url ||
+        img.fullUrl ||
+        img.src ||
+        img.thumbnailUrl ||
+        (img.id && typeof getDriveThumbUrl === 'function' ? getDriveThumbUrl(img.id, size) : '') ||
+        DEFAULT_COVER
+    );
+};
+
+const getLightboxImageName = (img, fallback = 'Merci Studio') => {
+    if (!img || typeof img === 'string') return fallback;
+    return img.name || img.title || img.alt || fallback;
+};
+
+function SmoothImageLightbox({
+    lightboxData,
+    setLightboxData,
+    touchStart,
+    setTouchStart,
+    touchEnd,
+    setTouchEnd,
+    nextImg,
+    prevImg,
+    getDriveThumbUrl,
+    direction = 0
+}) {
+    const [imageLoaded, setImageLoaded] = useState(false);
+    const [isChanging, setIsChanging] = useState(false);
+
+    const images = lightboxData?.images || [];
+    const currentIndex = Number(lightboxData?.index || 0);
+    const currentImage = images[currentIndex];
+    const currentUrl = getLightboxImageUrl(currentImage, getDriveThumbUrl, 'w2400');
+    const currentName = getLightboxImageName(currentImage, 'Merci Studio');
+
+    const closeLightbox = () => {
+        setLightboxData({ isOpen: false, index: 0, images: [] });
+    };
+
+    useEffect(() => {
+        if (!lightboxData?.isOpen) return;
+
+        const originalOverflow = document.body.style.overflow;
+        document.body.style.overflow = 'hidden';
+
+        return () => {
+            document.body.style.overflow = originalOverflow;
+        };
+    }, [lightboxData?.isOpen]);
+
+    useEffect(() => {
+        if (!lightboxData?.isOpen || !images.length) return;
+
+        setImageLoaded(false);
+        setIsChanging(true);
+
+        const preloadIndexes = [
+            currentIndex,
+            (currentIndex + 1) % images.length,
+            (currentIndex - 1 + images.length) % images.length,
+            (currentIndex + 2) % images.length,
+            (currentIndex - 2 + images.length) % images.length
+        ];
+
+        const uniqueUrls = Array.from(new Set(
+            preloadIndexes
+                .map(index => getLightboxImageUrl(images[index], getDriveThumbUrl, 'w2400'))
+                .filter(Boolean)
+        ));
+
+        uniqueUrls.forEach(src => {
+            const img = new window.Image();
+            img.decoding = 'async';
+            img.loading = 'eager';
+            img.src = src;
+        });
+
+        const timer = window.setTimeout(() => setIsChanging(false), 180);
+        return () => window.clearTimeout(timer);
+    }, [lightboxData?.isOpen, currentIndex, images, getDriveThumbUrl]);
+
+    if (!lightboxData?.isOpen || !images.length) return null;
+
+    const handleTouchStart = (e) => {
+        setTouchStart(e.targetTouches?.[0]?.clientX || 0);
+        setTouchEnd(null);
+    };
+
+    const handleTouchMove = (e) => {
+        setTouchEnd(e.targetTouches?.[0]?.clientX || 0);
+    };
+
+    const handleTouchEnd = () => {
+        if (touchStart === null || touchEnd === null) return;
+
+        const distance = touchStart - touchEnd;
+        const minSwipeDistance = 45;
+
+        if (distance > minSwipeDistance) nextImg();
+        if (distance < -minSwipeDistance) prevImg();
+
+        setTouchStart(null);
+        setTouchEnd(null);
+    };
+
+    const goPrev = (e) => {
+        e.stopPropagation();
+        prevImg();
+    };
+
+    const goNext = (e) => {
+        e.stopPropagation();
+        nextImg();
+    };
+
+    const translateX = imageLoaded ? 0 : direction === 1 ? 22 : direction === -1 ? -22 : 0;
+
+    return (
+        <div
+            className="fixed inset-0 z-[9999] bg-black/95 backdrop-blur-xl flex items-center justify-center select-none"
+            onClick={closeLightbox}
+        >
+            <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 md:px-8 py-4 bg-gradient-to-b from-black/70 to-transparent">
+                <div className="text-white">
+                    <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]">
+                        {currentName}
+                    </div>
+                    <div className="text-xs text-white/60 mt-0.5">
+                        {currentIndex + 1} / {images.length}
+                    </div>
+                </div>
+
+                <button
+                    type="button"
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        closeLightbox();
+                    }}
+                    className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95"
+                    aria-label="Đóng ảnh"
+                >
+                    <X className="w-6 h-6" />
+                </button>
+            </div>
+
+            {images.length > 1 && (
+                <>
+                    <button
+                        type="button"
+                        onClick={goPrev}
+                        className="hidden md:flex absolute left-6 z-20 w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white items-center justify-center transition-all active:scale-95"
+                        aria-label="Ảnh trước"
+                    >
+                        <ArrowLeft className="w-7 h-7" />
+                    </button>
+
+                    <button
+                        type="button"
+                        onClick={goNext}
+                        className="hidden md:flex absolute right-6 z-20 w-14 h-14 rounded-full bg-white/10 hover:bg-white/20 text-white items-center justify-center transition-all active:scale-95"
+                        aria-label="Ảnh sau"
+                    >
+                        <ArrowRight className="w-7 h-7" />
+                    </button>
+                </>
+            )}
+
+            <div
+                className="relative w-full h-full flex items-center justify-center p-3 md:p-10 pt-20 pb-24"
+                onClick={(e) => e.stopPropagation()}
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+            >
+                {!imageLoaded && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-full border-2 border-white/20 border-t-white animate-spin" />
+                    </div>
+                )}
+
+                <img
+                    key={`${currentIndex}-${currentUrl}`}
+                    src={currentUrl}
+                    alt={currentName}
+                    draggable={false}
+                    loading="eager"
+                    decoding="async"
+                    onLoad={() => setImageLoaded(true)}
+                    onError={(e) => {
+                        const img = currentImage;
+                        const fallback = typeof img === 'object'
+                            ? (img.thumbnailUrl || img.url || DEFAULT_COVER)
+                            : DEFAULT_COVER;
+                        if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+                    }}
+                    className="max-w-full max-h-full object-contain rounded-xl md:rounded-2xl shadow-2xl will-change-transform"
+                    style={{
+                        opacity: imageLoaded ? 1 : 0,
+                        transform: `translate3d(${translateX}px,0,0) scale(${imageLoaded ? 1 : 0.985})`,
+                        transition: 'opacity 240ms ease, transform 280ms cubic-bezier(0.22, 1, 0.36, 1)',
+                        imageRendering: 'auto'
+                    }}
+                />
+
+                {isChanging && imageLoaded && (
+                    <div className="pointer-events-none absolute inset-0 bg-black/5 transition-opacity" />
+                )}
+            </div>
+
+            {images.length > 1 && (
+                <div className="absolute bottom-4 left-0 right-0 z-20 px-4">
+                    <div className="mx-auto max-w-4xl overflow-x-auto no-scrollbar">
+                        <div className="flex justify-center gap-2 min-w-max px-2">
+                            {images.slice(Math.max(0, currentIndex - 4), Math.min(images.length, currentIndex + 5)).map((img, localIndex) => {
+                                const realIndex = Math.max(0, currentIndex - 4) + localIndex;
+                                const thumbUrl = getLightboxImageUrl(img, getDriveThumbUrl, 'w300');
+                                const isActive = realIndex === currentIndex;
+
+                                return (
+                                    <button
+                                        key={`${realIndex}-${thumbUrl}`}
+                                        type="button"
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setLightboxData(prev => ({
+                                                ...prev,
+                                                index: realIndex
+                                            }));
+                                        }}
+                                        className={`w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border-2 transition-all ${isActive
+                                            ? 'border-white scale-105 opacity-100'
+                                            : 'border-white/20 opacity-55 hover:opacity-90'
+                                            }`}
+                                        aria-label={`Xem ảnh ${realIndex + 1}`}
+                                    >
+                                        <img
+                                            src={thumbUrl}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            className="w-full h-full object-cover"
+                                        />
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    <p className="text-center text-white/45 text-[11px] mt-3 md:hidden">
+                        Vuốt trái/phải để chuyển ảnh
+                    </p>
+                </div>
+            )}
+        </div>
+    );
+}
+
+const ImageLightbox = SmoothImageLightbox;
 const VideoLightbox = dynamic(() => import('@/components/VideoLightbox'), { ssr: false });
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
@@ -110,6 +374,50 @@ const getCategoryHash = (category) => category === 'Tất cả' ? '' : `#${creat
 const getCategoryFromHash = (hash) => {
     const cleanHash = (hash || '').replace(/^#/, '');
     return ALBUM_CATEGORIES.find(cat => createSlug(cat) === cleanHash) || cleanHash || '';
+};
+
+const normalizeAlbumCategories = (input) => {
+    const raw = Array.isArray(input)
+        ? input
+        : String(input || '')
+            .split(/[,#\n]+/)
+            .map(item => item.trim())
+            .filter(Boolean);
+
+    const unique = [];
+    raw.forEach(item => {
+        const tag = String(item || '').replace(/^#/, '').trim();
+        if (!tag) return;
+        const exists = unique.some(current => createSlug(current) === createSlug(tag));
+        if (!exists) unique.push(tag.length > 40 ? tag.slice(0, 40) : tag);
+    });
+
+    return unique;
+};
+
+const getAlbumCategories = (albumOrInput) => {
+    if (!albumOrInput) return [];
+
+    if (Array.isArray(albumOrInput) || typeof albumOrInput === 'string') {
+        return normalizeAlbumCategories(albumOrInput);
+    }
+
+    const fromArray = normalizeAlbumCategories(albumOrInput.categories || []);
+    const fromLegacy = normalizeAlbumCategories(albumOrInput.category || '');
+
+    return normalizeAlbumCategories([...fromArray, ...fromLegacy]);
+};
+
+const getAlbumCategoryText = (albumOrInput, fallback = 'Wedding') => {
+    const tags = getAlbumCategories(albumOrInput);
+    return (tags.length ? tags : [fallback]).join(', ');
+};
+
+const albumMatchesCategory = (album, category) => {
+    if (!category || category === 'Tất cả') return true;
+    return getAlbumCategories(album).some(tag =>
+        tag === category || createSlug(tag) === createSlug(category)
+    );
 };
 
 export default function Home() {
@@ -206,6 +514,7 @@ export default function Home() {
     const [filterLogs, setFilterLogs] = useState([]);
 
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] });
+    const [lightboxDirection, setLightboxDirection] = useState(0);
     const [touchStart, setTouchStart] = useState(null);
     const [touchEnd, setTouchEnd] = useState(null);
     const [albumPage, setAlbumPage] = useState(1);
@@ -417,12 +726,18 @@ export default function Home() {
 
     const nextImg = useCallback(() => {
         const imgs = lightboxData.images || [];
-        if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index + 1) % imgs.length }));
+        if (imgs.length) {
+            setLightboxDirection(1);
+            setLightboxData(p => ({ ...p, index: (p.index + 1) % imgs.length }));
+        }
     }, [lightboxData.images]);
 
     const prevImg = useCallback(() => {
         const imgs = lightboxData.images || [];
-        if (imgs.length) setLightboxData(p => ({ ...p, index: (p.index - 1 + imgs.length) % imgs.length }));
+        if (imgs.length) {
+            setLightboxDirection(-1);
+            setLightboxData(p => ({ ...p, index: (p.index - 1 + imgs.length) % imgs.length }));
+        }
     }, [lightboxData.images]);
 
     useEffect(() => {
@@ -446,12 +761,14 @@ export default function Home() {
     const handleCreateAlbum = async () => {
         if (!newAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
+        const albumCategories = normalizeAlbumCategories(newAlbum.category || 'Wedding');
         const data = {
             id: `album_${Date.now()}`,
             title: newAlbum.title,
             slug: createSlug(newAlbum.title) || `album-${Date.now()}`,
             sub: newAlbum.sub,
-            category: (newAlbum.category || 'Wedding').trim(),
+            category: albumCategories[0] || 'Wedding',
+            categories: albumCategories.length ? albumCategories : ['Wedding'],
             images: [],
             coverUrl: DEFAULT_COVER,
             order: Date.now(),
@@ -467,11 +784,13 @@ export default function Home() {
         if (!editingAlbum.title) return alert("Vui lòng nhập tên album");
         setIsLoading(true);
         try {
+            const albumCategories = normalizeAlbumCategories(editingAlbum.category || editingAlbum.categories || 'Wedding');
             await updateDoc(doc(db, 'merci_albums', editingAlbum.id), {
                 title: editingAlbum.title,
                 slug: createSlug(editingAlbum.title) || editingAlbum.slug,
                 sub: editingAlbum.sub,
-                category: (editingAlbum.category || 'Wedding').trim(),
+                category: albumCategories[0] || 'Wedding',
+                categories: albumCategories.length ? albumCategories : ['Wedding'],
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
                 driveLink: editingAlbum.driveLink || ''
             });
@@ -512,11 +831,13 @@ export default function Home() {
                 if (!exists) {
                     setSyncProgress(`Đang thêm: ${folder.name}...`);
                     const newId = `album_${Date.now()}_${folder.id}`;
+                    const albumCategories = normalizeAlbumCategories(syncCategory || 'Wedding');
                     const albumData = {
                         id: newId,
                         title: folder.name,
                         sub: 'Bộ sưu tập',
-                        category: (syncCategory || 'Wedding').trim(),
+                        category: albumCategories[0] || 'Wedding',
+                        categories: albumCategories.length ? albumCategories : ['Wedding'],
                         driveLink: folderLink,
                         slug: createSlug(folder.name),
                         createdAt: Date.now(),
@@ -598,7 +919,7 @@ export default function Home() {
 
         const visibleAlbums = activeCategory === 'Tất cả'
             ? albums
-            : albums.filter(a => (a.category || '') === activeCategory || createSlug(a.category || '') === createSlug(activeCategory));
+            : albums.filter(a => albumMatchesCategory(a, activeCategory));
 
         const fromIndex = visibleAlbums.findIndex(item => item.id === draggingAlbumId);
         const toIndex = visibleAlbums.findIndex(item => item.id === targetAlbumId);
@@ -2464,11 +2785,11 @@ export default function Home() {
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
     const albumCategoryFilters = ['Tất cả', ...Array.from(new Set([
         ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
-        ...albums.map(a => (a.category || '').trim()).filter(Boolean)
+        ...albums.flatMap(a => getAlbumCategories(a)).filter(Boolean)
     ]))];
     const filteredAlbums = activeCategory === 'Tất cả'
         ? albums
-        : albums.filter(a => (a.category || '') === activeCategory || createSlug(a.category || '') === createSlug(activeCategory));
+        : albums.filter(a => albumMatchesCategory(a, activeCategory));
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
@@ -2707,7 +3028,7 @@ export default function Home() {
                                 <input
                                     list="sync-album-category-options"
                                     type="text"
-                                    placeholder="Nhập hashtag mới, ví dụ: Pre-wedding, Baby, Gia đình"
+                                    placeholder="VD: Wedding, Concept, Couple, Baby"
                                     className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-emerald-500 transition-colors mt-1"
                                     value={syncCategory}
                                     onChange={e => setSyncCategory(e.target.value)}
@@ -2715,7 +3036,7 @@ export default function Home() {
                                 <datalist id="sync-album-category-options">
                                     {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                 </datalist>
-                                <p className="text-xs text-slate-400 mt-1">Có thể chọn mục cũ hoặc tự nhập hashtag/danh mục mới.</p>
+                                <p className="text-xs text-slate-400 mt-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
                             </div>
                         </div>
 
@@ -2751,7 +3072,7 @@ export default function Home() {
                                 <input
                                     list="new-album-category-options"
                                     type="text"
-                                    placeholder="Hashtag / danh mục mới"
+                                    placeholder="VD: Wedding, Concept, Couple"
                                     className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
                                     value={newAlbum.category}
                                     onChange={e => setNewAlbum({ ...newAlbum, category: e.target.value })}
@@ -2759,7 +3080,7 @@ export default function Home() {
                                 <datalist id="new-album-category-options">
                                     {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                 </datalist>
-                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Chọn mục cũ hoặc gõ hashtag mới.</p>
+                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
                             </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
@@ -2795,15 +3116,15 @@ export default function Home() {
                                     <input
                                         list="edit-album-category-options"
                                         type="text"
-                                        placeholder="Nhập hashtag / danh mục"
+                                        placeholder="VD: Wedding, Concept, Couple"
                                         className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
-                                        value={editingAlbum.category || ''}
+                                        value={getAlbumCategoryText(editingAlbum, '')}
                                         onChange={e => setEditingAlbum({ ...editingAlbum, category: e.target.value })}
                                     />
                                     <datalist id="edit-album-category-options">
                                         {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
                                     </datalist>
-                                    <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể tạo hashtag/danh mục mới ngay tại đây.</p>
+                                    <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể nhập nhiều hashtag, cách nhau bằng dấu phẩy. VD: Wedding, Concept.</p>
                                 </div>
                             </div>
 
@@ -3810,7 +4131,18 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-3 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
-                                                    <div className="absolute top-2 md:top-6 left-2 md:left-6 bg-white/95 backdrop-blur-md px-2 md:px-4 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
+                                                    <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-wrap gap-1 max-w-[86%]">
+                                                        {getAlbumCategories(a).slice(0, 3).map(tag => (
+                                                            <span key={tag} className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
+                                                                {tag}
+                                                            </span>
+                                                        ))}
+                                                        {getAlbumCategories(a).length > 3 && (
+                                                            <span className="bg-slate-900/85 text-white backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest shadow-sm">
+                                                                +{getAlbumCategories(a).length - 3}
+                                                            </span>
+                                                        )}
+                                                    </div>
 
                                                     {/* Các nút thao tác Admin: kéo thả + sửa */}
                                                     {isAdmin && (
@@ -4184,6 +4516,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                 nextImg={nextImg}
                 prevImg={prevImg}
                 getDriveThumbUrl={getDriveThumbUrl}
+                direction={lightboxDirection}
             />
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
