@@ -109,7 +109,7 @@ const createSlug = (str) => {
 const getCategoryHash = (category) => category === 'Tất cả' ? '' : `#${createSlug(category)}`;
 const getCategoryFromHash = (hash) => {
     const cleanHash = (hash || '').replace(/^#/, '');
-    return ALBUM_CATEGORIES.find(cat => createSlug(cat) === cleanHash) || '';
+    return ALBUM_CATEGORIES.find(cat => createSlug(cat) === cleanHash) || cleanHash || '';
 };
 
 export default function Home() {
@@ -117,9 +117,6 @@ export default function Home() {
     const [mounted, setMounted] = useState(false);
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('home');
-    const [activeToolTab, setActiveToolTab] = useState('create'); // create | gallery | filter
-    const [draggedAlbumId, setDraggedAlbumId] = useState(null);
-    const [draggedVideoId, setDraggedVideoId] = useState(null);
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
@@ -213,6 +210,11 @@ export default function Home() {
     const [touchEnd, setTouchEnd] = useState(null);
     const [albumPage, setAlbumPage] = useState(1);
     const [galleryPage, setGalleryPage] = useState(1);
+    const [activeToolTab, setActiveToolTab] = useState('create');
+    const [draggingAlbumId, setDraggingAlbumId] = useState(null);
+    const [dragOverAlbumId, setDragOverAlbumId] = useState(null);
+    const [draggingVideoId, setDraggingVideoId] = useState(null);
+    const [dragOverVideoId, setDragOverVideoId] = useState(null);
 
     // === EFFECTS ===
     useEffect(() => {
@@ -248,7 +250,6 @@ export default function Home() {
             const folderId = urlParams.get('folder');
             const foldersParam = urlParams.get('folders');
             const viewMode = urlParams.get('view');
-
             const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
 
             if (foldersParam) {
@@ -264,31 +265,31 @@ export default function Home() {
                 setCurrentSelectionKey(folderId);
                 if (viewMode === 'selected') setShowOnlySelected(true);
                 fetchDrive(folderId);
-            } else if (window.location.hash) {
-                const categoryFromHash = getCategoryFromHash(window.location.hash);
-                if (categoryFromHash) {
-                    setActiveTab('collection');
-                    setActiveCategory(categoryFromHash);
-                }
-            } else if (pathname && pathname !== '') {
-                const staticRoutes = {
+            } else {
+                const routeMap = {
                     'bo-su-tap': { tab: 'collection' },
-                    'video': { tab: 'videos' },
-                    'videos': { tab: 'videos' },
                     'blog': { tab: 'blog' },
+                    'video': { tab: 'videos' },
                     'tool': { tab: 'tool', tool: 'create' },
-                    'cong-cu': { tab: 'tool', tool: 'create' },
                     'tao-trang': { tab: 'tool', tool: 'create' },
                     'chon-anh': { tab: 'tool', tool: 'gallery' },
                     'loc-anh': { tab: 'tool', tool: 'filter' }
                 };
-                const route = staticRoutes[pathname];
+                const route = routeMap[pathname];
                 if (route) {
                     setActiveTab(route.tab);
                     if (route.tool) setActiveToolTab(route.tool);
-                    setActiveAlbumId(null);
-                    setActiveBlogId(null);
-                } else {
+                    if (route.tab === 'collection' && window.location.hash) {
+                        const categoryFromHash = getCategoryFromHash(window.location.hash);
+                        if (categoryFromHash) setActiveCategory(categoryFromHash);
+                    }
+                } else if (window.location.hash) {
+                    const categoryFromHash = getCategoryFromHash(window.location.hash);
+                    if (categoryFromHash) {
+                        setActiveTab('collection');
+                        setActiveCategory(categoryFromHash);
+                    }
+                } else if (pathname && pathname !== '') {
                     setPendingSlug(pathname);
                 }
             }
@@ -325,7 +326,7 @@ export default function Home() {
     // Videos - Chỉ load khi vào tab Video hoặc là Admin
     useEffect(() => {
         if (!mounted || !db) return;
-        if (activeTab !== 'video' && !isAdmin) return;
+        if (activeTab !== 'videos' && !isAdmin) return;
 
         const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
@@ -450,7 +451,7 @@ export default function Home() {
             title: newAlbum.title,
             slug: createSlug(newAlbum.title) || `album-${Date.now()}`,
             sub: newAlbum.sub,
-            category: newAlbum.category,
+            category: (newAlbum.category || 'Wedding').trim(),
             images: [],
             coverUrl: DEFAULT_COVER,
             order: Date.now(),
@@ -470,7 +471,7 @@ export default function Home() {
                 title: editingAlbum.title,
                 slug: createSlug(editingAlbum.title) || editingAlbum.slug,
                 sub: editingAlbum.sub,
-                category: editingAlbum.category,
+                category: (editingAlbum.category || 'Wedding').trim(),
                 coverUrl: editingAlbum.coverUrl || DEFAULT_COVER,
                 driveLink: editingAlbum.driveLink || ''
             });
@@ -515,7 +516,7 @@ export default function Home() {
                         id: newId,
                         title: folder.name,
                         sub: 'Bộ sưu tập',
-                        category: syncCategory,
+                        category: (syncCategory || 'Wedding').trim(),
                         driveLink: folderLink,
                         slug: createSlug(folder.name),
                         createdAt: Date.now(),
@@ -586,6 +587,51 @@ export default function Home() {
         finally { setIsLoading(false); }
     };
 
+    const handleAlbumDrop = async (targetAlbumId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isAdmin || !draggingAlbumId || draggingAlbumId === targetAlbumId) {
+            setDraggingAlbumId(null);
+            setDragOverAlbumId(null);
+            return;
+        }
+
+        const visibleAlbums = activeCategory === 'Tất cả'
+            ? albums
+            : albums.filter(a => (a.category || '') === activeCategory || createSlug(a.category || '') === createSlug(activeCategory));
+
+        const fromIndex = visibleAlbums.findIndex(item => item.id === draggingAlbumId);
+        const toIndex = visibleAlbums.findIndex(item => item.id === targetAlbumId);
+        if (fromIndex === -1 || toIndex === -1) {
+            setDraggingAlbumId(null);
+            setDragOverAlbumId(null);
+            return;
+        }
+
+        const reordered = [...visibleAlbums];
+        const [moved] = reordered.splice(fromIndex, 1);
+        reordered.splice(toIndex, 0, moved);
+
+        setIsLoading(true);
+        setLoadingMessage('Đang lưu thứ tự album...');
+        try {
+            const baseOrder = Date.now();
+            await Promise.all(reordered.map((item, index) =>
+                updateDoc(doc(db, 'merci_albums', item.id), {
+                    order: baseOrder + (reordered.length - index) * 1000,
+                    updatedAt: Date.now()
+                })
+            ));
+        } catch (error) {
+            console.error('Album drag drop error:', error);
+            alert('Lỗi khi lưu thứ tự album.');
+        } finally {
+            setDraggingAlbumId(null);
+            setDragOverAlbumId(null);
+            setIsLoading(false);
+        }
+    };
+
     // === HELPERS (Admin Videos) ===
     const extractYoutubeId = (url) => {
         const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -642,6 +688,46 @@ export default function Home() {
             await updateDoc(doc(db, 'merci_videos', targetItem.id), { order: order1 });
         } catch (err) { alert("Lỗi khi đổi vị trí."); }
         finally { setIsLoading(false); }
+    };
+
+    const handleVideoDrop = async (targetVideoId, e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isAdmin || !draggingVideoId || draggingVideoId === targetVideoId) {
+            setDraggingVideoId(null);
+            setDragOverVideoId(null);
+            return;
+        }
+
+        const fromIndex = videos.findIndex(item => item.id === draggingVideoId);
+        const toIndex = videos.findIndex(item => item.id === targetVideoId);
+        if (fromIndex === -1 || toIndex === -1) {
+            setDraggingVideoId(null);
+            setDragOverVideoId(null);
+            return;
+        }
+
+        const reordered = [...videos];
+        const [moved] = reordered.splice(fromIndex, 1);
+        reordered.splice(toIndex, 0, moved);
+
+        setIsLoading(true);
+        setLoadingMessage('Đang lưu thứ tự video...');
+        try {
+            const baseOrder = Date.now();
+            await Promise.all(reordered.map((item, index) =>
+                updateDoc(doc(db, 'merci_videos', item.id), {
+                    order: baseOrder + (reordered.length - index) * 1000
+                })
+            ));
+        } catch (error) {
+            console.error('Video drag drop error:', error);
+            alert('Lỗi khi lưu thứ tự video.');
+        } finally {
+            setDraggingVideoId(null);
+            setDragOverVideoId(null);
+            setIsLoading(false);
+        }
     };
 
     // === HELPERS (Admin Blogs) ===
@@ -2376,7 +2462,13 @@ export default function Home() {
     };
 
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
-    const filteredAlbums = activeCategory === 'Tất cả' ? albums : albums.filter(a => a.category === activeCategory);
+    const albumCategoryFilters = ['Tất cả', ...Array.from(new Set([
+        ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
+        ...albums.map(a => (a.category || '').trim()).filter(Boolean)
+    ]))];
+    const filteredAlbums = activeCategory === 'Tất cả'
+        ? albums
+        : albums.filter(a => (a.category || '') === activeCategory || createSlug(a.category || '') === createSlug(activeCategory));
     const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
@@ -2414,6 +2506,32 @@ export default function Home() {
         pages.push(totalPages);
 
         return pages;
+    };
+
+    const getRouteForTab = (tabId, toolTab = activeToolTab) => {
+        const routes = {
+            home: '/',
+            collection: '/bo-su-tap',
+            blog: '/blog',
+            videos: '/video',
+            tool: '/tool'
+        };
+        if (tabId === 'tool') {
+            if (toolTab === 'create') return '/tao-trang';
+            if (toolTab === 'gallery') return '/chon-anh';
+            if (toolTab === 'filter') return '/loc-anh';
+            return '/tool';
+        }
+        return routes[tabId] || '/';
+    };
+
+    const navigateToTab = (tabId, toolTab = null) => {
+        setActiveTab(tabId);
+        setActiveAlbumId(null);
+        setActiveBlogId(null);
+        if (toolTab) setActiveToolTab(toolTab);
+        const nextPath = getRouteForTab(tabId, toolTab || activeToolTab);
+        window.history.pushState({}, document.title, nextPath);
     };
 
     const PaginationControls = ({ currentPage, totalPages, totalItems, onPageChange, label }) => {
@@ -2462,70 +2580,6 @@ export default function Home() {
                 </div>
             </div>
         );
-    };
-
-
-    const getTabPath = (tabId, toolTab = activeToolTab) => {
-        const paths = {
-            home: '/',
-            collection: '/bo-su-tap',
-            videos: '/video',
-            blog: '/blog',
-            tool: toolTab === 'gallery' ? '/chon-anh' : toolTab === 'filter' ? '/loc-anh' : '/tao-trang'
-        };
-        return paths[tabId] || '/';
-    };
-
-    const goToTab = (tabId, toolTab = activeToolTab) => {
-        setActiveTab(tabId);
-        if (tabId === 'tool') setActiveToolTab(toolTab || 'create');
-        setActiveAlbumId(null);
-        setActiveBlogId(null);
-        const nextPath = getTabPath(tabId, toolTab || activeToolTab);
-        window.history.pushState({}, document.title, nextPath);
-    };
-
-    const handleDragReorderAlbum = async (targetAlbumId) => {
-        if (!isAdmin || !draggedAlbumId || draggedAlbumId === targetAlbumId) return;
-        if (activeCategory !== 'Tất cả') return alert('Kéo thả sắp xếp chỉ dùng ở danh mục Tất cả để tránh sai thứ tự tổng.');
-
-        const dragged = albums.find(item => item.id === draggedAlbumId);
-        const target = albums.find(item => item.id === targetAlbumId);
-        if (!dragged || !target || !db) return;
-
-        setIsLoading(true);
-        setLoadingMessage('Đang cập nhật thứ tự album...');
-        try {
-            await updateDoc(doc(db, 'merci_albums', dragged.id), { order: target.order ?? 0 });
-            await updateDoc(doc(db, 'merci_albums', target.id), { order: dragged.order ?? 0 });
-        } catch (error) {
-            console.error('Drag reorder album error:', error);
-            alert('Không đổi được thứ tự album. Hãy thử lại.');
-        } finally {
-            setDraggedAlbumId(null);
-            setIsLoading(false);
-        }
-    };
-
-    const handleDragReorderVideo = async (targetVideoId) => {
-        if (!isAdmin || !draggedVideoId || draggedVideoId === targetVideoId) return;
-
-        const dragged = videos.find(item => item.id === draggedVideoId);
-        const target = videos.find(item => item.id === targetVideoId);
-        if (!dragged || !target || !db) return;
-
-        setIsLoading(true);
-        setLoadingMessage('Đang cập nhật thứ tự video...');
-        try {
-            await updateDoc(doc(db, 'merci_videos', dragged.id), { order: target.order ?? 0 });
-            await updateDoc(doc(db, 'merci_videos', target.id), { order: dragged.order ?? 0 });
-        } catch (error) {
-            console.error('Drag reorder video error:', error);
-            alert('Không đổi được thứ tự video. Hãy thử lại.');
-        } finally {
-            setDraggedVideoId(null);
-            setIsLoading(false);
-        }
     };
 
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
@@ -2648,9 +2702,21 @@ export default function Home() {
                         <div className="space-y-4">
                             <input type="text" placeholder="Link Google Drive (Thư mục gốc)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-emerald-500 transition-colors" value={syncDriveLink} onChange={e => setSyncDriveLink(e.target.value)} />
 
-                            <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={syncCategory} onChange={e => setSyncCategory(e.target.value)}>
-                                {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <div>
+                                <label className="text-xs font-bold text-slate-500 ml-1">HASHTAG / DANH MỤC ALBUM</label>
+                                <input
+                                    list="sync-album-category-options"
+                                    type="text"
+                                    placeholder="Nhập hashtag mới, ví dụ: Pre-wedding, Baby, Gia đình"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-emerald-500 transition-colors mt-1"
+                                    value={syncCategory}
+                                    onChange={e => setSyncCategory(e.target.value)}
+                                />
+                                <datalist id="sync-album-category-options">
+                                    {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
+                                </datalist>
+                                <p className="text-xs text-slate-400 mt-1">Có thể chọn mục cũ hoặc tự nhập hashtag/danh mục mới.</p>
+                            </div>
                         </div>
 
                         {syncProgress && (
@@ -2681,9 +2747,20 @@ export default function Home() {
                         <input type="text" placeholder="Tên Album (*)" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({ ...newAlbum, title: e.target.value })} />
                         <div className="grid grid-cols-2 gap-4">
                             <input type="text" placeholder="Mô tả phụ" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" onChange={e => setNewAlbum({ ...newAlbum, sub: e.target.value })} />
-                            <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={newAlbum.category} onChange={e => setNewAlbum({ ...newAlbum, category: e.target.value })}>
-                                {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
-                            </select>
+                            <div>
+                                <input
+                                    list="new-album-category-options"
+                                    type="text"
+                                    placeholder="Hashtag / danh mục mới"
+                                    className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
+                                    value={newAlbum.category}
+                                    onChange={e => setNewAlbum({ ...newAlbum, category: e.target.value })}
+                                />
+                                <datalist id="new-album-category-options">
+                                    {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
+                                </datalist>
+                                <p className="text-[11px] text-slate-400 mt-1 ml-1">Chọn mục cũ hoặc gõ hashtag mới.</p>
+                            </div>
                         </div>
                         <div className="flex justify-end gap-3 pt-4 border-t border-slate-100">
                             <button onClick={() => setIsCreatingAlbum(false)} className="px-6 py-2 font-semibold text-slate-500 hover:text-slate-800 transition-colors">Hủy</button>
@@ -2715,9 +2792,18 @@ export default function Home() {
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-500 ml-1">DANH MỤC</label>
-                                    <select className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium" value={editingAlbum.category} onChange={e => setEditingAlbum({ ...editingAlbum, category: e.target.value })}>
-                                        {ALBUM_CATEGORIES.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c}>{c}</option>)}
-                                    </select>
+                                    <input
+                                        list="edit-album-category-options"
+                                        type="text"
+                                        placeholder="Nhập hashtag / danh mục"
+                                        className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none bg-slate-50 font-medium focus:border-blue-500 transition-colors"
+                                        value={editingAlbum.category || ''}
+                                        onChange={e => setEditingAlbum({ ...editingAlbum, category: e.target.value })}
+                                    />
+                                    <datalist id="edit-album-category-options">
+                                        {albumCategoryFilters.filter(c => c !== 'Tất cả').map(c => <option key={c} value={c} />)}
+                                    </datalist>
+                                    <p className="text-[11px] text-slate-400 mt-1 ml-1">Có thể tạo hashtag/danh mục mới ngay tại đây.</p>
                                 </div>
                             </div>
 
@@ -3155,7 +3241,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
                         <div className="flex justify-between items-center w-full md:w-auto">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
-                                goToTab('home');
+                                setActiveTab('home');
+                                setActiveAlbumId(null);
+                                setActiveBlogId(null);
+                                window.history.pushState({}, document.title, '/');
                             }}>
                                 <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
                                     <Camera className="text-white" size={20} />
@@ -3171,12 +3260,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
-                                    { id: 'tool', label: 'Tool' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
                                     { id: 'videos', label: 'Video' },
-                                    { id: 'blog', label: 'Blog' }
+                                    { id: 'blog', label: 'Blog' },
+                                    { id: 'tool', label: 'Tool' }
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => goToTab(t.id)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -3194,7 +3283,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* Main Content */}
             <main className="flex-grow w-full">
-                <div key={activeTab} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
+                <div key={`${activeTab}-${activeToolTab}`} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
 
                     {/* --- TAB: BIO HOME TỐI GIẢN --- */}
                     {activeTab === 'home' && (
@@ -3217,7 +3306,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                 {/* Link Buttons */}
                                 <div className="space-y-4">
-                                    <button onClick={() => goToTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
+                                    <button onClick={() => setActiveTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
                                         <ImageIcon className="w-5 h-5" /> Xem Bộ Sưu Tập Ảnh
                                     </button>
 
@@ -3225,7 +3314,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <PlayCircle className="w-5 h-5 text-red-500" /> Xem Phim Phóng Sự
                                     </button>
 
-                                    <button onClick={() => goToTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
+                                    <button onClick={() => setActiveTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
                                         <BookOpen className="w-5 h-5" /> Blog Cưới & Kinh Nghiệm
                                     </button>
 
@@ -3242,6 +3331,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="w-full py-4 px-4 bg-pink-50 text-pink-600 rounded-2xl font-bold hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white transition-all flex items-center justify-center gap-3 shadow-sm">
                                         <InstagramIcon className="w-5 h-5" /> Follow Instagram
                                     </a>
+
+                                    <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" className="w-full py-4 px-4 bg-cyan-50 text-cyan-700 rounded-2xl font-bold hover:bg-cyan-600 hover:text-white transition-all flex items-center justify-center gap-3 shadow-sm">
+                                        <Phone className="w-5 h-5" /> Zalo: 0888.999.545
+                                    </a>
                                 </div>
 
                                 {/* Utilities Section (Các tính năng ra ngoài) */}
@@ -3257,13 +3350,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         </div>
                                     )}
                                     <div className="grid grid-cols-2 gap-3">
-                                        <button onClick={() => goToTab('tool', 'create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                        <button onClick={() => navigateToTab('tool', 'create')} className="py-3 px-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
                                             <Wand2 className="w-5 h-5" /> <span className="text-[11px]">Tạo Trang</span>
                                         </button>
-                                        <button onClick={() => goToTab('tool', 'gallery')} className="py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
+                                        <button onClick={() => navigateToTab('tool', 'gallery')} className="py-3 px-3 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-600 hover:text-white transition-colors flex flex-col items-center gap-2 shadow-sm">
                                             <ImageIcon className="w-5 h-5" /> <span className="text-[11px]">Chọn Ảnh</span>
                                         </button>
-                                        <button onClick={() => goToTab('tool', 'filter')} className="col-span-2 py-3 px-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm">
+                                        <button onClick={() => navigateToTab('tool', 'filter')} className="col-span-2 py-3 px-3 bg-amber-50 text-amber-700 rounded-xl font-bold hover:bg-amber-600 hover:text-white transition-colors flex items-center justify-center gap-2 shadow-sm">
                                             <Zap className="w-5 h-5" /> <span className="text-xs">Công Cụ Lọc Ảnh</span>
                                         </button>
                                     </div>
@@ -3287,32 +3380,32 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
                     )}
 
-
-                    {/* --- TAB: TOOL (Tạo trang / Chọn ảnh / Lọc ảnh) --- */}
                     {activeTab === 'tool' && (
-                        <div className="mb-6 md:mb-8 bg-white border border-slate-100 rounded-[2rem] p-3 md:p-4 shadow-sm sticky top-[92px] md:top-[88px] z-30">
-                            <div className="flex gap-2 overflow-x-auto no-scrollbar">
-                                {[
-                                    { id: 'create', label: 'Tạo trang', icon: Wand2, path: '/tao-trang' },
-                                    { id: 'gallery', label: 'Chọn ảnh', icon: ImageIcon, path: '/chon-anh' },
-                                    { id: 'filter', label: 'Lọc ảnh', icon: Zap, path: '/loc-anh' }
-                                ].map(item => {
-                                    const Icon = item.icon;
-                                    return (
+                        <div className="mb-6 md:mb-8 bg-white border border-slate-100 rounded-[2rem] p-3 md:p-4 shadow-sm">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                <div className="px-2">
+                                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Tool Studio</p>
+                                    <h2 className="text-xl md:text-2xl font-black text-slate-900">Tạo trang · Chọn ảnh · Lọc ảnh</h2>
+                                </div>
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                                    {[
+                                        { id: 'create', label: 'Tạo trang', path: '/tao-trang' },
+                                        { id: 'gallery', label: 'Chọn ảnh', path: '/chon-anh' },
+                                        { id: 'filter', label: 'Lọc ảnh', path: '/loc-anh' }
+                                    ].map(item => (
                                         <button
                                             key={item.id}
+                                            type="button"
                                             onClick={() => {
                                                 setActiveToolTab(item.id);
-                                                setActiveAlbumId(null);
-                                                setActiveBlogId(null);
                                                 window.history.pushState({}, document.title, item.path);
                                             }}
-                                            className={`shrink-0 flex items-center gap-2 px-4 md:px-5 py-2.5 md:py-3 rounded-2xl text-sm font-black transition-all ${activeToolTab === item.id ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'bg-slate-50 text-slate-600 hover:bg-blue-50 hover:text-blue-600 border border-slate-100'}`}
+                                            className={`px-4 md:px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeToolTab === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-blue-600 hover:bg-white'}`}
                                         >
-                                            <Icon className="w-4 h-4" /> {item.label}
+                                            {item.label}
                                         </button>
-                                    );
-                                })}
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -3378,16 +3471,32 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 )}
                             </div>
 
+                            {isAdmin && videos.length > 1 && (
+                                <div className="bg-blue-50 border border-blue-100 text-blue-700 rounded-2xl p-3 md:p-4 text-xs md:text-sm font-bold flex items-center gap-2">
+                                    <span className="text-lg leading-none">⋮⋮</span> Giữ chuột vào card video rồi kéo thả để đổi thứ tự. Thứ tự sẽ tự lưu vào Firestore.
+                                </div>
+                            )}
+
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                 {videos.length > 0 ? videos.map(vid => (
                                     <div
                                         key={vid.id}
                                         draggable={isAdmin}
-                                        onDragStart={(e) => { e.stopPropagation(); setDraggedVideoId(vid.id); e.dataTransfer.effectAllowed = 'move'; }}
-                                        onDragOver={(e) => { if (isAdmin) e.preventDefault(); }}
-                                        onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDragReorderVideo(vid.id); }}
+                                        onDragStart={(e) => {
+                                            if (!isAdmin) return;
+                                            setDraggingVideoId(vid.id);
+                                            e.dataTransfer.effectAllowed = 'move';
+                                        }}
+                                        onDragOver={(e) => {
+                                            if (!isAdmin || !draggingVideoId) return;
+                                            e.preventDefault();
+                                            setDragOverVideoId(vid.id);
+                                        }}
+                                        onDragLeave={() => dragOverVideoId === vid.id && setDragOverVideoId(null)}
+                                        onDrop={(e) => handleVideoDrop(vid.id, e)}
+                                        onDragEnd={() => { setDraggingVideoId(null); setDragOverVideoId(null); }}
                                         onClick={() => setVideoModal({ isOpen: true, youtubeId: vid.youtubeId })}
-                                        className={`group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900 ${draggedVideoId === vid.id ? 'ring-4 ring-blue-400 scale-[0.98] opacity-70' : ''}`}
+                                        className={`group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900 ${draggingVideoId === vid.id ? 'opacity-50 scale-95' : ''} ${dragOverVideoId === vid.id ? 'ring-4 ring-blue-400' : ''}`}
                                     >
                                         <img loading="lazy" decoding="async" src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
@@ -3396,11 +3505,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <div className="absolute bottom-6 left-6 right-6 text-white">
                                             <h3 className="text-xl md:text-2xl font-bold font-serif leading-tight drop-shadow-md">{vid.title}</h3>
                                         </div>
-                                        {/* Nút thao tác Admin (Sắp xếp, Xóa) */}
+                                        {/* Nút thao tác Admin: kéo thả + xóa */}
                                         {isAdmin && (
                                             <div className="absolute top-4 right-4 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                <div className="bg-white/90 px-3 py-2 rounded-full text-slate-700 shadow-lg text-[11px] font-black cursor-grab active:cursor-grabbing" title="Giữ và kéo video để sắp xếp">
-                                                    Kéo
+                                                <div className="bg-white/90 px-2.5 py-2 rounded-full text-slate-700 shadow-lg cursor-grab active:cursor-grabbing font-black text-xs tracking-widest" title="Giữ và kéo để sắp xếp">
+                                                    ⋮⋮
                                                 </div>
                                                 <button onClick={(e) => handleDeleteVideo(vid.id, e)} className="bg-white/90 p-2 md:p-2.5 rounded-full text-red-600 hover:text-red-800 shadow-lg hover:scale-110" title="Xóa Video">
                                                     <Trash2 className="w-4 h-4" />
@@ -3638,11 +3747,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
 
                                     <div className="flex overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar pb-2">
-                                        {ALBUM_CATEGORIES.map(cat => (
+                                        {albumCategoryFilters.map(cat => (
                                             <button
                                                 key={cat}
-                                                onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', window.location.pathname); else window.history.pushState({}, '', `${window.location.pathname}${getCategoryHash(cat)}`); }}
-                                                className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${activeCategory === cat ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
+                                                onClick={() => { setActiveCategory(cat); if (cat === 'Tất cả') window.history.pushState({}, '', '/bo-su-tap'); else window.history.pushState({}, '', `/bo-su-tap${getCategoryHash(cat)}`); }}
+                                                className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${createSlug(activeCategory) === createSlug(cat) ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat === 'Tất cả' ? cat : `#${cat}`}
                                             </button>
@@ -3665,38 +3774,50 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         </div>
                                     )}
 
+                                    {isAdmin && filteredAlbums.length > 1 && (
+                                        <div className="bg-blue-50 border border-blue-100 text-blue-700 rounded-2xl p-3 md:p-4 text-xs md:text-sm font-bold flex items-center gap-2">
+                                            <span className="text-lg leading-none">⋮⋮</span> Giữ chuột vào card album rồi kéo thả để đổi thứ tự. Thứ tự sẽ tự lưu vào Firestore.
+                                        </div>
+                                    )}
+
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
                                             <div
                                                 key={a.id}
-                                                draggable={isAdmin && activeCategory === 'Tất cả'}
-                                                onDragStart={(e) => { e.stopPropagation(); setDraggedAlbumId(a.id); e.dataTransfer.effectAllowed = 'move'; }}
-                                                onDragOver={(e) => { if (isAdmin && activeCategory === 'Tất cả') e.preventDefault(); }}
-                                                onDrop={(e) => { e.preventDefault(); e.stopPropagation(); handleDragReorderAlbum(a.id); }}
+                                                draggable={isAdmin}
+                                                onDragStart={(e) => {
+                                                    if (!isAdmin) return;
+                                                    setDraggingAlbumId(a.id);
+                                                    e.dataTransfer.effectAllowed = 'move';
+                                                }}
+                                                onDragOver={(e) => {
+                                                    if (!isAdmin || !draggingAlbumId) return;
+                                                    e.preventDefault();
+                                                    setDragOverAlbumId(a.id);
+                                                }}
+                                                onDragLeave={() => dragOverAlbumId === a.id && setDragOverAlbumId(null)}
+                                                onDrop={(e) => handleAlbumDrop(a.id, e)}
+                                                onDragEnd={() => { setDraggingAlbumId(null); setDragOverAlbumId(null); }}
                                                 onClick={() => {
                                                     setActiveAlbumId(a.id);
                                                     setAlbumDriveLink(a.driveLink || '');
                                                     setLightboxData(p => ({ ...p, images: a.images || [] }));
-                                                    // Thay đổi URL trình duyệt cho ĐẸP
                                                     const slugToUse = a.slug || createSlug(a.title) || a.id;
                                                     window.history.pushState({}, '', `/${slugToUse}`);
                                                 }}
-                                                className={`group cursor-pointer relative ${draggedAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl scale-[0.98] opacity-70' : ''}`}
+                                                className={`group cursor-pointer relative transition-all duration-200 ${draggingAlbumId === a.id ? 'opacity-50 scale-95' : ''} ${dragOverAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl md:rounded-[2.5rem]' : ''}`}
                                             >
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-3 md:mb-6 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 bg-white/95 backdrop-blur-md px-2 md:px-4 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">{a.category}</div>
 
-                                                    {/* Các nút thao tác Admin (Sắp xếp Lên/Xuống, Sửa) */}
+                                                    {/* Các nút thao tác Admin: kéo thả + sửa */}
                                                     {isAdmin && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
-                                                            {/* Kéo thả để sắp xếp thay cho mũi tên lên/xuống */}
-                                                            {activeCategory === 'Tất cả' && (
-                                                                <div className="bg-white/90 px-3 py-2 rounded-full text-slate-700 shadow-lg text-[11px] font-black cursor-grab active:cursor-grabbing" title="Giữ và kéo album để sắp xếp">
-                                                                    Kéo
-                                                                </div>
-                                                            )}
+                                                            <div className="bg-white/90 px-2.5 py-2 rounded-full text-slate-700 shadow-lg cursor-grab active:cursor-grabbing font-black text-xs tracking-widest" title="Giữ và kéo để sắp xếp">
+                                                                ⋮⋮
+                                                            </div>
                                                             <button onClick={(e) => { e.stopPropagation(); setEditingAlbum(a); }} className="bg-white/90 p-2 md:p-2.5 rounded-full text-slate-700 hover:text-blue-600 shadow-lg hover:scale-110" title="Sửa Album">
                                                                 <Edit className="w-4 h-4" />
                                                             </button>
