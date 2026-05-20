@@ -168,10 +168,10 @@ function SmoothImageLightbox({
             <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 md:px-8 py-4 bg-gradient-to-b from-black/70 to-transparent">
                 <div className="text-white">
                     <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]">
-                        {currentName}
+                        Merci Studio
                     </div>
                     <div className="text-xs text-white/60 mt-0.5">
-                        {currentIndex + 1} / {images.length}
+                        Ảnh {currentIndex + 1} / {images.length}
                     </div>
                 </div>
 
@@ -350,6 +350,7 @@ const CheckCircleIcon = ({ className }) => (
 const DEFAULT_HERO = "https://images.unsplash.com/photo-1606800052052-a08af7148866?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80";
 const DEFAULT_PROMO = "https://images.unsplash.com/photo-1511285560929-80b456fea0bc?ixlib=rb-4.0.3&auto=format&fit=crop&w=1000&q=80";
 const DEFAULT_COVER = "https://images.unsplash.com/photo-1519741497674-611481863552?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&q=80";
+const WATERMARK_LOGO_SRC = "/merci-logo-watermark.png";
 
 // --- HÀM TẠO SLUG (Link đẹp) TỪ TÊN ---
 const createSlug = (str) => {
@@ -561,6 +562,11 @@ export default function Home() {
     const [draggingVideoId, setDraggingVideoId] = useState(null);
     const [dragOverVideoId, setDragOverVideoId] = useState(null);
 
+    // Booking states
+    const [bookingForm, setBookingForm] = useState({ name: '', phone: '', service: 'Chụp ảnh cưới (Wedding)', date: '', notes: '' });
+    const [bookings, setBookings] = useState([]);
+    const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
+
     // === EFFECTS ===
     useEffect(() => {
         setMounted(true);
@@ -618,7 +624,9 @@ export default function Home() {
                     'tool': { tab: 'tool', tool: 'create' },
                     'tao-trang': { tab: 'tool', tool: 'create' },
                     'chon-anh': { tab: 'tool', tool: 'gallery' },
-                    'loc-anh': { tab: 'tool', tool: 'filter' }
+                    'loc-anh': { tab: 'tool', tool: 'filter' },
+                    'dat-lich': { tab: 'booking' },
+                    'booking': { tab: 'booking' }
                 };
                 const route = routeMap[pathname];
                 if (route) {
@@ -697,6 +705,19 @@ export default function Home() {
         return () => unsubBlogs();
     }, [mounted, activeTab, pendingSlug, isAdmin]);
 
+    // Load Bookings for Admin
+    useEffect(() => {
+        if (!mounted || !db) return;
+        if (activeTab !== 'booking' || !isAdmin) return;
+
+        const unsubBookings = onSnapshot(collection(db, 'merci_bookings'), (snapshot) => {
+            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            fetched.sort((a, b) => b.createdAt - a.createdAt);
+            setBookings(fetched);
+        });
+        return () => unsubBookings();
+    }, [mounted, activeTab, isAdmin]);
+
     // Hiển thị Album hoặc Blog dựa trên Link URL đẹp
     useEffect(() => {
         if (pendingSlug) {
@@ -753,6 +774,10 @@ export default function Home() {
                 upsertMeta('description', album.sub || `${album.title} - Bộ sưu tập ảnh của Merci Studio`);
                 upsertCanonical(window.location.href);
             }
+        } else if (activeTab === 'booking') {
+            document.title = 'Đặt lịch & Liên hệ tư vấn | Merci Studio';
+            upsertMeta('description', 'Đặt lịch chụp ảnh cưới, phóng sự cưới, kỷ yếu tại Merci Studio. Liên hệ tư vấn dịch vụ chụp ảnh cưới chuyên nghiệp.');
+            upsertCanonical(`${window.location.origin}/dat-lich`);
         } else {
             document.title = 'Merci Wedding Studio';
             upsertMeta('description', 'Merci Studio - chụp ảnh cưới, kỷ yếu, gia đình, photobooth và váy cưới.');
@@ -1068,6 +1093,80 @@ export default function Home() {
         } finally {
             setDraggingAlbumId(null);
             setDragOverAlbumId(null);
+            setIsLoading(false);
+        }
+    };
+
+    // === HELPERS (Booking & Telegram) ===
+    const handleCreateBooking = async (e) => {
+        e.preventDefault();
+        if (!bookingForm.name || !bookingForm.phone) {
+            alert("Vui lòng điền đầy đủ Họ tên và Số điện thoại!");
+            return;
+        }
+        setIsSubmittingBooking(true);
+        try {
+            const bookingId = `booking_${Date.now()}`;
+            const bookingData = {
+                id: bookingId,
+                name: bookingForm.name,
+                phone: bookingForm.phone,
+                service: bookingForm.service,
+                date: bookingForm.date || 'Chưa chọn',
+                notes: bookingForm.notes || 'Không có',
+                status: 'Chưa xử lý',
+                createdAt: Date.now()
+            };
+            
+            // 1. Save to Firebase
+            await setDoc(doc(db, 'merci_bookings', bookingId), bookingData);
+            
+            // 2. Call API to send Telegram message
+            try {
+                const res = await fetch('/api/send-booking', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bookingData)
+                });
+                if (!res.ok) {
+                    console.warn("Telegram alert failed on server-side.");
+                }
+            } catch (err) {
+                console.error("Telegram notification failed:", err);
+            }
+
+            alert("Đặt lịch thành công! Merci Studio sẽ liên hệ lại với bạn sớm nhất.");
+            setBookingForm({ name: '', phone: '', service: 'Chụp ảnh cưới (Wedding)', date: '', notes: '' });
+        } catch (error) {
+            console.error("Booking submission error:", error);
+            alert("Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại!");
+        } finally {
+            setIsSubmittingBooking(false);
+        }
+    };
+
+    const handleUpdateBookingStatus = async (bookingId, currentStatus) => {
+        const nextStatus = currentStatus === 'Chưa xử lý' ? 'Đã tư vấn' : 'Chưa xử lý';
+        setIsLoading(true);
+        try {
+            await updateDoc(doc(db, 'merci_bookings', bookingId), { status: nextStatus });
+        } catch (err) {
+            console.error("Update booking status error:", err);
+            alert("Lỗi khi cập nhật trạng thái!");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleDeleteBooking = async (bookingId) => {
+        if (!confirm("Bạn có chắc muốn xóa yêu cầu đặt lịch này không?")) return;
+        setIsLoading(true);
+        try {
+            await deleteDoc(doc(db, 'merci_bookings', bookingId));
+        } catch (err) {
+            console.error("Delete booking error:", err);
+            alert("Lỗi khi xóa!");
+        } finally {
             setIsLoading(false);
         }
     };
@@ -1867,7 +1966,7 @@ export default function Home() {
         window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
-    // Tải ảnh đơn có watermark - KHÔNG mở link ảnh gốc nếu đóng dấu lỗi
+    // Tải ảnh đơn có watermark logo - KHÔNG mở link ảnh gốc nếu đóng dấu lỗi
     // Dùng proxy nội bộ để tải ảnh Google Drive qua server Next.js.
     // Lý do: fetch trực tiếp Google Drive trên trình duyệt hay bị CORS,
     // làm canvas không đóng dấu được và code cũ bị nhảy sang link ảnh gốc.
@@ -1929,6 +2028,38 @@ export default function Home() {
         throw lastError || new Error('Không tải được ảnh để đóng dấu');
     };
 
+    const drawMerciLogoWatermark = async (ctx, width, height) => {
+        try {
+            const logo = await loadImageElement(WATERMARK_LOGO_SRC);
+            const logoWidth = logo.naturalWidth || logo.width || 1;
+            const logoHeight = logo.naturalHeight || logo.height || 1;
+            const logoRatio = logoWidth / logoHeight;
+
+            // Logo nằm giữa phía dưới, mờ nhẹ để không phá ảnh.
+            let targetWidth = Math.min(Math.max(width * 0.48, 320), width * 0.72);
+            let targetHeight = targetWidth / logoRatio;
+            const maxLogoHeight = height * 0.16;
+
+            if (targetHeight > maxLogoHeight) {
+                targetHeight = maxLogoHeight;
+                targetWidth = targetHeight * logoRatio;
+            }
+
+            const paddingBottom = Math.max(34, height * 0.045);
+            const x = (width - targetWidth) / 2;
+            const y = height - paddingBottom - targetHeight;
+
+            ctx.save();
+            ctx.globalAlpha = 0.38;
+            ctx.shadowColor = 'rgba(0,0,0,0.28)';
+            ctx.shadowBlur = Math.max(6, Math.round(width * 0.004));
+            ctx.drawImage(logo, x, y, targetWidth, targetHeight);
+            ctx.restore();
+        } catch (error) {
+            console.warn('Không tải được logo watermark, bỏ qua watermark logo:', error);
+        }
+    };
+
     const createWatermarkedImageBlob = async (imageInput) => {
         const dataUrl = await fetchImageAsDataUrl(imageInput);
         const img = await loadImageElement(dataUrl);
@@ -1943,22 +2074,8 @@ export default function Home() {
 
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
 
-        // Chỉ chèn 1 dòng chữ nhỏ phía dưới ảnh.
-        // Không dùng watermark lớn để giữ ảnh sạch và gần chất lượng gốc nhất có thể.
-        const fontSize = Math.max(18, Math.round(canvas.width / 95));
-        const paddingBottom = Math.max(14, Math.round(fontSize * 0.9));
-
-        ctx.save();
-        ctx.font = `500 ${fontSize}px Arial, sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.shadowColor = 'rgba(0,0,0,0.45)';
-        ctx.shadowBlur = Math.max(2, Math.round(fontSize / 8));
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-        ctx.fillStyle = 'rgba(255,255,255,0.86)';
-        ctx.fillText('Merci Studio', canvas.width / 2, canvas.height - paddingBottom);
-        ctx.restore();
+        // Chèn watermark bằng logo mờ ở giữa phía dưới ảnh.
+        await drawMerciLogoWatermark(ctx, canvas.width, canvas.height);
 
         // Xuất JPEG quality cao. Canvas vẫn phải encode lại ảnh vì có chèn chữ,
         // nhưng giữ nguyên độ phân giải gốc và dùng quality 0.98 để hạn chế giảm chất lượng.
@@ -1985,12 +2102,12 @@ export default function Home() {
         URL.revokeObjectURL(objectUrl);
     };
 
-    // Chỉ dùng cho BỘ SƯU TẬP: tải ảnh có chữ nhỏ Merci Studio
+    // Chỉ dùng cho BỘ SƯU TẬP: tải ảnh có logo watermark Merci Studio
     const handleDownloadWithWatermark = async (imageOrUrl, imageName, event) => {
         if (event) event.stopPropagation();
 
         setIsLoading(true);
-        setLoadingMessage('Đang chèn chữ Merci Studio...');
+        setLoadingMessage('Đang chèn logo Merci Studio...');
 
         try {
             const imageId =
@@ -2034,19 +2151,8 @@ export default function Home() {
 
             ctx.drawImage(bitmap, 0, 0, width, height);
 
-            // Chữ nhỏ phía dưới
-            const fontSize = Math.max(18, Math.round(width * 0.018));
-            const padding = Math.max(18, Math.round(width * 0.018));
-
-            ctx.save();
-            ctx.font = `500 ${fontSize}px Arial, sans-serif`;
-            ctx.textAlign = 'right';
-            ctx.textBaseline = 'bottom';
-            ctx.shadowColor = 'rgba(0,0,0,0.45)';
-            ctx.shadowBlur = Math.max(2, Math.round(fontSize * 0.18));
-            ctx.fillStyle = 'rgba(255,255,255,0.82)';
-            ctx.fillText('Merci Studio', width - padding, height - padding);
-            ctx.restore();
+            // Chèn watermark bằng logo mờ ở giữa phía dưới ảnh.
+            await drawMerciLogoWatermark(ctx, width, height);
 
             const outputBlob = await new Promise((resolve, reject) => {
                 canvas.toBlob(
@@ -2059,13 +2165,17 @@ export default function Home() {
                 );
             });
 
+            const randStr = `merci_photo_${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
+            const isToolTab = activeTab === 'tool';
+            const originalName = imageName || (typeof imageOrUrl === 'object' ? imageOrUrl?.name : 'image');
+            const targetName = isToolTab ? `${getFileNameWithoutExt(originalName)}_merci_studio.jpg` : `${randStr}.jpg`;
             downloadBlob(
                 outputBlob,
-                `${getFileNameWithoutExt(imageName || (typeof imageOrUrl === 'object' ? imageOrUrl?.name : 'image'))}_merci_studio.jpg`
+                targetName
             );
         } catch (error) {
             console.error('Watermark download error:', error);
-            alert('Ảnh này chưa tải được bản có chữ Merci Studio. Hãy kiểm tra quyền chia sẻ Google Drive hoặc thử reload album.');
+            alert('Ảnh này chưa tải được bản có logo Merci Studio. Hãy kiểm tra quyền chia sẻ Google Drive hoặc thử reload album.');
         } finally {
             setIsLoading(false);
         }
@@ -2720,7 +2830,7 @@ export default function Home() {
             const objectUrl = URL.createObjectURL(originalBlob);
             const a = document.createElement('a');
             a.href = objectUrl;
-            a.download = img.name || `merci_original_${img.id || Date.now()}.jpg`;
+            a.download = (activeTab === 'tool') ? (img.name || `merci_original_${img.id || Date.now()}.jpg`) : `merci_original_${Math.random().toString(36).substring(2, 10).toUpperCase()}.jpg`;
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
@@ -2762,7 +2872,10 @@ export default function Home() {
                     downloadedCount += 1;
                     setLoadingMessage(`Đang tải file gốc đã chọn ${downloadedCount}/${selectedIds.length}...`);
                     const originalBlob = await fetchOriginalDriveFileBlob(img);
-                    const fileName = dedupeZipFileName(usedNames, img.name, `image_${downloadedCount}.jpg`);
+                    const ext = img.name?.slice(img.name.lastIndexOf('.')) || '.jpg';
+                    const randStr = `merci_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                    const targetName = (activeTab === 'tool') ? img.name : `${randStr}${ext}`;
+                    const fileName = dedupeZipFileName(usedNames, targetName, `image_${downloadedCount}.jpg`);
                     imgFolder?.file(fileName, originalBlob);
                 }
             }
@@ -2824,7 +2937,10 @@ export default function Home() {
                     const img = folderImages[index];
                     setLoadingMessage(`Đang tải ${folderName}: ${index + 1}/${folderImages.length} ảnh gốc...`);
                     const originalBlob = await fetchOriginalDriveFileBlob(img);
-                    const fileName = dedupeZipFileName(usedNames, img.name, `image_${index + 1}.jpg`);
+                    const ext = img.name?.slice(img.name.lastIndexOf('.')) || '.jpg';
+                    const randStr = `merci_${Math.random().toString(36).substring(2, 8).toUpperCase()}`;
+                    const targetName = (activeTab === 'tool') ? img.name : `${randStr}${ext}`;
+                    const fileName = dedupeZipFileName(usedNames, targetName, `image_${index + 1}.jpg`);
                     targetFolder?.file(fileName, originalBlob);
                     totalDownloaded += 1;
                 }
@@ -2958,7 +3074,8 @@ export default function Home() {
             collection: '/bo-su-tap',
             blog: '/blog',
             videos: '/video',
-            tool: '/tool'
+            tool: '/tool',
+            booking: '/dat-lich'
         };
         if (tabId === 'tool') {
             if (toolTab === 'create') return '/tao-trang';
@@ -3763,7 +3880,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'collection', label: 'Bộ sưu tập' },
                                     { id: 'videos', label: 'Video' },
                                     { id: 'blog', label: 'Blog' },
-                                    { id: 'tool', label: 'Tool' }
+                                    { id: 'tool', label: 'Công cụ' },
+                                    { id: 'booking', label: 'Đặt lịch' }
                                 ].map(t => (
                                     <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
@@ -4699,7 +4817,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                                         {/* Tên ảnh */}
                                                         <div className="absolute top-1 left-1 right-1 md:top-2 md:left-2 md:right-2 flex justify-between pointer-events-none">
-                                                            <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate">{img.name}</span>
+                                                            <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate">Ảnh {originalIndex + 1}</span>
                                                         </div>
                                                     </div>
                                                 )
@@ -4726,6 +4844,300 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-200 shadow-sm mx-2">
                                     <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
                                     <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
+                                </div>
+                            )}
+                        </div>
+                    )}
+
+                    {/* --- TAB: ĐẶT LỊCH / BÁO GIÁ --- */}
+                    {activeTab === 'booking' && (
+                        <div className="space-y-8 md:space-y-12">
+                            {/* Header */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Booking</p>
+                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Đặt Lịch &amp; Tư Vấn</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Hãy để Merci Studio đồng hành và ghi lại những khoảnh khắc tuyệt vời nhất của bạn.</p>
+                                </div>
+                                {isAdmin && (
+                                    <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2 text-xs md:text-sm font-bold text-blue-700">
+                                        Chế độ Admin: Quản lý danh sách đặt lịch
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Main Content Area */}
+                            {isAdmin ? (
+                                /* ADMIN BOOKING MANAGEMENT */
+                                <div className="space-y-6 animate-in fade-in duration-500">
+                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tổng lượt đặt</p>
+                                            <p className="text-3xl font-black text-slate-900 mt-1">{bookings.length}</p>
+                                        </div>
+                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Chưa xử lý</p>
+                                            <p className="text-3xl font-black text-amber-600 mt-1">{bookings.filter(b => b.status === 'Chưa xử lý').length}</p>
+                                        </div>
+                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Đã tư vấn</p>
+                                            <p className="text-3xl font-black text-emerald-600 mt-1">{bookings.filter(b => b.status === 'Đã tư vấn').length}</p>
+                                        </div>
+                                    </div>
+
+                                    {bookings.length > 0 ? (
+                                        <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
+                                            <div className="overflow-x-auto">
+                                                <table className="w-full text-left border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-slate-50 border-b border-slate-100 text-slate-400 text-xs font-bold uppercase tracking-wider">
+                                                            <th className="px-6 py-4">Khách hàng</th>
+                                                            <th className="px-6 py-4">Thông tin liên hệ</th>
+                                                            <th className="px-6 py-4">Dịch vụ &amp; Ngày</th>
+                                                            <th className="px-6 py-4">Ghi chú</th>
+                                                            <th className="px-6 py-4">Trạng thái</th>
+                                                            <th className="px-6 py-4 text-right">Thao tác</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 text-slate-700 text-sm font-medium">
+                                                        {[...bookings].sort((a,b) => b.createdAt - a.createdAt).map((b) => (
+                                                            <tr key={b.id} className="hover:bg-slate-50/50 transition-colors">
+                                                                <td className="px-6 py-5">
+                                                                    <p className="font-bold text-slate-900 text-base">{b.name}</p>
+                                                                    <p className="text-xs text-slate-400 mt-0.5">ID: {b.id}</p>
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <div className="flex items-center gap-1.5 text-blue-600 font-bold hover:underline">
+                                                                        <Phone size={14} />
+                                                                        <a href={`tel:${b.phone}`}>{b.phone}</a>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <span className="bg-slate-100 text-slate-800 px-2.5 py-1 rounded-full text-xs font-bold block w-fit">
+                                                                        {b.service}
+                                                                    </span>
+                                                                    <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1.5">
+                                                                        <Calendar size={13} />
+                                                                        <span>{b.date}</span>
+                                                                    </div>
+                                                                </td>
+                                                                <td className="px-6 py-5 max-w-xs truncate font-normal text-slate-500" title={b.notes}>
+                                                                    {b.notes}
+                                                                </td>
+                                                                <td className="px-6 py-5">
+                                                                    <button
+                                                                        onClick={() => handleUpdateBookingStatus(b.id, b.status)}
+                                                                        className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-sm flex items-center gap-1.5 ${
+                                                                            b.status === 'Đã tư vấn'
+                                                                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                                                                : 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+                                                                        }`}
+                                                                        title="Nhấp để đổi trạng thái"
+                                                                    >
+                                                                        <span className={`w-1.5 h-1.5 rounded-full ${b.status === 'Đã tư vấn' ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 animate-pulse'}`}></span>
+                                                                        {b.status}
+                                                                    </button>
+                                                                </td>
+                                                                <td className="px-6 py-5 text-right">
+                                                                    <div className="flex justify-end gap-2">
+                                                                        <button
+                                                                            onClick={() => handleUpdateBookingStatus(b.id, b.status)}
+                                                                            className="bg-slate-100 hover:bg-blue-50 text-slate-600 hover:text-blue-600 p-2 rounded-xl transition-all"
+                                                                            title="Đổi trạng thái xử lý"
+                                                                        >
+                                                                            <RefreshCcw size={16} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => handleDeleteBooking(b.id)}
+                                                                            className="bg-red-50 hover:bg-red-100 text-red-600 p-2 rounded-xl transition-all"
+                                                                            title="Xóa yêu cầu"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-20 bg-white rounded-[2rem] border border-dashed border-slate-200">
+                                            <Calendar className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
+                                            <p className="text-slate-400 font-medium">Chưa có lượt đặt lịch nào từ khách hàng.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* CLIENT BOOKING FORM */
+                                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
+                                    {/* Left Side: Text and Premium Cards */}
+                                    <div className="lg:col-span-5 space-y-6">
+                                        <div className="bg-gradient-to-tr from-slate-900 to-blue-950 text-white rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+                                            <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl"></div>
+                                            <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl"></div>
+                                            
+                                            <h3 className="text-2xl font-bold font-serif mb-4">Lý do chọn Merci Studio?</h3>
+                                            <ul className="space-y-4 text-slate-300 text-sm font-medium">
+                                                <li className="flex items-start gap-3">
+                                                    <div className="p-1 rounded-lg bg-white/10 text-blue-400 shrink-0 mt-0.5">
+                                                        <Zap size={16} />
+                                                    </div>
+                                                    <span><strong>Chuyên Nghiệp:</strong> Ekip phục vụ tận tâm, dày dặn kinh nghiệm trong các sự kiện lớn nhỏ.</span>
+                                                </li>
+                                                <li className="flex items-start gap-3">
+                                                    <div className="p-1 rounded-lg bg-white/10 text-blue-400 shrink-0 mt-0.5">
+                                                        <Camera size={16} />
+                                                    </div>
+                                                    <span><strong>Màu Ảnh Độc Bản:</strong> Tone màu sang trọng, tự nhiên được thiết kế riêng cho mỗi concept.</span>
+                                                </li>
+                                                <li className="flex items-start gap-3">
+                                                    <div className="p-1 rounded-lg bg-white/10 text-blue-400 shrink-0 mt-0.5">
+                                                        <Wand2 size={16} />
+                                                    </div>
+                                                    <span><strong>Bảo Mật &amp; Tiện Lợi:</strong> Nhận ảnh, chọn ảnh online tiện lợi với mã bảo mật an toàn.</span>
+                                                </li>
+                                            </ul>
+                                        </div>
+
+                                        <div className="bg-white border border-slate-100 rounded-[2rem] p-8 shadow-sm space-y-6">
+                                            <h4 className="text-lg font-black text-slate-900">Liên hệ trực tiếp</h4>
+                                            <div className="space-y-6">
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                                                        <Phone size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Hotline tư vấn</p>
+                                                        <div className="text-sm font-black text-slate-800 space-y-1 mt-0.5">
+                                                            <p><a href="tel:0888999545" className="hover:text-blue-600 transition-colors">0888.999.545</a></p>
+                                                            <p><a href="tel:0877999545" className="hover:text-blue-600 transition-colors">0877.999.545</a></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex items-start gap-3">
+                                                    <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                                                        <MapPin size={18} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Hệ thống cơ sở</p>
+                                                        <div className="text-sm font-black text-slate-800 space-y-3 mt-1.5">
+                                                            <div>
+                                                                <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Cơ sở 1</p>
+                                                                <p className="font-sans text-slate-700 font-bold text-xs mt-0.5">244 Đội Cấn - Ba Đình - Hà Nội</p>
+                                                            </div>
+                                                            <div>
+                                                                <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Cơ sở 2</p>
+                                                                <p className="font-sans text-slate-700 font-bold text-xs mt-0.5">650 Thân Nhân Trung - Việt Yên - Bắc Ninh</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Right Side: Form */}
+                                    <div className="lg:col-span-7 bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-lg relative overflow-hidden">
+                                        <form onSubmit={handleCreateBooking} className="space-y-6">
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Họ và tên *</label>
+                                                <div className="relative">
+                                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                                        <User size={18} />
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        required
+                                                        placeholder="VD: Nguyễn Văn A"
+                                                        value={bookingForm.name}
+                                                        onChange={e => setBookingForm(prev => ({ ...prev, name: e.target.value }))}
+                                                        className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-medium text-slate-800 bg-slate-50/50"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Số điện thoại *</label>
+                                                    <div className="relative">
+                                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                                            <Phone size={18} />
+                                                        </div>
+                                                        <input
+                                                            type="tel"
+                                                            required
+                                                            placeholder="VD: 09xxxxxxxx"
+                                                            value={bookingForm.phone}
+                                                            onChange={e => setBookingForm(prev => ({ ...prev, phone: e.target.value }))}
+                                                            className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-medium text-slate-800 bg-slate-50/50"
+                                                        />
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Ngày dự kiến chụp</label>
+                                                    <div className="relative">
+                                                        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                                                            <Calendar size={18} />
+                                                        </div>
+                                                        <input
+                                                            type="date"
+                                                            value={bookingForm.date}
+                                                            onChange={e => setBookingForm(prev => ({ ...prev, date: e.target.value }))}
+                                                            className="w-full pl-11 pr-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-medium text-slate-800 bg-slate-50/50"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Dịch vụ quan tâm *</label>
+                                                <select
+                                                    value={bookingForm.service}
+                                                    onChange={e => setBookingForm(prev => ({ ...prev, service: e.target.value }))}
+                                                    className="w-full px-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-semibold text-slate-800 bg-slate-50/50 appearance-none cursor-pointer"
+                                                    style={{ backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`, backgroundPosition: 'right 16px center', backgroundRepeat: 'no-repeat', backgroundSize: '16px' }}
+                                                >
+                                                    <option value="Chụp ảnh cưới (Wedding)">Chụp ảnh cưới (Wedding)</option>
+                                                    <option value="Chụp ảnh ngoại cảnh / couple">Chụp ngoại cảnh / couple</option>
+                                                    <option value="Phóng sự cưới (Pre-wedding)">Phóng sự cưới (Pre-wedding)</option>
+                                                    <option value="Kỷ yếu / Sự kiện / Graduation">Kỷ yếu / Sự kiện / Graduation</option>
+                                                    <option value="Dịch vụ khác / Cần tư vấn thêm">Dịch vụ khác / Cần tư vấn thêm</option>
+                                                </select>
+                                            </div>
+
+                                            <div>
+                                                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Ghi chú yêu cầu riêng</label>
+                                                <textarea
+                                                    rows={4}
+                                                    placeholder="Hãy cho Merci biết thêm về ý tưởng chụp, địa điểm mong muốn hoặc các lưu ý khác..."
+                                                    value={bookingForm.notes}
+                                                    onChange={e => setBookingForm(prev => ({ ...prev, notes: e.target.value }))}
+                                                    className="w-full px-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-medium text-slate-800 bg-slate-50/50 resize-none"
+                                                ></textarea>
+                                            </div>
+
+                                            <button
+                                                type="submit"
+                                                disabled={isSubmittingBooking}
+                                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/20 active:scale-[0.99] hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base disabled:opacity-50"
+                                            >
+                                                {isSubmittingBooking ? (
+                                                    <>
+                                                        <RefreshCcw className="w-5 h-5 animate-spin" />
+                                                        <span>Đang gửi yêu cầu...</span>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Wand2 className="w-5 h-5" />
+                                                        <span>Gửi yêu cầu &amp; Đăng ký tư vấn</span>
+                                                    </>
+                                                )}
+                                            </button>
+                                        </form>
+                                    </div>
                                 </div>
                             )}
                         </div>
