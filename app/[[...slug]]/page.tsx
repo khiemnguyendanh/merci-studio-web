@@ -2309,6 +2309,30 @@ export default function Home() {
         return folderId;
     };
 
+    const getSubfolders = async (folderId) => {
+        if (!GOOGLE_API_KEY || !folderId) return [];
+        const url =
+            `https://www.googleapis.com/drive/v3/files` +
+            `?q='${encodeURIComponent(folderId)}'+in+parents+and+mimeType='application/vnd.google-apps.folder'+and+trashed=false` +
+            `&key=${GOOGLE_API_KEY}` +
+            `&fields=files(id,name,mimeType)` +
+            `&pageSize=100` +
+            `&orderBy=name`;
+
+        try {
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data.error) {
+                console.warn('Không lấy được danh sách thư mục con:', folderId, data.error);
+                return [];
+            }
+            return data.files || [];
+        } catch (e) {
+            console.error('Lỗi khi getSubfolders:', e);
+            return [];
+        }
+    };
+
     const getDriveThumbUrl = (fileId, size = 'w1200') => {
         if (!fileId) return DEFAULT_COVER;
         return `https://drive.google.com/thumbnail?id=${fileId}&sz=${size}`;
@@ -2695,7 +2719,40 @@ export default function Home() {
         setLoadingMessage(rawFolders.length > 1 ? 'Đang lấy tên folder Drive và tạo trang...' : 'Đang lấy toàn bộ dữ liệu album...');
 
         try {
-            const folders = await enrichDriveFolders(rawFolders);
+            let foldersToEnrich = [];
+            for (const rf of rawFolders) {
+                let directFiles = [];
+                try {
+                    directFiles = await getAllDriveImages(rf.id);
+                } catch (e) {
+                    console.warn('Không lấy được ảnh trực tiếp cho folder:', rf.id, e);
+                }
+
+                if (directFiles.length === 0) {
+                    try {
+                        const subs = await getSubfolders(rf.id);
+                        if (subs.length > 0) {
+                            subs.forEach(sub => {
+                                foldersToEnrich.push({
+                                    id: sub.id,
+                                    name: sub.name,
+                                    source: `https://drive.google.com/drive/folders/${sub.id}`
+                                });
+                            });
+                            continue;
+                        }
+                    } catch (e) {
+                        console.warn('Không lấy được thư mục con cho folder:', rf.id, e);
+                    }
+                }
+                foldersToEnrich.push(rf);
+            }
+
+            if (foldersToEnrich.length === 0) {
+                foldersToEnrich = rawFolders;
+            }
+
+            const folders = await enrichDriveFolders(foldersToEnrich);
             const pageKey = getClientPageKey(folders);
             setClientFolders(folders);
             setCurrentSelectionKey(pageKey);
