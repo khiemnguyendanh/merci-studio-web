@@ -9,7 +9,7 @@ import {
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail,
-    BookOpen, FileText, Calendar
+    BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
@@ -549,6 +549,11 @@ export default function Home() {
     const [sourceHandle, setSourceHandle] = useState(null);
     const [destHandle, setDestHandle] = useState(null);
     const [filterLogs, setFilterLogs] = useState([]);
+    const [filterTargetExt, setFilterTargetExt] = useState('original');
+    const [filterCustomExt, setFilterCustomExt] = useState('');
+    const [showSavedPages, setShowSavedPages] = useState(false);
+    const [imageNotes, setImageNotes] = useState({});
+    const [noteModalData, setNoteModalData] = useState({ isOpen: false, img: null, noteText: '' });
 
     const [lightboxData, setLightboxData] = useState({ isOpen: false, index: 0, images: [] });
     const [lightboxDirection, setLightboxDirection] = useState(0);
@@ -2265,6 +2270,21 @@ export default function Home() {
         return 'Album chọn ảnh';
     };
 
+    const getGroupedPagesByMonth = (pages) => {
+        const groups = {};
+        (pages || []).forEach(page => {
+            const date = new Date(page.createdAt || Date.now());
+            const month = (date.getMonth() + 1).toString().padStart(2, '0');
+            const year = date.getFullYear();
+            const groupKey = `Tháng ${month}/${year}`;
+            if (!groups[groupKey]) {
+                groups[groupKey] = [];
+            }
+            groups[groupKey].push(page);
+        });
+        return groups;
+    };
+
     const getClientPageDisplayTitle = (page) => {
         const savedTitle = (page?.title || '').trim();
         const isOldDefaultTitle = /^Album chọn ảnh/i.test(savedTitle);
@@ -2620,12 +2640,13 @@ export default function Home() {
     };
 
     // === CLIENT GALLERY HELPERS ===
-    const saveClientSelectionToDB = async (folderId, newSelectedSet) => {
+    const saveClientSelectionToDB = async (folderId, newSelectedSet, currentNotes = imageNotes) => {
         if (!db || !folderId) return;
         setIsSaving(true);
         try {
             await setDoc(doc(db, 'client_selections', folderId), {
                 selectedIds: Array.from(newSelectedSet),
+                imageNotes: currentNotes,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
         } catch (e) { }
@@ -2633,14 +2654,18 @@ export default function Home() {
     };
 
     const loadClientSelectionFromDB = async (folderId) => {
-        if (!db || !folderId) return new Set();
+        if (!db || !folderId) return { selectedSet: new Set(), notes: {} };
         try {
             const docSnap = await getDoc(doc(db, 'client_selections', folderId));
-            if (docSnap.exists() && docSnap.data().selectedIds) {
-                return new Set(docSnap.data().selectedIds);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                return {
+                    selectedSet: new Set(data.selectedIds || []),
+                    notes: data.imageNotes || {}
+                };
             }
         } catch (e) { }
-        return new Set();
+        return { selectedSet: new Set(), notes: {} };
     };
 
     const getDriveFolderInputs = (input) => {
@@ -2800,8 +2825,9 @@ export default function Home() {
                     loadSavedClientPages();
                 }
 
-                const savedSelections = await loadClientSelectionFromDB(pageKey);
-                setSelectedImages(savedSelections);
+                const { selectedSet, notes } = await loadClientSelectionFromDB(pageKey);
+                setSelectedImages(selectedSet);
+                setImageNotes(notes);
 
                 if (firstFiles.length === 0) {
                     alert("Folder đầu tiên không có ảnh. Bạn có thể chuyển sang folder con khác trong phần Chọn ảnh.");
@@ -2825,6 +2851,22 @@ export default function Home() {
             if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
             if (currentSelectionKey || currentFolderId) saveClientSelectionToDB(currentSelectionKey || currentFolderId, newSet);
             return newSet;
+        });
+    };
+
+    const handleSaveNote = async (imgId, noteText) => {
+        const nextNotes = { ...imageNotes, [imgId]: noteText };
+        setImageNotes(nextNotes);
+        if (currentSelectionKey || currentFolderId) {
+            await saveClientSelectionToDB(currentSelectionKey || currentFolderId, selectedImages, nextNotes);
+        }
+    };
+
+    const openImageNoteModal = (img) => {
+        setNoteModalData({
+            isOpen: true,
+            img,
+            noteText: imageNotes[img.id] || ''
         });
     };
 
@@ -3051,7 +3093,13 @@ export default function Home() {
         if (!filterText.trim()) return alert("Vui lòng dán danh sách tên file!");
 
         setIsLoading(true); setLoadingMessage('Đang xử lý lọc và chép ảnh...'); setFilterLogs([]);
-        const names = filterText.split('\n').map(n => n.trim().toLowerCase()).filter(n => n);
+        const names = filterText.split(/[\r\n,]+/).map(n => n.trim().toLowerCase()).filter(Boolean);
+        const baseNames = filterText.split(/[\r\n,]+/).map(n => n.trim().replace(/\.[^/.]+$/, "").toLowerCase()).filter(Boolean);
+
+        const targetExt = filterTargetExt === 'custom' 
+            ? filterCustomExt.trim().toLowerCase() 
+            : filterTargetExt.toLowerCase();
+
         let count = 0;
 
         try {
@@ -3059,19 +3107,37 @@ export default function Home() {
                 if (entry.kind === 'file') {
                     const fileName = entry.name.toLowerCase();
                     const nameNoExt = entry.name.replace(/\.[^/.]+$/, "").toLowerCase();
-                    if (names.includes(fileName) || names.includes(nameNoExt)) {
-                        const file = await entry.getFile();
-                        const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
-                        const writable = await newFileHandle.createWritable();
-                        await writable.write(file); await writable.close();
-                        count++;
-                        setFilterLogs(prev => [...prev, `✅ Đã chép: ${entry.name}`]);
+                    const fileExt = entry.name.includes('.') ? entry.name.slice(entry.name.lastIndexOf('.') + 1).toLowerCase() : '';
+
+                    if (filterTargetExt === 'original') {
+                        if (names.includes(fileName) || baseNames.includes(nameNoExt)) {
+                            const file = await entry.getFile();
+                            const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(file); await writable.close();
+                            count++;
+                            setFilterLogs(prev => [...prev, `✅ Đã chép: ${entry.name}`]);
+                        }
+                    } else {
+                        const targetExtClean = targetExt.startsWith('.') ? targetExt.slice(1) : targetExt;
+                        if (baseNames.includes(nameNoExt) && fileExt === targetExtClean) {
+                            const file = await entry.getFile();
+                            const newFileHandle = await destHandle.getFileHandle(entry.name, { create: true });
+                            const writable = await newFileHandle.createWritable();
+                            await writable.write(file); await writable.close();
+                            count++;
+                            setFilterLogs(prev => [...prev, `✅ Đã chép: ${entry.name}`]);
+                        }
                     }
                 }
             }
             alert(`Hoàn thành! Đã chép ${count} ảnh.`);
-        } catch (e) { alert("Lỗi chép file. Hãy kiểm tra quyền truy cập thư mục."); }
-        finally { setIsLoading(false); }
+        } catch (e) { 
+            console.error(e);
+            alert("Lỗi chép file. Hãy kiểm tra quyền truy cập thư mục."); 
+        } finally { 
+            setIsLoading(false); 
+        }
     };
 
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
@@ -3282,6 +3348,68 @@ export default function Home() {
                             ) : (
                                 <span>Chưa có tài khoản? <button onClick={() => { setClientAuthMode('register'); setClientAuthError(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Tạo tài khoản</button></span>
                             )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Image Note Modal */}
+            {noteModalData.isOpen && noteModalData.img && (
+                <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 flex flex-col gap-5">
+                        <div className="flex justify-between items-center">
+                            <h3 className="font-bold text-lg md:text-xl text-slate-900 flex items-center gap-2">
+                                <MessageSquare className="w-5 h-5 text-pink-500" /> Yêu cầu chỉnh sửa
+                            </h3>
+                            <button onClick={() => setNoteModalData({ isOpen: false, img: null, noteText: '' })} className="text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 p-1.5 rounded-full transition-all">
+                                <X className="w-5 h-5" />
+                            </button>
+                        </div>
+
+                        {/* Image Preview */}
+                        <div className="w-full aspect-video rounded-2xl overflow-hidden border border-slate-100 shadow-inner relative bg-slate-50">
+                            <img
+                                src={noteModalData.img.url || getDriveThumbUrl(noteModalData.img.id, 'w1200')}
+                                className="w-full h-full object-cover"
+                                alt="Preview"
+                                referrerPolicy="no-referrer"
+                            />
+                            <div className="absolute bottom-2 left-2 bg-black/50 text-white text-[10px] px-2 py-0.5 rounded-md font-mono">
+                                {noteModalData.img.name}
+                            </div>
+                        </div>
+
+                        {/* Input Note */}
+                        <div className="space-y-2">
+                            <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Nhập nội dung chỉnh sửa (VD: Xoá mụn, làm mịn da...)</label>
+                            <textarea
+                                value={noteModalData.noteText}
+                                onChange={e => setNoteModalData({ ...noteModalData, noteText: e.target.value })}
+                                rows={4}
+                                placeholder="Ghi chú chi tiết những gì bạn muốn thiết kế/chỉnh sửa cho bức ảnh này..."
+                                className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-pink-500 transition-colors text-sm md:text-base resize-none font-medium shadow-inner"
+                            />
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setNoteModalData({ isOpen: false, img: null, noteText: '' })}
+                                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl md:rounded-2xl font-bold transition-all text-sm"
+                            >
+                                Hủy
+                            </button>
+                            <button
+                                type="button"
+                                onClick={async () => {
+                                    await handleSaveNote(noteModalData.img.id, noteModalData.noteText);
+                                    setNoteModalData({ isOpen: false, img: null, noteText: '' });
+                                }}
+                                className="flex-1 bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition-all text-sm"
+                            >
+                                Lưu ghi chú
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -4690,6 +4818,40 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                 </div>
                                 <textarea className="w-full h-48 md:h-64 border-2 border-slate-100 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-xs md:text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
+                                
+                                {/* Lựa chọn đuôi file */}
+                                <div className="space-y-3 bg-slate-50 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100">
+                                    <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Đuôi file cần sao chép (ARW, CR3, JPG...)</label>
+                                    <div className="flex flex-wrap gap-2">
+                                        {[
+                                            { id: 'original', label: 'Giữ nguyên đuôi' },
+                                            { id: 'arw', label: 'Sony (.ARW)' },
+                                            { id: 'cr3', label: 'Canon (.CR3)' },
+                                            { id: 'nef', label: 'Nikon (.NEF)' },
+                                            { id: 'jpg', label: 'Ảnh gốc (.JPG)' },
+                                            { id: 'custom', label: 'Đuôi tự chọn...' }
+                                        ].map(opt => (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setFilterTargetExt(opt.id)}
+                                                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${filterTargetExt === opt.id ? 'bg-blue-600 text-white border-blue-600 shadow-md' : 'bg-white text-slate-600 hover:bg-slate-50 border-slate-200 shadow-sm'}`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                    {filterTargetExt === 'custom' && (
+                                        <input
+                                            type="text"
+                                            value={filterCustomExt}
+                                            onChange={e => setFilterCustomExt(e.target.value)}
+                                            placeholder="Nhập đuôi file (ví dụ: png, cr2, raw...)"
+                                            className="w-full mt-2 border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-xs md:text-sm font-bold bg-white"
+                                        />
+                                    )}
+                                </div>
+
                                 <button onClick={handleCopyFiles} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center justify-center gap-2 md:gap-3 text-sm md:text-base">
                                     <Zap size={20} className="md:w-[22px] md:h-[22px]" /> Bắt đầu lọc và sao chép
                                 </button>
@@ -4706,52 +4868,88 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     {activeTab === 'tool' && activeToolTab === 'gallery' && (
                         <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
                             <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm">
-                                <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
-                                    <div>
+                                <div className="flex items-center justify-between gap-3 mb-4 cursor-pointer select-none" onClick={() => setShowSavedPages(!showSavedPages)}>
+                                    <div className="flex items-center gap-2">
                                         <h2 className="text-sm md:text-3xl font-bold font-sans text-slate-900">Các link chọn ảnh đã tạo</h2>
-                                        <p className="text-sm text-slate-500">Danh sách này lưu theo tài khoản Google đang đăng nhập.</p>
+                                        {user && (
+                                            <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm">
+                                                {savedClientPages.length}
+                                            </span>
+                                        )}
+                                        {showSavedPages ? <ChevronUp className="w-5 h-5 md:w-6 md:h-6 text-slate-400" /> : <ChevronDown className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />}
                                     </div>
-                                    {!user ? (
-                                        <button onClick={() => openClientAuth('login')} className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2">
-                                            <User className="w-4 h-4" /> Đăng nhập / đăng ký
-                                        </button>
-                                    ) : (
-                                        <button onClick={loadSavedClientPages} className="bg-slate-100 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
-                                            <RefreshCcw className="w-4 h-4" /> Tải lại danh sách
-                                        </button>
+                                    {showSavedPages && (
+                                        <div className="flex gap-2">
+                                            {!user ? (
+                                                <button onClick={(e) => { e.stopPropagation(); openClientAuth('login'); }} className="bg-blue-600 text-white px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-blue-700 transition-colors flex items-center gap-2">
+                                                    <User className="w-3.5 h-3.5" /> Đăng nhập / đăng ký
+                                                </button>
+                                            ) : (
+                                                <button onClick={(e) => { e.stopPropagation(); loadSavedClientPages(); }} className="bg-slate-100 text-slate-700 px-4 py-2.5 rounded-xl font-bold text-xs hover:bg-slate-200 transition-colors flex items-center gap-2">
+                                                    <RefreshCcw className="w-3.5 h-3.5" /> Tải lại danh sách
+                                                </button>
+                                            )}
+                                        </div>
                                     )}
                                 </div>
-                                {user && savedClientPages.length > 0 && (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                        {savedClientPages.map(page => (
-                                            <div key={page.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 flex flex-col gap-3">
-                                                <div>
-                                                    <div className="flex items-start justify-between gap-2">
-                                                        <p className="font-bold text-slate-900 leading-snug">{getClientPageDisplayTitle(page)}</p>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleRenameClientPage(page)}
-                                                            className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
-                                                            title="Đổi tên link chọn ảnh"
-                                                        >
-                                                            <Edit className="w-3 h-3" /> Sửa tên
-                                                        </button>
-                                                    </div>
-                                                    <p className="text-xs text-slate-500 mt-1">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
-                                                    <p className="font-mono text-xs text-blue-700 truncate mt-1">{page.link}</p>
+                                
+                                {showSavedPages && (
+                                    <p className="text-xs md:text-sm text-slate-500 mb-4 -mt-2">Danh sách này lưu theo tài khoản Google đang đăng nhập.</p>
+                                )}
+
+                                {showSavedPages && !user && (
+                                    <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                                        <p className="text-sm text-slate-400 font-medium">Vui lòng đăng nhập để xem danh sách link đã tạo.</p>
+                                    </div>
+                                )}
+
+                                {showSavedPages && user && savedClientPages.length === 0 && (
+                                    <div className="text-center py-8 border border-dashed border-slate-200 rounded-2xl bg-slate-50">
+                                        <p className="text-sm text-slate-400 font-medium">Chưa có link chọn ảnh nào được tạo.</p>
+                                    </div>
+                                )}
+
+                                {showSavedPages && user && savedClientPages.length > 0 && (
+                                    <div className="space-y-6 max-h-[500px] overflow-y-auto pr-2 no-scrollbar">
+                                        {Object.entries(getGroupedPagesByMonth(savedClientPages)).map(([month, pages]) => (
+                                            <div key={month} className="space-y-3">
+                                                <div className="flex items-center gap-2 border-b border-slate-100 pb-1 mt-2">
+                                                    <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">{month}</h3>
+                                                    <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">{pages.length} link</span>
                                                 </div>
-                                                <div className="flex gap-2">
-                                                    <button onClick={() => {
-                                                        const pageFolders = page.folders && page.folders.length ? page.folders : [];
-                                                        const folderInput = pageFolders.length
-                                                            ? pageFolders.map(folder => folder.source || folder.id).filter(Boolean).join('\n')
-                                                            : (page.folderIds && page.folderIds.length ? page.folderIds : [page.folderId]).filter(Boolean).join('\n');
-                                                        fetchDrive(folderInput);
-                                                    }} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold hover:border-blue-300 hover:text-blue-600 transition-colors">Mở</button>
-                                                    <button onClick={() => {
-                                                        if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(page.link).then(() => alert('Đã copy link!'));
-                                                        else prompt('Copy link:', page.link);
-                                                    }} className="flex-1 bg-slate-900 text-white rounded-xl px-3 py-2 text-xs font-bold hover:bg-blue-600 transition-colors">Copy</button>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                    {pages.map(page => (
+                                                        <div key={page.id} className="border border-slate-100 rounded-2xl p-4 bg-slate-50 flex flex-col gap-3 hover:shadow-md hover:bg-white hover:border-blue-100 transition-all duration-300">
+                                                            <div>
+                                                                <div className="flex items-start justify-between gap-2">
+                                                                    <p className="font-bold text-slate-900 leading-snug">{getClientPageDisplayTitle(page)}</p>
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleRenameClientPage(page)}
+                                                                        className="shrink-0 inline-flex items-center gap-1 text-[11px] font-bold text-blue-600 bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg transition-colors"
+                                                                        title="Đổi tên link chọn ảnh"
+                                                                    >
+                                                                        <Edit className="w-3 h-3" /> Sửa tên
+                                                                    </button>
+                                                                </div>
+                                                                <p className="text-xs text-slate-500 mt-1">{page.imageCount || 0} ảnh · {page.ownerEmail}</p>
+                                                                <p className="font-mono text-xs text-blue-700 truncate mt-1">{page.link}</p>
+                                                            </div>
+                                                            <div className="flex gap-2">
+                                                                <button onClick={() => {
+                                                                    const pageFolders = page.folders && page.folders.length ? page.folders : [];
+                                                                    const folderInput = pageFolders.length
+                                                                        ? pageFolders.map(folder => folder.source || folder.id).filter(Boolean).join('\n')
+                                                                        : (page.folderIds && page.folderIds.length ? page.folderIds : [page.folderId]).filter(Boolean).join('\n');
+                                                                    fetchDrive(folderInput);
+                                                                }} className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold hover:border-blue-300 hover:text-blue-600 transition-colors">Mở</button>
+                                                                <button onClick={() => {
+                                                                    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(page.link).then(() => alert('Đã copy link!'));
+                                                                    else prompt('Copy link:', page.link);
+                                                                }} className="flex-1 bg-slate-900 text-white rounded-xl px-3 py-2 text-xs font-bold hover:bg-blue-600 transition-colors">Copy</button>
+                                                            </div>
+                                                        </div>
+                                                    ))}
                                                 </div>
                                             </div>
                                         ))}
@@ -4814,12 +5012,28 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Copy Tên</span>
                                             </button>
 
-                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
-                                                <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Link Chốt</span>
+                                            <button onClick={() => {
+                                                const selectedList = Array.from(selectedImages).map(id => {
+                                                    const img = loadedImages.find(item => item.id === id);
+                                                    if (!img) return null;
+                                                    const note = imageNotes[id];
+                                                    return note ? `${img.name} (Yêu cầu sửa: ${note})` : img.name;
+                                                }).filter(Boolean);
+                                                if (navigator.clipboard && window.isSecureContext) {
+                                                    navigator.clipboard.writeText(selectedList.join('\n')).then(() => alert("Đã copy danh sách kèm ghi chú sửa ảnh!"));
+                                                } else {
+                                                    prompt("Copy danh sách kèm ghi chú:", selectedList.join('\n'));
+                                                }
+                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 text-pink-500" /> <span>Copy + Note</span>
                                             </button>
 
                                             <button onClick={handleDownloadAllOriginal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
                                                 <FolderDown className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Tải tất cả</span>
+                                            </button>
+
+                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                                <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Link Chốt</span>
                                             </button>
 
                                             <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
@@ -4843,7 +5057,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 const isSelected = selectedImages.has(img.id);
                                                 const originalIndex = galleryStartIndex + idx;
                                                 return (
-                                                    <div key={img.id} className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
+                                                    <div key={img.id} className="flex flex-col gap-2">
+                                                        <div className={`aspect-[3/4] relative group rounded-xl md:rounded-2xl overflow-hidden border-2 md:border-4 transition-all duration-300 ${isSelected ? 'border-pink-500 shadow-xl shadow-pink-500/20 scale-[0.98]' : 'border-transparent hover:shadow-lg'}`}>
                                                         <img loading="lazy" decoding="async"
                                                             src={img.url || getDriveThumbUrl(img.id, 'w1200')}
                                                             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 cursor-pointer"
@@ -4872,10 +5087,57 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                             <Download className="w-4 h-4 md:w-5 md:h-5" />
                                                         </button>
 
+                                                        {/* Nút viết note/ghi chú */}
+                                                        {isSelected && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openImageNoteModal(img);
+                                                                }}
+                                                                className={`absolute top-1 right-1 md:top-2 md:right-2 w-7 h-7 md:w-9 md:h-9 rounded-full shadow-lg backdrop-blur-md flex items-center justify-center transition-all ${imageNotes[img.id] ? 'bg-pink-500 text-white hover:bg-pink-600' : 'bg-white/90 text-slate-800 hover:bg-pink-500 hover:text-white'}`}
+                                                                title="Thêm yêu cầu sửa ảnh"
+                                                            >
+                                                                <MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                                                            </button>
+                                                        )}
+
                                                         {/* Tên ảnh */}
                                                         <div className="absolute top-1 left-1 right-1 md:top-2 md:left-2 md:right-2 flex justify-between pointer-events-none">
                                                             <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate">Ảnh {originalIndex + 1}</span>
                                                         </div>
+                                                        </div>
+
+                                                        {/* Ghi chú chỉnh sửa dưới ảnh */}
+                                                        {isSelected && imageNotes[img.id] && (
+                                                            <div
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openImageNoteModal(img);
+                                                                }}
+                                                                className="bg-pink-50 border border-pink-100 rounded-xl p-2 md:p-2.5 text-[10px] md:text-xs text-pink-700 font-semibold leading-relaxed break-words shadow-sm hover:bg-pink-100/80 cursor-pointer transition-all animate-in slide-in-from-bottom duration-300 flex justify-between items-start gap-1"
+                                                                title="Bấm để sửa ghi chú"
+                                                            >
+                                                                <div className="flex-1">
+                                                                    <span className="font-bold block text-[8px] md:text-[9px] text-pink-400 uppercase tracking-widest mb-0.5">Yêu cầu sửa:</span>
+                                                                    {imageNotes[img.id]}
+                                                                </div>
+                                                                <Edit className="w-3.5 h-3.5 text-pink-400 shrink-0 mt-0.5" />
+                                                            </div>
+                                                        )}
+
+                                                        {isSelected && !imageNotes[img.id] && showOnlySelected && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    openImageNoteModal(img);
+                                                                }}
+                                                                className="w-full text-center py-2 border border-dashed border-slate-200 hover:border-pink-300 hover:text-pink-600 rounded-xl text-[10px] md:text-xs font-bold text-slate-400 transition-all bg-white shadow-sm flex items-center justify-center gap-1"
+                                                            >
+                                                                <Plus className="w-3.5 h-3.5" /> Ghi chú sửa ảnh
+                                                            </button>
+                                                        )}
                                                     </div>
                                                 )
                                             })}
