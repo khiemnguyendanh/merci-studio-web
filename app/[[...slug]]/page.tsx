@@ -4236,7 +4236,17 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         />
                                         <p className="text-xs text-slate-400 font-medium ml-1">Có thể dán 1 folder hoặc nhiều folder con. Trang chọn ảnh sẽ có nút chuyển qua lại giữa các folder.</p>
                                     </div>
-                                    <button onClick={() => fetchDrive(driveLink, { savePage: true })} className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base">
+                                    <button
+                                        onClick={() => {
+                                            if (!user) {
+                                                alert("Vui lòng đăng nhập tài khoản trước khi tạo link để hệ thống lưu trữ và quản lý trang chọn ảnh của bạn!");
+                                                openClientAuth('login');
+                                                return;
+                                            }
+                                            fetchDrive(driveLink, { savePage: true });
+                                        }}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 md:py-5 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 group text-sm md:text-base"
+                                    >
                                         <Wand2 className="group-hover:rotate-45 transition-transform" /> Tạo link gửi khách
                                     </button>
                                 </div>
@@ -5160,10 +5170,20 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     )}
                                 </>
                             ) : (
-                                <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-200 shadow-sm mx-2">
-                                    <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
-                                    <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
-                                </div>
+                                currentFolderId ? (
+                                    <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-pink-200 shadow-sm mx-2 space-y-4">
+                                        <AlertCircle size={48} className="mx-auto text-pink-500 animate-bounce" />
+                                        <h3 className="text-xl font-bold text-slate-900">Không tìm thấy ảnh hoặc thư mục chưa chia sẻ</h3>
+                                        <p className="text-slate-500 font-medium text-sm md:text-base max-w-md mx-auto px-4 leading-relaxed">
+                                            Thư mục hình ảnh hiện chưa được bật quyền chia sẻ công khai (**Bất kỳ ai có liên kết đều có thể xem**) hoặc liên kết đã bị thay đổi. Vui lòng liên hệ với **Merci Studio** để được hỗ trợ kiểm tra lại!
+                                        </p>
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-200 shadow-sm mx-2">
+                                        <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
+                                        <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
+                                    </div>
+                                )
                             )}
                         </div>
                     )}
