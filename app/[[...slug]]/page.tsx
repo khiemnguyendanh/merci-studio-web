@@ -3225,39 +3225,43 @@ export default function Home() {
         const endItem = Math.min(currentPage * IMAGES_PER_PAGE, totalItems);
 
         return (
-            <div className="flex flex-col md:flex-row items-center justify-between gap-3 bg-white border border-slate-100 rounded-2xl p-3 md:p-4 shadow-sm">
+            <div className="flex flex-row items-center justify-between gap-2 bg-white border border-slate-100 rounded-xl md:rounded-2xl p-2.5 md:p-4 shadow-sm">
                 <div className="text-xs md:text-sm text-slate-500 font-medium">
-                    {label}: <span className="font-bold text-slate-900">{startItem}-{endItem}</span> / {totalItems} ảnh
-                    <span className="ml-2 text-blue-600 font-bold">Trang {currentPage}/{totalPages}</span>
+                    <span className="hidden sm:inline">{label}: </span>
+                    <span className="font-bold text-slate-900">{startItem}-{endItem}</span> / {totalItems} <span className="hidden sm:inline">ảnh</span>
+                    <span className="ml-1.5 text-blue-600 font-bold">Trang {currentPage}/{totalPages}</span>
                 </div>
 
-                <div className="flex items-center justify-center gap-1.5 flex-wrap">
+                <div className="flex items-center justify-center gap-1 flex-wrap">
                     <button
                         onClick={() => onPageChange(Math.max(1, currentPage - 1))}
                         disabled={currentPage === 1}
-                        className="px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
+                        className="px-2.5 py-1.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
                     >
                         Trước
                     </button>
 
-                    {getPageNumbers(currentPage, totalPages).map((page, index) => (
-                        page === '...' ? (
-                            <span key={`dots-${index}`} className="px-2 text-slate-400 font-bold">...</span>
-                        ) : (
-                            <button
-                                key={page}
-                                onClick={() => onPageChange(page)}
-                                className={`min-w-9 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${currentPage === page ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border'}`}
-                            >
-                                {page}
-                            </button>
-                        )
-                    ))}
+                    {/* Desktop-only page numbers */}
+                    <div className="hidden sm:flex items-center gap-1">
+                        {getPageNumbers(currentPage, totalPages).map((page, index) => (
+                            page === '...' ? (
+                                <span key={`dots-${index}`} className="px-2 text-slate-400 font-bold">...</span>
+                            ) : (
+                                <button
+                                    key={page}
+                                    onClick={() => onPageChange(page)}
+                                    className={`min-w-9 px-3 py-2 rounded-xl text-xs md:text-sm font-bold transition-all ${currentPage === page ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border'}`}
+                                >
+                                    {page}
+                                </button>
+                            )
+                        ))}
+                    </div>
 
                     <button
                         onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
                         disabled={currentPage === totalPages}
-                        className="px-3 py-2 rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
+                        className="px-2.5 py-1.5 rounded-lg md:rounded-xl text-xs md:text-sm font-bold border transition-all disabled:opacity-40 disabled:cursor-not-allowed bg-slate-50 hover:bg-slate-100 text-slate-700"
                     >
                         Sau
                     </button>
@@ -4039,8 +4043,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* Menu Header */}
             {activeTab !== 'home' && (
-                <header className="sticky top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 p-4 shadow-sm">
-                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4">
+                <header className="relative md:sticky md:top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 py-2.5 px-4 md:p-4 shadow-sm">
+                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4">
                         <div className="flex justify-between items-center w-full md:w-auto">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                                 setActiveTab('home');
@@ -4068,7 +4072,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'tool', label: 'Công cụ' },
                                     { id: 'booking', label: 'Đặt lịch' }
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-5 py-2 rounded-full text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3.5 py-1.5 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -4184,13 +4188,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     )}
 
                     {activeTab === 'tool' && (
-                        <div className="mb-6 md:mb-8 bg-white border border-slate-100 rounded-[2rem] p-3 md:p-4 shadow-sm">
-                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                        <div className="mb-3 md:mb-8 bg-white border border-slate-100 rounded-xl md:rounded-[2rem] p-2.5 md:p-4 shadow-sm">
+                            <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-3">
                                 <div className="px-2">
-                                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Tool Studio</p>
-                                    <h2 className="text-xl md:text-2xl font-black text-slate-900">Tạo trang · Chọn ảnh · Lọc ảnh</h2>
+                                    <p className="hidden sm:block text-xs font-bold uppercase tracking-widest text-blue-600">Tool Studio</p>
+                                    <h2 className="text-base md:text-2xl font-black text-slate-900">Tạo trang · Chọn ảnh · Lọc ảnh</h2>
                                 </div>
-                                <div className="flex gap-2 overflow-x-auto no-scrollbar bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                                <div className="flex gap-2 overflow-x-auto no-scrollbar bg-slate-50 p-1 rounded-xl md:rounded-2xl border border-slate-100">
                                     {[
                                         { id: 'create', label: 'Tạo trang', path: '/tao-trang' },
                                         { id: 'gallery', label: 'Chọn ảnh', path: '/chon-anh' },
@@ -4203,7 +4207,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 setActiveToolTab(item.id);
                                                 window.history.pushState({}, document.title, item.path);
                                             }}
-                                            className={`px-4 md:px-5 py-2.5 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeToolTab === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-blue-600 hover:bg-white'}`}
+                                            className={`px-3 md:px-5 py-2 rounded-lg md:rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeToolTab === item.id ? 'bg-blue-600 text-white shadow-md' : 'text-slate-500 hover:text-blue-600 hover:bg-white'}`}
                                         >
                                             {item.label}
                                         </button>
@@ -4877,8 +4881,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'tool' && activeToolTab === 'gallery' && (
                         <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
-                            <div className="bg-white border border-slate-100 rounded-[2rem] p-5 md:p-6 shadow-sm">
-                                <div className="flex items-center justify-between gap-3 mb-4 cursor-pointer select-none" onClick={() => setShowSavedPages(!showSavedPages)}>
+                            <div className="bg-white border border-slate-100 rounded-2xl md:rounded-[2rem] p-3.5 md:p-6 shadow-sm">
+                                <div className="flex items-center justify-between gap-3 mb-3 md:mb-4 cursor-pointer select-none" onClick={() => setShowSavedPages(!showSavedPages)}>
                                     <div className="flex items-center gap-2">
                                         <h2 className="text-sm md:text-3xl font-bold font-sans text-slate-900">Các link chọn ảnh đã tạo</h2>
                                         {user && (
@@ -4970,13 +4974,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             {loadedImages.length > 0 ? (
                                 <>
                                     {clientFolders.length > 1 && (
-                                        <div className="bg-white border border-slate-100 rounded-2xl p-3 md:p-4 shadow-sm">
-                                            <div className="flex items-center justify-between gap-3 mb-3">
+                                        <div className="bg-white border border-slate-100 rounded-2xl p-2.5 md:p-4 shadow-sm">
+                                            <div className="flex items-center justify-between gap-3 mb-2.5 md:mb-3">
                                                 <div>
                                                     <h3 className="text-sm md:text-base font-bold text-slate-900">Folder con trong trang chọn ảnh</h3>
-                                                    <p className="text-xs text-slate-500">Bấm để chuyển qua lại giữa các folder. Ảnh đã chọn vẫn được lưu chung trong link này.</p>
+                                                    <p className="hidden sm:block text-xs text-slate-500">Bấm để chuyển qua lại giữa các folder. Ảnh đã chọn vẫn được lưu chung trong link này.</p>
                                                 </div>
-                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full">{clientFolders.length} folder</span>
+                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">{clientFolders.length} folder</span>
                                             </div>
                                             <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
                                                 {clientFolders.map((folder, index) => (
@@ -4984,7 +4988,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         key={folder.id}
                                                         type="button"
                                                         onClick={() => handleSwitchClientFolder(folder.id)}
-                                                        className={`px-4 py-2 rounded-xl text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeClientFolderId === folder.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeClientFolderId === folder.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                                     >
                                                         {folder.name || `Folder ${index + 1}`}
                                                     </button>
@@ -4994,23 +4998,41 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     )}
 
                                     {/* Control Bar */}
-                                    <div className="sticky top-16 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-3 md:p-4 border border-slate-100 rounded-2xl md:rounded-[2rem] flex flex-col md:flex-row justify-between items-center gap-3 md:gap-4 shadow-xl">
-                                        <div className="flex items-center justify-between w-full md:w-auto px-1 md:pl-2">
-                                            <div className="flex items-center gap-2 text-pink-500 font-bold bg-pink-50 px-3 md:px-4 py-1.5 md:py-2 rounded-xl whitespace-nowrap text-sm md:text-base">
-                                                <Heart className="w-4 h-4 md:w-5 md:h-5 fill-current" /> <span>{selectedImages.size}</span> ảnh
+                                    <div className="sticky top-2 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-2 md:p-4 border border-slate-100 rounded-xl md:rounded-[2rem] flex flex-col justify-between gap-2 md:gap-4 shadow-xl">
+                                        <div className="flex flex-row items-center justify-between w-full md:w-auto gap-2">
+                                            {/* Info and Save state */}
+                                            <div className="flex items-center gap-1.5 px-1 md:pl-2">
+                                                <div className="flex items-center gap-1 text-pink-500 font-bold bg-pink-50 px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl whitespace-nowrap text-xs md:text-base">
+                                                    <Heart className="w-3.5 h-3.5 md:w-5 md:h-5 fill-current" /> <span>{selectedImages.size}</span><span className="hidden sm:inline"> ảnh</span>
+                                                </div>
+                                                {isSaving ? (
+                                                    <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1">
+                                                        <RefreshCcw className="w-3 h-3 animate-spin" />
+                                                        <span className="hidden sm:inline">Đang lưu...</span>
+                                                        <span className="sm:hidden">Lưu...</span>
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1">
+                                                        <CheckCircleIcon className="w-3.5 h-3.5" />
+                                                        <span>Đã lưu</span>
+                                                    </span>
+                                                )}
                                             </div>
-                                            {isSaving && <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1"><RefreshCcw className="w-3 h-3 animate-spin" /> Đang lưu...</span>}
-                                            {!isSaving && <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1"><CheckCircleIcon className="w-3 h-3 md:w-4 md:h-4" /> Đã lưu</span>}
-                                        </div>
 
-                                        {/* Toggle View Mode */}
-                                        <div className="flex bg-slate-100 p-1 rounded-xl w-full md:w-auto">
-                                            <button onClick={() => setShowOnlySelected(false)} className={`flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>Tất cả ảnh</button>
-                                            <button onClick={() => setShowOnlySelected(true)} className={`flex-1 md:flex-none px-4 md:px-6 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${showOnlySelected ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500'}`}>Chỉ ảnh đã chọn</button>
+                                            {/* Toggle View Mode */}
+                                            <div className="flex bg-slate-100 p-0.5 md:p-1 rounded-xl">
+                                                <button onClick={() => setShowOnlySelected(false)} className={`px-2.5 md:px-6 py-1 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>
+                                                    Tất cả<span className="hidden sm:inline"> ảnh</span>
+                                                </button>
+                                                <button onClick={() => setShowOnlySelected(true)} className={`px-2.5 md:px-6 py-1 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${showOnlySelected ? 'bg-white shadow-sm text-pink-600' : 'text-slate-500'}`}>
+                                                    <span className="sm:hidden">Đã chọn</span>
+                                                    <span className="hidden sm:inline">Chỉ ảnh đã chọn</span>
+                                                </button>
+                                            </div>
                                         </div>
 
                                         {/* Actions */}
-                                        <div className="flex gap-2 w-full md:w-auto justify-end flex-wrap">
+                                        <div className="flex gap-2 w-full md:w-auto justify-start md:justify-end overflow-x-auto no-scrollbar pb-1 md:pb-0 -mx-2 px-2 md:mx-0 md:px-0 scroll-smooth snap-x">
                                             <button onClick={() => {
                                                 const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
                                                 if (navigator.clipboard && window.isSecureContext) {
@@ -5018,7 +5040,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 } else {
                                                     prompt("Copy danh sách:", names.join('\n'));
                                                 }
-                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                 <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Copy Tên</span>
                                             </button>
 
@@ -5034,19 +5056,19 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 } else {
                                                     prompt("Copy danh sách kèm ghi chú:", selectedList.join('\n'));
                                                 }
-                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                            }} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                 <Copy className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2 text-pink-500" /> <span>Copy + Note</span>
                                             </button>
 
-                                            <button onClick={handleDownloadAllOriginal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                            <button onClick={handleDownloadAllOriginal} className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                 <FolderDown className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Tải tất cả</span>
                                             </button>
 
-                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                            <button onClick={generateSelectedImagesLink} className="bg-pink-100 hover:bg-pink-200 text-pink-700 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                 <LinkIcon className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Link Chốt</span>
                                             </button>
 
-                                            <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 md:px-4 py-2 rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-1 md:flex-none">
+                                            <button onClick={handleDownloadSelected} className="bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                 <Download className="w-3 h-3 md:w-4 md:h-4 mr-1 md:mr-2" /> <span>Tải ảnh đã chọn</span>
                                             </button>
                                         </div>
