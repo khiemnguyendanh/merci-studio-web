@@ -485,6 +485,7 @@ export default function Home() {
     const [currentSelectionKey, setCurrentSelectionKey] = useState(null);
     const [showOnlySelected, setShowOnlySelected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [cachedFolderImages, setCachedFolderImages] = useState({});
 
     // Albums (Admin & Khách)
     const [albums, setAlbums] = useState([]);
@@ -2705,6 +2706,16 @@ export default function Home() {
 
     const loadDriveFolderImages = async (folderId, options = { silent: false }) => {
         if (!folderId) return [];
+
+        // Check state cache first
+        if (cachedFolderImages[folderId]) {
+            setCurrentFolderId(folderId);
+            setActiveClientFolderId(folderId);
+            setLoadedImages(cachedFolderImages[folderId]);
+            setGalleryPage(1);
+            return cachedFolderImages[folderId];
+        }
+
         if (!options?.silent) {
             setIsLoading(true);
             setLoadingMessage('Đang lấy dữ liệu folder...');
@@ -2717,6 +2728,20 @@ export default function Home() {
             setActiveClientFolderId(folderId);
             setLoadedImages(imgs);
             setGalleryPage(1);
+            
+            // Save to cache state
+            setCachedFolderImages(prev => ({ ...prev, [folderId]: imgs }));
+            
+            // Silently save back to Firestore cache
+            if (currentSelectionKey) {
+                setDoc(doc(db, 'client_pages', currentSelectionKey), {
+                    folderImages: {
+                        ...cachedFolderImages,
+                        [folderId]: imgs
+                    }
+                }, { merge: true }).catch(err => console.error("Lỗi khi lưu cache folderImages:", err));
+            }
+            
             return imgs;
         } finally {
             if (!options?.silent) setIsLoading(false);
@@ -2740,7 +2765,62 @@ export default function Home() {
         const rawFolders = getDriveFolderInputs(id);
         if (rawFolders.length === 0) return alert("Không nhận diện được folder Google Drive. Hãy dán link folder, mỗi dòng 1 folder con.");
 
+        const tempIds = rawFolders.map(rf => rf.id).filter(Boolean);
+        const pageKey = tempIds.length <= 1 ? (tempIds[0] || '') : `multi_${tempIds.join('_')}`;
+
         setIsLoading(true);
+        setLoadingMessage('Đang tải dữ liệu trang...');
+
+        try {
+            // Check Firestore Cache
+            const pageDoc = await getDoc(doc(db, 'client_pages', pageKey));
+            if (pageDoc.exists()) {
+                const pageData = pageDoc.data();
+                if (pageData.folders && pageData.folders.length > 0) {
+                    const cachedFolders = pageData.folders;
+                    setClientFolders(cachedFolders);
+                    setCurrentSelectionKey(pageKey);
+                    
+                    const activeId = activeClientFolderId || cachedFolders[0].id;
+                    setCurrentFolderId(activeId);
+                    setActiveClientFolderId(activeId);
+                    
+                    const cachedImagesMap = pageData.folderImages || {};
+                    setCachedFolderImages(cachedImagesMap);
+                    
+                    const cachedImages = cachedImagesMap[activeId] || [];
+                    if (cachedImages.length > 0) {
+                        setLoadedImages(cachedImages);
+                    } else {
+                        // Fallback silently if cache is empty
+                        const files = await getAllDriveImages(activeId);
+                        const imgs = files.map(normalizeDriveImage);
+                        setLoadedImages(imgs);
+                        
+                        const updatedFolderImages = {
+                            ...cachedImagesMap,
+                            [activeId]: imgs
+                        };
+                        setCachedFolderImages(updatedFolderImages);
+                        await setDoc(doc(db, 'client_pages', pageKey), { folderImages: updatedFolderImages }, { merge: true });
+                    }
+
+                    const newClientLink = buildClientPageLink(cachedFolders);
+                    setClientLink(newClientLink);
+
+                    const { selectedSet, notes } = await loadClientSelectionFromDB(pageKey);
+                    setSelectedImages(selectedSet);
+                    setImageNotes(notes);
+                    
+                    setIsLoading(false);
+                    return; // Loaded from cache successfully!
+                }
+            }
+        } catch (e) {
+            console.warn("Lỗi khi tải cache từ Firestore, chuyển sang tải trực tiếp từ Drive:", e);
+        }
+
+        // Proceed with direct Drive fetch
         setLoadingMessage(rawFolders.length > 1 ? 'Đang lấy tên folder Drive và tạo trang...' : 'Đang lấy toàn bộ dữ liệu album...');
 
         try {
@@ -2778,7 +2858,6 @@ export default function Home() {
             }
 
             const folders = await enrichDriveFolders(foldersToEnrich);
-            const pageKey = getClientPageKey(folders);
             setClientFolders(folders);
             setCurrentSelectionKey(pageKey);
             setCurrentFolderId(folders[0].id);
@@ -2787,10 +2866,17 @@ export default function Home() {
             const firstFiles = await getAllDriveImages(folders[0].id);
 
             if (firstFiles.length > 0 || folders.length > 1) {
-                setLoadedImages(firstFiles.map(normalizeDriveImage));
+                const firstImgs = firstFiles.map(normalizeDriveImage);
+                setLoadedImages(firstImgs);
 
                 const newClientLink = buildClientPageLink(folders);
                 setClientLink(newClientLink);
+
+                // Prepare cached images map
+                const folderImages = {
+                    [folders[0].id]: firstImgs
+                };
+                setCachedFolderImages(folderImages);
 
                 if (options?.savePage && user?.uid) {
                     let totalImageCount = firstFiles.length;
@@ -2800,6 +2886,7 @@ export default function Home() {
                             folders.slice(1).map(async (folder) => {
                                 try {
                                     const files = await getAllDriveImages(folder.id);
+                                    folderImages[folder.id] = files.map(normalizeDriveImage);
                                     return files.length;
                                 } catch (e) {
                                     console.warn('Không đếm được folder:', folder.id, e);
@@ -2814,6 +2901,7 @@ export default function Home() {
                         folderId: folders[0].id,
                         folderIds: folders.map(f => f.id),
                         folders,
+                        folderImages, // Save images in document cache!
                         link: newClientLink,
                         ownerUid: user.uid,
                         ownerEmail: user.email || '',
@@ -2823,6 +2911,21 @@ export default function Home() {
                         updatedAt: Date.now()
                     }, { merge: true });
                     loadSavedClientPages();
+                } else {
+                    // Pre-cache other folders in state
+                    if (folders.length > 1) {
+                        await Promise.all(
+                            folders.slice(1).map(async (folder) => {
+                                try {
+                                    const files = await getAllDriveImages(folder.id);
+                                    folderImages[folder.id] = files.map(normalizeDriveImage);
+                                } catch (e) {
+                                    console.warn('Không tải được folder con:', folder.id, e);
+                                }
+                            })
+                        );
+                        setCachedFolderImages(folderImages);
+                    }
                 }
 
                 const { selectedSet, notes } = await loadClientSelectionFromDB(pageKey);
@@ -2839,6 +2942,41 @@ export default function Home() {
         } catch (e) {
             console.error(e);
             alert("Lỗi khi kết nối Google Drive: " + e.message);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    const handleRefreshClientPage = async () => {
+        if (!currentSelectionKey) return alert("Không tìm thấy thông tin trang để làm mới.");
+
+        setIsLoading(true);
+        setLoadingMessage('Đang đồng bộ dữ liệu từ Google Drive...');
+
+        try {
+            const activeId = activeClientFolderId || clientFolders[0]?.id;
+            if (!activeId) throw new Error("Không xác định được thư mục cần làm mới.");
+
+            const files = await getAllDriveImages(activeId);
+            const imgs = files.map(normalizeDriveImage);
+
+            setLoadedImages(imgs);
+            
+            const nextCached = {
+                ...cachedFolderImages,
+                [activeId]: imgs
+            };
+            setCachedFolderImages(nextCached);
+
+            await setDoc(doc(db, 'client_pages', currentSelectionKey), {
+                folderImages: nextCached,
+                updatedAt: Date.now()
+            }, { merge: true });
+
+            alert("Đã đồng bộ hình ảnh mới nhất từ Google Drive!");
+        } catch (e) {
+            console.error(e);
+            alert("Lỗi khi đồng bộ dữ liệu: " + e.message);
         } finally {
             setIsLoading(false);
         }
@@ -5033,6 +5171,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                         {/* Actions */}
                                         <div className="flex gap-2 w-full md:w-auto justify-start md:justify-end overflow-x-auto no-scrollbar pb-1 md:pb-0 -mx-2 px-2 md:mx-0 md:px-0 scroll-smooth snap-x">
+                                            {currentSelectionKey && (
+                                                <button onClick={handleRefreshClientPage} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
+                                                    <RefreshCcw className="w-3.5 h-3.5 mr-1.5 text-blue-600 animate-pulse" /> <span>Làm mới Drive</span>
+                                                </button>
+                                            )}
                                             <button onClick={() => {
                                                 const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
                                                 if (navigator.clipboard && window.isSecureContext) {
