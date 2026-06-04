@@ -2858,8 +2858,60 @@ export default function Home() {
             }
 
             const folders = await enrichDriveFolders(foldersToEnrich);
+            const finalPageKey = getClientPageKey(folders);
+
+            // Check if finalPageKey exists in Firestore cache (useful if pageKey was parent folder ID or different)
+            if (finalPageKey && finalPageKey !== pageKey) {
+                try {
+                    const finalPageDoc = await getDoc(doc(db, 'client_pages', finalPageKey));
+                    if (finalPageDoc.exists()) {
+                        const pageData = finalPageDoc.data();
+                        if (pageData.folders && pageData.folders.length > 0) {
+                            const cachedFolders = pageData.folders;
+                            setClientFolders(cachedFolders);
+                            setCurrentSelectionKey(finalPageKey);
+                            
+                            const activeId = activeClientFolderId || cachedFolders[0].id;
+                            setCurrentFolderId(activeId);
+                            setActiveClientFolderId(activeId);
+                            
+                            const cachedImagesMap = pageData.folderImages || {};
+                            setCachedFolderImages(cachedImagesMap);
+                            
+                            const cachedImages = cachedImagesMap[activeId] || [];
+                            if (cachedImages.length > 0) {
+                                setLoadedImages(cachedImages);
+                            } else {
+                                const files = await getAllDriveImages(activeId);
+                                const imgs = files.map(normalizeDriveImage);
+                                setLoadedImages(imgs);
+                                
+                                const updatedFolderImages = {
+                                    ...cachedImagesMap,
+                                    [activeId]: imgs
+                                };
+                                setCachedFolderImages(updatedFolderImages);
+                                await setDoc(doc(db, 'client_pages', finalPageKey), { folderImages: updatedFolderImages }, { merge: true });
+                            }
+
+                            const newClientLink = buildClientPageLink(cachedFolders);
+                            setClientLink(newClientLink);
+
+                            const { selectedSet, notes } = await loadClientSelectionFromDB(finalPageKey);
+                            setSelectedImages(selectedSet);
+                            setImageNotes(notes);
+                            
+                            setIsLoading(false);
+                            return; // Loaded from cache successfully!
+                        }
+                    }
+                } catch (e) {
+                    console.warn("Lỗi khi tải cache phụ từ Firestore:", e);
+                }
+            }
+
             setClientFolders(folders);
-            setCurrentSelectionKey(pageKey);
+            setCurrentSelectionKey(finalPageKey);
             setCurrentFolderId(folders[0].id);
             setActiveClientFolderId(folders[0].id);
 
@@ -2897,7 +2949,7 @@ export default function Home() {
                         totalImageCount += counts.reduce((sum, count) => sum + count, 0);
                     }
 
-                    await setDoc(doc(db, 'client_pages', pageKey), {
+                    await setDoc(doc(db, 'client_pages', finalPageKey), {
                         folderId: folders[0].id,
                         folderIds: folders.map(f => f.id),
                         folders,
@@ -2928,7 +2980,7 @@ export default function Home() {
                     }
                 }
 
-                const { selectedSet, notes } = await loadClientSelectionFromDB(pageKey);
+                const { selectedSet, notes } = await loadClientSelectionFromDB(finalPageKey);
                 setSelectedImages(selectedSet);
                 setImageNotes(notes);
 
