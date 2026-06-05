@@ -3111,24 +3111,19 @@ export default function Home() {
         event?.stopPropagation?.();
         if (!img) return;
 
-        setIsLoading(true);
-        setLoadingMessage('Đang tải file gốc từ Google Drive...');
-
         try {
-            const originalBlob = await fetchOriginalDriveFileBlob(img);
-            const objectUrl = URL.createObjectURL(originalBlob);
+            // Tải trực tiếp từ Google Drive bằng cách mở link tải trong tab mới để tiết kiệm tối đa băng thông cho Vercel.
+            const downloadUrl = img.downloadUrl || getDriveDownloadUrl(img.id);
             const a = document.createElement('a');
-            a.href = objectUrl;
-            a.download = (activeTab === 'tool') ? (img.name || `merci_original_${img.id || Date.now()}.jpg`) : `merci_original_${Math.random().toString(36).substring(2, 10).toUpperCase()}.jpg`;
+            a.href = downloadUrl;
+            a.target = '_blank';
+            a.rel = 'noopener noreferrer';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
-            setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
         } catch (error) {
             console.error('Single original download error:', error);
             alert('Không tải được file gốc từ Google Drive. Hãy kiểm tra thư mục đã bật quyền: Bất kỳ ai có liên kết đều có thể xem.');
-        } finally {
-            setIsLoading(false);
         }
     };
 

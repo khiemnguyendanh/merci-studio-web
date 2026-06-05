@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         status: 200,
         headers: {
           'Content-Type': contentType.startsWith('image/') ? contentType : 'application/octet-stream',
-          'Cache-Control': 'no-store',
+          'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, stale-while-revalidate=86400',
           'Access-Control-Allow-Origin': '*',
         },
       });
