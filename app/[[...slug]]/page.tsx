@@ -5447,7 +5447,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
-                                                window.history.pushState({}, document.title, '/'); // Xóa link ảo khi Back
+                                                window.history.pushState({}, document.title, `/bo-su-tap${getCategoryHash(activeCategory)}`);
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18} /> Quay lại
                                             </button>
@@ -5481,9 +5481,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </div>
                                         )}
                                     </div>
-                                    <div className="text-center px-4">
+                                    <div className="text-center px-4 flex flex-col items-center gap-2">
                                         <h2 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-2">{currentViewAlbum?.title}</h2>
-                                        <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>
+                                        {currentViewAlbum?.sub && <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>}
+                                        <div className="flex items-center gap-1.5 text-slate-400 text-xs md:text-sm font-semibold mt-1">
+                                            <Eye size={14} className="opacity-80" />
+                                            <span>{currentViewAlbum?.views || 0} lượt xem</span>
+                                        </div>
                                     </div>
 
                                     <PaginationControls
