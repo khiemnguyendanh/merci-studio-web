@@ -370,6 +370,25 @@ const createSlug = (str) => {
         .replace(/-+$/, '');
 };
 
+const trackPixelEvent = (eventName, params = {}) => {
+    if (typeof window !== 'undefined') {
+        if (window.fbq) {
+            try {
+                window.fbq('track', eventName, params);
+            } catch (e) {
+                console.warn("FB Pixel event failed:", e);
+            }
+        }
+        if (window.gtag) {
+            try {
+                window.gtag('event', eventName, params);
+            } catch (e) {
+                console.warn("GA Event failed:", e);
+            }
+        }
+    }
+};
+
 
 const getCategoryHash = (category) => category === 'Tất cả' ? '' : `#${createSlug(category)}`;
 const getCategoryFromHash = (hash) => {
@@ -454,6 +473,263 @@ const albumMatchesHashtagQuery = (album, query) => {
         )
     );
 };
+
+function AnalyticsDashboard({ sessions = [], bookings = [] }) {
+    const now = Date.now();
+    
+    // helper: local date string (YYYY-MM-DD)
+    const getLocalDateString = (timestamp) => {
+        const d = new Date(timestamp);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    const todayStr = getLocalDateString(now);
+
+    // 1. KPI: VISITORS
+    const visitorsToday = sessions.filter(s => getLocalDateString(s.createdAt) === todayStr).length;
+    const sevenDaysAgoTime = now - 7 * 24 * 60 * 60 * 1000;
+    const visitors7d = sessions.filter(s => s.createdAt >= sevenDaysAgoTime).length;
+    const thirtyDaysAgoTime = now - 30 * 24 * 60 * 60 * 1000;
+    const visitors30d = sessions.filter(s => s.createdAt >= thirtyDaysAgoTime).length;
+
+    // 2. KPI: BOOKINGS
+    const bookingsToday = bookings.filter(b => getLocalDateString(b.createdAt) === todayStr).length;
+    const bookings7d = bookings.filter(b => b.createdAt >= sevenDaysAgoTime).length;
+    const bookingsTotal = bookings.length;
+
+    // 3. KPI: CONVERSION 7d
+    const conversion7d = visitors7d > 0 ? ((bookings7d / visitors7d) * 100) : 0;
+
+    // 4. KPI: TOTAL VISITORS 30D (Unique Sessions)
+    const totalUnique30d = visitors30d;
+
+    // --- BIỂU ĐỒ 14 NGÀY ---
+    // Generate dates for the last 14 days
+    const last14Days = Array.from({ length: 14 }, (_, i) => {
+        const d = new Date(now - (13 - i) * 24 * 60 * 60 * 1000);
+        return {
+            dateStr: getLocalDateString(d.getTime()),
+            label: `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}` // e.g. "25/05"
+        };
+    });
+
+    const bookings14Days = last14Days.map(day => {
+        const count = bookings.filter(b => getLocalDateString(b.createdAt) === day.dateStr).length;
+        return { ...day, count };
+    });
+
+    const sessions14Days = last14Days.map(day => {
+        const count = sessions.filter(s => getLocalDateString(s.createdAt) === day.dateStr).length;
+        return { ...day, count };
+    });
+
+    const maxBookings = Math.max(...bookings14Days.map(d => d.count), 1);
+    const maxSessions = Math.max(...sessions14Days.map(d => d.count), 1);
+
+    // --- CHUYÊN MỤC TRUY CẬP NHIỀU NHẤT (30 ngày qua) ---
+    const sessions30d = sessions.filter(s => s.createdAt >= thirtyDaysAgoTime);
+    const sectionsData = [
+        { name: 'Trang chủ', count: sessions30d.filter(s => s.visitedHome).length },
+        { name: 'Bộ sưu tập', count: sessions30d.filter(s => s.visitedCollection).length },
+        { name: 'Video phóng sự', count: sessions30d.filter(s => s.visitedVideos).length },
+        { name: 'Blog & Kinh nghiệm', count: sessions30d.filter(s => s.visitedBlog).length },
+        { name: 'Trang đặt lịch', count: sessions30d.filter(s => s.visitedBooking).length }
+    ];
+    // Sort sections by count descending
+    const sortedSections = [...sectionsData].sort((a, b) => b.count - a.count);
+    const maxSectionCount = Math.max(...sectionsData.map(s => s.count), 1);
+
+    // --- PHỄU CHUYỂN ĐỔI (7 ngày qua) ---
+    const sessions7d = sessions.filter(s => s.createdAt >= sevenDaysAgoTime);
+    const funnelSteps = [
+        { label: '1. Vào trang chủ', count: sessions7d.filter(s => s.visitedHome).length },
+        { label: '2. Mở chuyên mục', count: sessions7d.filter(s => s.visitedCollection).length },
+        { label: '3. Vào booking', count: sessions7d.filter(s => s.visitedBooking).length },
+        { label: '4. Hoàn thành form', count: funnelSteps => funnelSteps.completedBooking, count: sessions7d.filter(s => s.completedBooking).length }
+    ];
+    // Let's clean up step 4's label
+    funnelSteps[3] = { label: '4. Hoàn thành form', count: sessions7d.filter(s => s.completedBooking).length };
+    const funnelBase = funnelSteps[0].count || 1;
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
+            {/* KPI Cards Row */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+                {/* CARD 1: Visitors Hôm Nay */}
+                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visitors Hôm Nay</p>
+                    <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{visitorsToday}</p>
+                    <p className="text-xs text-slate-500 mt-3 font-medium">
+                        7d: <span className="font-bold text-slate-800">{visitors7d}</span> · 30d: <span className="font-bold text-slate-800">{visitors30d}</span>
+                    </p>
+                </div>
+
+                {/* CARD 2: Booking Hôm Nay */}
+                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Booking Hôm Nay</p>
+                    <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{bookingsToday}</p>
+                    <p className="text-xs text-slate-500 mt-3 font-medium">
+                        7d: <span className="font-bold text-slate-800">{bookings7d}</span> · Total: <span className="font-bold text-slate-800">{bookingsTotal}</span>
+                    </p>
+                </div>
+
+                {/* CARD 3: Conversion 7d */}
+                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Conversion 7d</p>
+                    <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{conversion7d.toFixed(2)}%</p>
+                    <p className="text-xs text-slate-500 mt-3 font-medium">
+                        <span className="font-bold text-blue-600">{bookings7d}/{visitors7d}</span> sessions
+                    </p>
+                </div>
+
+                {/* CARD 4: Unique Sessions 30d */}
+                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visitors 30 ngày</p>
+                    <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{totalUnique30d}</p>
+                    <p className="text-xs text-slate-500 mt-3 font-medium">
+                        Lượt truy cập duy nhất trong 30 ngày
+                    </p>
+                </div>
+            </div>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                {/* Biểu đồ Booking */}
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                         <span className="text-red-500">📈</span>
+                         <h3 className="text-lg font-bold text-slate-800">Booking 14 ngày gần nhất</h3>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium ml-7 mb-6">Số booking mỗi ngày</p>
+                    <div className="flex items-end justify-between h-44 w-full px-2 pt-6 border-b border-slate-100 relative">
+                        {bookings14Days.map((d, index) => {
+                            const pct = (d.count / maxBookings) * 100;
+                            return (
+                                <div key={d.dateStr} className="flex flex-col items-center flex-1 group relative">
+                                    {d.count > 0 && (
+                                        <span className="text-[10px] md:text-xs font-black text-slate-800 mb-1 absolute bottom-full">
+                                            {d.count}
+                                        </span>
+                                    )}
+                                    <div 
+                                        className="w-3 md:w-5 bg-slate-900 rounded-t transition-all duration-500 ease-out hover:bg-blue-600" 
+                                        style={{ height: `${pct > 0 ? Math.max(pct, 5) : 0}%` }}
+                                    ></div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex justify-between w-full text-[9px] md:text-[10px] text-slate-400 font-semibold px-2 mt-2">
+                        {bookings14Days.map(d => (
+                            <span key={d.dateStr} className="flex-1 text-center truncate">
+                                {d.label}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Biểu đồ Visitors */}
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                    <div className="flex items-center gap-2 mb-1">
+                         <span className="text-blue-500">👥</span>
+                         <h3 className="text-lg font-bold text-slate-800">Visitors 14 ngày</h3>
+                    </div>
+                    <p className="text-xs text-slate-400 font-medium ml-7 mb-6">Unique sessions/ngày</p>
+                    <div className="flex items-end justify-between h-44 w-full px-2 pt-6 border-b border-slate-100 relative">
+                        {sessions14Days.map((d, index) => {
+                            const pct = (d.count / maxSessions) * 100;
+                            return (
+                                <div key={d.dateStr} className="flex flex-col items-center flex-1 group relative">
+                                    {d.count > 0 && (
+                                        <span className="text-[10px] md:text-xs font-black text-slate-800 mb-1 absolute bottom-full">
+                                            {d.count}
+                                        </span>
+                                    )}
+                                    <div 
+                                        className="w-3 md:w-5 bg-blue-600 rounded-t transition-all duration-500 ease-out hover:bg-blue-700" 
+                                        style={{ height: `${pct > 0 ? Math.max(pct, 5) : 0}%` }}
+                                    ></div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                    <div className="flex justify-between w-full text-[9px] md:text-[10px] text-slate-400 font-semibold px-2 mt-2">
+                        {sessions14Days.map(d => (
+                            <span key={d.dateStr} className="flex-1 text-center truncate">
+                                {d.label}
+                            </span>
+                        ))}
+                    </div>
+                </div>
+            </div>
+
+            {/* Popular Sections & Funnel Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
+                {/* Popular Sections */}
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">🔥 Chuyên mục xem nhiều nhất</h3>
+                        <p className="text-xs text-slate-400 font-medium mt-1">Lượt truy cập chuyên mục trong 30 ngày qua</p>
+                    </div>
+                    <div className="space-y-4">
+                        {sortedSections.map((sec, index) => {
+                            const percent = (sec.count / maxSectionCount) * 100;
+                            return (
+                                <div key={sec.name} className="space-y-1.5">
+                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700">
+                                        <span>{index + 1}. {sec.name}</span>
+                                        <span>{sec.count} <span className="text-slate-400 font-medium">lượt</span></span>
+                                    </div>
+                                    <div className="w-full bg-slate-50 h-5 rounded-full overflow-hidden">
+                                        <div 
+                                            className="bg-indigo-600 h-full rounded-full transition-all duration-700 ease-out"
+                                            style={{ width: `${percent}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+                {/* Funnel Chuyển đổi */}
+                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
+                    <div>
+                        <h3 className="text-lg font-bold text-slate-800">🔄 Funnel chuyển đổi (7 ngày qua)</h3>
+                        <p className="text-xs text-slate-400 font-medium mt-1">Từ landing tới submit booking — % drop-off ở mỗi bước</p>
+                    </div>
+                    <div className="space-y-4">
+                        {funnelSteps.map((step, index) => {
+                            const percentOfBase = (step.count / funnelBase) * 100;
+                            return (
+                                <div key={step.label} className="space-y-1.5">
+                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700">
+                                        <span>{step.label}</span>
+                                        <div className="flex gap-4">
+                                            <span>{step.count} <span className="text-slate-400 font-medium">sessions</span></span>
+                                            <span className="text-blue-600 font-black min-w-[36px] text-right">
+                                                {index === 0 ? '-' : `${percentOfBase.toFixed(1)}%`}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div className="w-full bg-slate-50 h-5 rounded-full overflow-hidden">
+                                        <div 
+                                            className="bg-slate-900 h-full rounded-full transition-all duration-700 ease-out"
+                                            style={{ width: `${percentOfBase}%` }}
+                                        ></div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
 
 export default function Home() {
     // === STATES ===
@@ -573,11 +849,107 @@ export default function Home() {
     const [bookings, setBookings] = useState([]);
     const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
+    // Session states for Dashboard
+    const [sessions, setSessions] = useState([]);
+    const [isLoadingSessions, setIsLoadingSessions] = useState(false);
+
     // === EFFECTS ===
     useEffect(() => {
         setMounted(true);
 
     }, []);
+
+    const updateSessionStep = useCallback(async (stepField) => {
+        if (typeof window === 'undefined' || !db) return;
+        const sessionId = sessionStorage.getItem('merci_session_id');
+        if (!sessionId) return;
+
+        const localStepKey = `merci_step_${stepField}`;
+        if (sessionStorage.getItem(localStepKey)) return;
+
+        try {
+            await updateDoc(doc(db, 'merci_sessions', sessionId), {
+                [stepField]: true,
+                updatedAt: Date.now()
+            });
+            sessionStorage.setItem(localStepKey, 'true');
+        } catch (err) {
+            console.error(`Error updating session step ${stepField}:`, err);
+        }
+    }, []);
+
+    // Tự động khởi tạo và theo dõi session
+    useEffect(() => {
+        if (!mounted || !db) return;
+
+        const initSession = async () => {
+            let sessionId = sessionStorage.getItem('merci_session_id');
+            if (!sessionId) {
+                sessionId = 'sess_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
+                sessionStorage.setItem('merci_session_id', sessionId);
+                sessionStorage.setItem('merci_step_visitedHome', 'true');
+
+                const todayStr = new Date().toISOString().split('T')[0];
+                const sessionData = {
+                    id: sessionId,
+                    createdAt: Date.now(),
+                    dateStr: todayStr,
+                    visitedHome: true,
+                    visitedCollection: false,
+                    visitedVideos: false,
+                    visitedBlog: false,
+                    visitedBooking: false,
+                    completedBooking: false,
+                    updatedAt: Date.now()
+                };
+
+                try {
+                    await setDoc(doc(db, 'merci_sessions', sessionId), sessionData);
+                } catch (err) {
+                    console.error("Error creating tracking session:", err);
+                }
+            }
+        };
+
+        initSession();
+    }, [mounted, db]);
+
+    // Theo dõi thay đổi tab/nội dung để update bước phễu và bắn Pixel
+    useEffect(() => {
+        if (!mounted || !db) return;
+
+        if (activeTab === 'collection' || activeAlbumId) {
+            updateSessionStep('visitedCollection');
+            if (activeAlbumId) {
+                const album = albums.find(a => a.id === activeAlbumId);
+                if (album) {
+                    trackPixelEvent('ViewContent', {
+                        content_name: album.title,
+                        content_category: 'Album'
+                    });
+                }
+            }
+        } else if (activeTab === 'videos') {
+            updateSessionStep('visitedVideos');
+            trackPixelEvent('ViewContent', {
+                content_category: 'Videos'
+            });
+        } else if (activeTab === 'blog' || activeBlogId) {
+            updateSessionStep('visitedBlog');
+            if (activeBlogId) {
+                const blog = blogs.find(b => b.id === activeBlogId);
+                if (blog) {
+                    trackPixelEvent('ViewContent', {
+                        content_name: blog.title,
+                        content_category: 'Blog'
+                    });
+                }
+            }
+        } else if (activeTab === 'booking') {
+            updateSessionStep('visitedBooking');
+            trackPixelEvent('InitiateCheckout');
+        }
+    }, [activeTab, activeAlbumId, activeBlogId, albums, blogs, mounted, db, updateSessionStep]);
 
     useEffect(() => {
         if (!mounted || !auth) return;
@@ -632,7 +1004,8 @@ export default function Home() {
                     'chon-anh': { tab: 'tool', tool: 'gallery' },
                     'loc-anh': { tab: 'tool', tool: 'filter' },
                     'dat-lich': { tab: 'booking' },
-                    'booking': { tab: 'booking' }
+                    'booking': { tab: 'booking' },
+                    'thong-ke': { tab: 'dashboard' }
                 };
                 const route = routeMap[pathname];
                 if (route) {
@@ -714,7 +1087,7 @@ export default function Home() {
     // Load Bookings for Admin
     useEffect(() => {
         if (!mounted || !db) return;
-        if (activeTab !== 'booking' || !isAdmin) return;
+        if ((activeTab !== 'booking' && activeTab !== 'dashboard') || !isAdmin) return;
 
         const unsubBookings = onSnapshot(collection(db, 'merci_bookings'), (snapshot) => {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
@@ -723,6 +1096,27 @@ export default function Home() {
         });
         return () => unsubBookings();
     }, [mounted, activeTab, isAdmin]);
+
+    // Load Sessions for Admin Dashboard
+    useEffect(() => {
+        if (!mounted || !db || !isAdmin || activeTab !== 'dashboard') return;
+
+        setIsLoadingSessions(true);
+        const thirtyDaysAgo = Date.now() - 31 * 24 * 60 * 60 * 1000;
+        const q = query(
+            collection(db, 'merci_sessions'),
+            where('createdAt', '>=', thirtyDaysAgo)
+        );
+
+        getDocs(q).then((snapshot) => {
+            const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+            setSessions(fetched);
+        }).catch(err => {
+            console.error("Error fetching sessions:", err);
+        }).finally(() => {
+            setIsLoadingSessions(false);
+        });
+    }, [mounted, db, isAdmin, activeTab]);
 
     // Hiển thị Album hoặc Blog dựa trên Link URL đẹp
     useEffect(() => {
@@ -1126,6 +1520,14 @@ export default function Home() {
             
             // 1. Save to Firebase
             await setDoc(doc(db, 'merci_bookings', bookingId), bookingData);
+
+            // Update tracking session step & fire Pixel Lead event
+            updateSessionStep('completedBooking');
+            trackPixelEvent('Lead', {
+                content_name: bookingForm.service,
+                value: 0,
+                currency: 'VND'
+            });
             
             // 2. Call API to send Telegram message
             try {
@@ -3383,7 +3785,8 @@ export default function Home() {
             blog: '/blog',
             videos: '/video',
             tool: '/tool',
-            booking: '/dat-lich'
+            booking: '/dat-lich',
+            dashboard: '/thong-ke'
         };
         if (tabId === 'tool') {
             if (toolTab === 'create') return '/tao-trang';
@@ -4255,7 +4658,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'videos', label: 'Video' },
                                     { id: 'blog', label: 'Blog' },
                                     { id: 'tool', label: 'Công cụ' },
-                                    { id: 'booking', label: 'Đặt lịch' }
+                                    { id: 'booking', label: 'Đặt lịch' },
+                                    ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }] : [])
                                 ].map(t => (
                                     <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3.5 py-1.5 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
@@ -5396,6 +5800,41 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
                                     </div>
                                 )
+                            )}
+                        </div>
+                    )}
+
+                    {/* --- TAB: ADMIN DASHBOARD THỐNG KÊ --- */}
+                    {activeTab === 'dashboard' && (
+                        <div className="space-y-8 md:space-y-12">
+                            {/* Header */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Analytics</p>
+                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Thống Kê Hoạt Động</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Theo dõi hoạt động truy cập và hiệu quả của các chuyên mục.</p>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2 text-xs md:text-sm font-bold text-blue-700">
+                                    Chế độ Admin: Thống kê thời gian thực
+                                </div>
+                            </div>
+
+                            {!isAdmin ? (
+                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                    <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-3" />
+                                    <p className="text-slate-900 font-bold text-lg">Từ chối truy cập</p>
+                                    <p className="text-slate-400 text-sm mt-1">Bạn cần đăng nhập bằng tài khoản Admin để xem thống kê.</p>
+                                    <button onClick={() => openClientAuth('login')} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">
+                                        Đăng nhập Admin
+                                    </button>
+                                </div>
+                            ) : isLoadingSessions ? (
+                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                                    <RefreshCcw className="w-10 h-10 text-blue-600 animate-spin mb-4" />
+                                    <p className="text-slate-500 font-bold">Đang tải dữ liệu thống kê...</p>
+                                </div>
+                            ) : (
+                                <AnalyticsDashboard sessions={sessions} bookings={bookings} />
                             )}
                         </div>
                     )}
