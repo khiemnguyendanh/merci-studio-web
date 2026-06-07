@@ -459,6 +459,22 @@ const albumMatchesCategory = (album, category) => {
     return mainCategory === category || createSlug(mainCategory) === createSlug(category);
 };
 
+const albumMatchesHashtagQuery = (album, query) => {
+    const terms = normalizeAlbumHashtags(query);
+    if (!terms.length) return true;
+
+    const albumHashtags = getAlbumHashtags(album);
+    if (!albumHashtags.length) return false;
+
+    return terms.some(term =>
+        albumHashtags.some(tag =>
+            createSlug(tag).includes(createSlug(term)) ||
+            createSlug(term).includes(createSlug(tag))
+        )
+    );
+};
+
+
 function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriveThumbUrl }) {
     const now = Date.now();
     
