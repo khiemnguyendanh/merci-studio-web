@@ -1092,58 +1092,73 @@ export default function Home() {
     // Nhận diện URL Pathname (Link Đẹp dạng /ten-album hoặc /ten-bai-viet)
     useEffect(() => {
         if (!mounted) return;
-        try {
-            const urlParams = new URLSearchParams(window.location.search);
-            const folderId = urlParams.get('folder');
-            const foldersParam = urlParams.get('folders');
-            const viewMode = urlParams.get('view');
-            const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
 
-            if (foldersParam) {
-                setActiveTab('tool');
-                setActiveToolTab('gallery');
-                if (viewMode === 'selected') setShowOnlySelected(true);
-                fetchDrive(foldersParam.split(',').map(v => decodeURIComponent(v)).join('\n'));
-            } else if (folderId) {
-                setActiveTab('tool');
-                setActiveToolTab('gallery');
-                setCurrentFolderId(folderId);
-                setActiveClientFolderId(folderId);
-                setCurrentSelectionKey(folderId);
-                if (viewMode === 'selected') setShowOnlySelected(true);
-                fetchDrive(folderId);
-            } else {
-                const routeMap = {
-                    'bo-su-tap': { tab: 'collection' },
-                    'blog': { tab: 'blog' },
-                    'video': { tab: 'videos' },
-                    'tool': { tab: 'tool', tool: 'create' },
-                    'tao-trang': { tab: 'tool', tool: 'create' },
-                    'chon-anh': { tab: 'tool', tool: 'gallery' },
-                    'loc-anh': { tab: 'tool', tool: 'filter' },
-                    'dat-lich': { tab: 'booking' },
-                    'booking': { tab: 'booking' },
-                    'thong-ke': { tab: 'dashboard' }
-                };
-                const route = routeMap[pathname];
-                if (route) {
-                    setActiveTab(route.tab);
-                    if (route.tool) setActiveToolTab(route.tool);
-                    if (route.tab === 'collection' && window.location.hash) {
+        const parseUrl = () => {
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const folderId = urlParams.get('folder');
+                const foldersParam = urlParams.get('folders');
+                const viewMode = urlParams.get('view');
+                const pathname = window.location.pathname.replace(/^\/|\/$/g, '');
+
+                if (foldersParam) {
+                    setActiveTab('tool');
+                    setActiveToolTab('gallery');
+                    if (viewMode === 'selected') setShowOnlySelected(true);
+                    fetchDrive(foldersParam.split(',').map(v => decodeURIComponent(v)).join('\n'));
+                } else if (folderId) {
+                    setActiveTab('tool');
+                    setActiveToolTab('gallery');
+                    setCurrentFolderId(folderId);
+                    setActiveClientFolderId(folderId);
+                    setCurrentSelectionKey(folderId);
+                    if (viewMode === 'selected') setShowOnlySelected(true);
+                    fetchDrive(folderId);
+                } else {
+                    const routeMap = {
+                        'bo-su-tap': { tab: 'collection' },
+                        'blog': { tab: 'blog' },
+                        'video': { tab: 'videos' },
+                        'tool': { tab: 'tool', tool: 'create' },
+                        'tao-trang': { tab: 'tool', tool: 'create' },
+                        'chon-anh': { tab: 'tool', tool: 'gallery' },
+                        'loc-anh': { tab: 'tool', tool: 'filter' },
+                        'dat-lich': { tab: 'booking' },
+                        'booking': { tab: 'booking' },
+                        'thong-ke': { tab: 'dashboard' }
+                    };
+                    const route = routeMap[pathname];
+                    if (route) {
+                        setActiveTab(route.tab);
+                        setActiveAlbumId(null);
+                        setActiveBlogId(null);
+                        if (route.tool) setActiveToolTab(route.tool);
+                        if (route.tab === 'collection' && window.location.hash) {
+                            const categoryFromHash = getCategoryFromHash(window.location.hash);
+                            if (categoryFromHash) setActiveCategory(categoryFromHash);
+                        }
+                    } else if (window.location.hash) {
                         const categoryFromHash = getCategoryFromHash(window.location.hash);
-                        if (categoryFromHash) setActiveCategory(categoryFromHash);
+                        if (categoryFromHash) {
+                            setActiveTab('collection');
+                            setActiveCategory(categoryFromHash);
+                            setActiveAlbumId(null);
+                        }
+                    } else if (pathname && pathname !== '') {
+                        setPendingSlug(pathname);
+                    } else {
+                        setActiveTab('home');
+                        setActiveAlbumId(null);
+                        setActiveBlogId(null);
                     }
-                } else if (window.location.hash) {
-                    const categoryFromHash = getCategoryFromHash(window.location.hash);
-                    if (categoryFromHash) {
-                        setActiveTab('collection');
-                        setActiveCategory(categoryFromHash);
-                    }
-                } else if (pathname && pathname !== '') {
-                    setPendingSlug(pathname);
                 }
-            }
-        } catch (e) { console.warn("URL Parsing bypass"); }
+            } catch (e) { console.warn("URL Parsing bypass"); }
+        };
+
+        parseUrl();
+
+        window.addEventListener('popstate', parseUrl);
+        return () => window.removeEventListener('popstate', parseUrl);
     }, [mounted]);
 
     useEffect(() => {
@@ -4822,15 +4837,15 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                 {/* Link Buttons */}
                                 <div className="space-y-4">
-                                    <button onClick={() => setActiveTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
+                                    <button onClick={() => navigateToTab('collection')} className="w-full py-4 px-4 bg-slate-900 text-white rounded-2xl font-bold shadow-lg shadow-slate-900/20 hover:scale-105 transition-transform flex items-center justify-center gap-3">
                                         <ImageIcon className="w-5 h-5" /> Xem Bộ Sưu Tập Ảnh
                                     </button>
 
-                                    <button onClick={() => setActiveTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
+                                    <button onClick={() => navigateToTab('videos')} className="w-full py-4 px-4 bg-white text-slate-800 border-2 border-slate-100 rounded-2xl font-bold shadow-sm hover:scale-105 hover:border-slate-300 transition-all flex items-center justify-center gap-3">
                                         <PlayCircle className="w-5 h-5 text-red-500" /> Xem Phim Phóng Sự
                                     </button>
 
-                                    <button onClick={() => setActiveTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
+                                    <button onClick={() => navigateToTab('blog')} className="w-full py-4 px-4 bg-blue-50 text-blue-700 rounded-2xl font-bold hover:bg-blue-600 hover:text-white transition-colors flex items-center justify-center gap-3 shadow-sm">
                                         <BookOpen className="w-5 h-5" /> Blog Cưới & Kinh Nghiệm
                                     </button>
 
@@ -5152,7 +5167,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <div className="flex items-center justify-between mb-8 pb-8 border-b border-slate-100">
                                         <button onClick={() => {
                                             setActiveBlogId(null);
-                                            window.history.pushState({}, document.title, '/');
+                                            window.history.pushState({}, document.title, '/blog');
                                         }} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 transition-colors font-medium">
                                             <ArrowLeft size={20} /> Quay lại danh sách
                                         </button>
