@@ -8,14 +8,14 @@ import {
     Camera, Wand2, Copy, ArrowRight, Heart,
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
-    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail,
+    Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail, Eye,
     BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment } from 'firebase/firestore';
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -459,22 +459,7 @@ const albumMatchesCategory = (album, category) => {
     return mainCategory === category || createSlug(mainCategory) === createSlug(category);
 };
 
-const albumMatchesHashtagQuery = (album, query) => {
-    const terms = normalizeAlbumHashtags(query);
-    if (!terms.length) return true;
-
-    const albumHashtags = getAlbumHashtags(album);
-    if (!albumHashtags.length) return false;
-
-    return terms.some(term =>
-        albumHashtags.some(tag =>
-            createSlug(tag).includes(createSlug(term)) ||
-            createSlug(term).includes(createSlug(tag))
-        )
-    );
-};
-
-function AnalyticsDashboard({ sessions = [], bookings = [] }) {
+function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriveThumbUrl }) {
     const now = Date.now();
     
     // helper: local date string (YYYY-MM-DD)
@@ -532,14 +517,34 @@ function AnalyticsDashboard({ sessions = [], bookings = [] }) {
     // --- CHUYÊN MỤC TRUY CẬP NHIỀU NHẤT (30 ngày qua) ---
     const sessions30d = sessions.filter(s => s.createdAt >= thirtyDaysAgoTime);
     const sectionsData = [
-        { name: 'Trang chủ', count: sessions30d.filter(s => s.visitedHome).length },
-        { name: 'Bộ sưu tập', count: sessions30d.filter(s => s.visitedCollection).length },
-        { name: 'Video phóng sự', count: sessions30d.filter(s => s.visitedVideos).length },
-        { name: 'Blog & Kinh nghiệm', count: sessions30d.filter(s => s.visitedBlog).length },
-        { name: 'Trang đặt lịch', count: sessions30d.filter(s => s.visitedBooking).length }
+        { name: 'Trang chủ', count: sessions30d.filter(s => s.visitedHome).length, key: 'home' },
+        { name: 'Bộ sưu tập', count: sessions30d.filter(s => s.visitedCollection).length, key: 'collection' },
+        { name: 'Video phóng sự', count: sessions30d.filter(s => s.visitedVideos).length, key: 'videos' },
+        { name: 'Blog & Kinh nghiệm', count: sessions30d.filter(s => s.visitedBlog).length, key: 'blog' },
+        { name: 'Trang đặt lịch', count: sessions30d.filter(s => s.visitedBooking).length, key: 'booking' }
     ];
-    // Sort sections by count descending
-    const sortedSections = [...sectionsData].sort((a, b) => b.count - a.count);
+
+    // Tính toán thời lượng xem trung bình cho mỗi chuyên mục
+    const getSectionTimeStats = (sectionKey, visitorCount) => {
+        const totalSecs = sessions30d.reduce((sum, s) => sum + (s.timeSpent?.[sectionKey] || 0), 0);
+        const avgSecs = visitorCount > 0 ? Math.round(totalSecs / visitorCount) : 0;
+        return avgSecs;
+    };
+
+    const formatDuration = (totalSeconds) => {
+        if (!totalSeconds || totalSeconds <= 0) return '0s';
+        if (totalSeconds < 60) return `${totalSeconds}s`;
+        const mins = Math.floor(totalSeconds / 60);
+        const secs = totalSeconds % 60;
+        return secs > 0 ? `${mins}p ${secs}s` : `${mins}p`;
+    };
+
+    const sectionsDataWithTime = sectionsData.map(sec => ({
+        ...sec,
+        avgSecs: getSectionTimeStats(sec.key, sec.count)
+    }));
+
+    const sortedSections = [...sectionsDataWithTime].sort((a, b) => b.count - a.count);
     const maxSectionCount = Math.max(...sectionsData.map(s => s.count), 1);
 
     // --- PHỄU CHUYỂN ĐỔI (7 ngày qua) ---
@@ -548,11 +553,13 @@ function AnalyticsDashboard({ sessions = [], bookings = [] }) {
         { label: '1. Vào trang chủ', count: sessions7d.filter(s => s.visitedHome).length },
         { label: '2. Mở chuyên mục', count: sessions7d.filter(s => s.visitedCollection).length },
         { label: '3. Vào booking', count: sessions7d.filter(s => s.visitedBooking).length },
-        { label: '4. Hoàn thành form', count: funnelSteps => funnelSteps.completedBooking, count: sessions7d.filter(s => s.completedBooking).length }
+        { label: '4. Hoàn thành form', count: sessions7d.filter(s => s.completedBooking).length }
     ];
-    // Let's clean up step 4's label
-    funnelSteps[3] = { label: '4. Hoàn thành form', count: sessions7d.filter(s => s.completedBooking).length };
     const funnelBase = funnelSteps[0].count || 1;
+
+    // --- THỐNG KÊ LƯỢT XEM ALBUM ẢNH ---
+    const topAlbums = albums.slice(0, 8);
+    const maxAlbumViews = Math.max(...topAlbums.map(a => a.views || 0), 1);
 
     return (
         <div className="space-y-8 animate-in fade-in duration-500">
@@ -672,16 +679,20 @@ function AnalyticsDashboard({ sessions = [], bookings = [] }) {
                 <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
                     <div>
                         <h3 className="text-lg font-bold text-slate-800">🔥 Chuyên mục xem nhiều nhất</h3>
-                        <p className="text-xs text-slate-400 font-medium mt-1">Lượt truy cập chuyên mục trong 30 ngày qua</p>
+                        <p className="text-xs text-slate-400 font-medium mt-1">Lượt truy cập chuyên mục và thời lượng xem TB (30 ngày qua)</p>
                     </div>
                     <div className="space-y-4">
                         {sortedSections.map((sec, index) => {
                             const percent = (sec.count / maxSectionCount) * 100;
                             return (
                                 <div key={sec.name} className="space-y-1.5">
-                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700">
+                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700 font-sans">
                                         <span>{index + 1}. {sec.name}</span>
-                                        <span>{sec.count} <span className="text-slate-400 font-medium">lượt</span></span>
+                                        <div className="flex items-center gap-3">
+                                            <span>{sec.count} <span className="text-slate-400 font-medium">lượt</span></span>
+                                            <span className="text-slate-300 font-normal">|</span>
+                                            <span className="text-indigo-600 text-xs font-black">TB: {formatDuration(sec.avgSecs)}</span>
+                                        </div>
                                     </div>
                                     <div className="w-full bg-slate-50 h-5 rounded-full overflow-hidden">
                                         <div 
@@ -706,11 +717,11 @@ function AnalyticsDashboard({ sessions = [], bookings = [] }) {
                             const percentOfBase = (step.count / funnelBase) * 100;
                             return (
                                 <div key={step.label} className="space-y-1.5">
-                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700">
+                                    <div className="flex justify-between text-xs md:text-sm font-bold text-slate-700 font-sans">
                                         <span>{step.label}</span>
                                         <div className="flex gap-4">
                                             <span>{step.count} <span className="text-slate-400 font-medium">sessions</span></span>
-                                            <span className="text-blue-600 font-black min-w-[36px] text-right">
+                                            <span className="text-blue-600 font-black min-w-[36px] text-right font-sans">
                                                 {index === 0 ? '-' : `${percentOfBase.toFixed(1)}%`}
                                             </span>
                                         </div>
@@ -878,6 +889,45 @@ export default function Home() {
         }
     }, []);
 
+    const recordAlbumView = useCallback(async (albumId) => {
+        if (typeof window === 'undefined' || !db || !albumId) return;
+        const sessionId = sessionStorage.getItem('merci_session_id');
+        if (!sessionId) return;
+
+        const lastViewedAlbumKey = `merci_last_viewed_album`;
+        const lastViewedTimeKey = `merci_last_viewed_time`;
+        const lastAlbum = sessionStorage.getItem(lastViewedAlbumKey);
+        const lastTime = parseInt(sessionStorage.getItem(lastViewedTimeKey) || '0');
+        const now = Date.now();
+
+        if (lastAlbum === albumId && now - lastTime < 10000) return;
+
+        sessionStorage.setItem(lastViewedAlbumKey, albumId);
+        sessionStorage.setItem(lastViewedTimeKey, String(now));
+
+        try {
+            let localViews = {};
+            try {
+                const stored = sessionStorage.getItem('merci_album_views');
+                if (stored) localViews = JSON.parse(stored);
+            } catch (e) {}
+
+            localViews[albumId] = (localViews[albumId] || 0) + 1;
+            sessionStorage.setItem('merci_album_views', JSON.stringify(localViews));
+
+            await updateDoc(doc(db, 'merci_sessions', sessionId), {
+                [`albumViews.${albumId}`]: increment(1),
+                updatedAt: Date.now()
+            });
+
+            await updateDoc(doc(db, 'merci_albums', albumId), {
+                views: increment(1)
+            });
+        } catch (err) {
+            console.error("Error recording album view:", err);
+        }
+    }, []);
+
     // Tự động khởi tạo và theo dõi session
     useEffect(() => {
         if (!mounted || !db) return;
@@ -900,6 +950,8 @@ export default function Home() {
                     visitedBlog: false,
                     visitedBooking: false,
                     completedBooking: false,
+                    albumViews: {},
+                    timeSpent: { home: 0, collection: 0, videos: 0, blog: 0, booking: 0 },
                     updatedAt: Date.now()
                 };
 
@@ -921,6 +973,7 @@ export default function Home() {
         if (activeTab === 'collection' || activeAlbumId) {
             updateSessionStep('visitedCollection');
             if (activeAlbumId) {
+                recordAlbumView(activeAlbumId);
                 const album = albums.find(a => a.id === activeAlbumId);
                 if (album) {
                     trackPixelEvent('ViewContent', {
@@ -949,7 +1002,56 @@ export default function Home() {
             updateSessionStep('visitedBooking');
             trackPixelEvent('InitiateCheckout');
         }
-    }, [activeTab, activeAlbumId, activeBlogId, albums, blogs, mounted, db, updateSessionStep]);
+    }, [activeTab, activeAlbumId, activeBlogId, albums, blogs, mounted, db, updateSessionStep, recordAlbumView]);
+
+    // Theo dõi và tính toán thời lượng xem trang (Time Spent)
+    useEffect(() => {
+        if (!mounted || !db) return;
+        const sessionId = sessionStorage.getItem('merci_session_id');
+        if (!sessionId) return;
+
+        let localTimes = { home: 0, collection: 0, videos: 0, blog: 0, booking: 0 };
+        try {
+            const stored = sessionStorage.getItem('merci_time_spent');
+            if (stored) localTimes = JSON.parse(stored);
+        } catch (e) {}
+
+        let active = activeTab;
+        let secondsCounter = 0;
+
+        const interval = setInterval(() => {
+            if (document.hidden) return;
+
+            const keyMap = {
+                home: 'home',
+                collection: 'collection',
+                videos: 'videos',
+                blog: 'blog',
+                booking: 'booking'
+            };
+            const key = keyMap[active] || 'home';
+            localTimes[key] = (localTimes[key] || 0) + 1;
+            secondsCounter += 1;
+
+            sessionStorage.setItem('merci_time_spent', JSON.stringify(localTimes));
+
+            if (secondsCounter >= 15) {
+                secondsCounter = 0;
+                updateDoc(doc(db, 'merci_sessions', sessionId), {
+                    timeSpent: localTimes,
+                    updatedAt: Date.now()
+                }).catch(err => console.error("Error syncing time spent:", err));
+            }
+        }, 1000);
+
+        return () => {
+            clearInterval(interval);
+            updateDoc(doc(db, 'merci_sessions', sessionId), {
+                timeSpent: localTimes,
+                updatedAt: Date.now()
+            }).catch(err => {});
+        };
+    }, [activeTab, mounted, db]);
 
     useEffect(() => {
         if (!mounted || !auth) return;
@@ -1049,7 +1151,7 @@ export default function Home() {
                 const data = d.data();
                 return { id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0) };
             });
-            fetched.sort((a, b) => b.order - a.order);
+            fetched.sort((a, b) => (b.views || 0) - (a.views || 0));
             setAlbums(fetched);
         });
         return () => unsubAlbums();
@@ -5279,7 +5381,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     <div className="absolute bottom-3 md:bottom-8 left-3 md:left-8 right-3 md:right-8 text-white">
                                                         <h3 className="text-sm md:text-3xl font-bold font-sans mb-1 md:mb-2 leading-tight">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest">{a.images?.length || 0} tác phẩm</p>
+                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest"><span>{a.images?.length || 0} tác phẩm</span><span className="opacity-50"> · </span><span className="inline-flex items-center gap-0.5 md:gap-1"><Eye size={10} className="md:w-3.5 md:h-3.5 inline shrink-0" /> {a.views || 0}</span></p>
                                                             {a.sub && <p className="hidden md:block text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
                                                         </div>
                                                     </div>
@@ -5836,7 +5938,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <p className="text-slate-500 font-bold">Đang tải dữ liệu thống kê...</p>
                                 </div>
                             ) : (
-                                <AnalyticsDashboard sessions={sessions} bookings={bookings} />
+                                <AnalyticsDashboard sessions={sessions} bookings={bookings} albums={albums} getDriveThumbUrl={getDriveThumbUrl} />
                             )}
                         </div>
                     )}
