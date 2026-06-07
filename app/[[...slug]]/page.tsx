@@ -1093,6 +1093,8 @@ export default function Home() {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             fetched.sort((a, b) => b.createdAt - a.createdAt);
             setBookings(fetched);
+        }, (error) => {
+            console.error("Error listening to bookings:", error);
         });
         return () => unsubBookings();
     }, [mounted, activeTab, isAdmin]);
