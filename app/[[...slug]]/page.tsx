@@ -788,6 +788,7 @@ export default function Home() {
     const [currentSelectionKey, setCurrentSelectionKey] = useState(null);
     const [showOnlySelected, setShowOnlySelected] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
+    const [saveError, setSaveError] = useState('');
     const [cachedFolderImages, setCachedFolderImages] = useState({});
 
     // Albums (Admin & Khách)
@@ -3181,13 +3182,17 @@ export default function Home() {
     const saveClientSelectionToDB = async (folderId, newSelectedSet, currentNotes = imageNotes) => {
         if (!db || !folderId) return;
         setIsSaving(true);
+        setSaveError('');
         try {
             await setDoc(doc(db, 'client_selections', folderId), {
                 selectedIds: Array.from(newSelectedSet),
                 imageNotes: currentNotes,
                 updatedAt: new Date().toISOString()
             }, { merge: true });
-        } catch (e) { }
+        } catch (e) {
+            console.error('Error saving client selection:', e);
+            setSaveError(e.message || 'Lỗi phân quyền Firestore');
+        }
         setTimeout(() => setIsSaving(false), 500);
     };
 
@@ -5738,6 +5743,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         <RefreshCcw className="w-3 h-3 animate-spin" />
                                                         <span className="hidden sm:inline">Đang lưu...</span>
                                                         <span className="sm:hidden">Lưu...</span>
+                                                    </span>
+                                                ) : saveError ? (
+                                                    <span className="text-[10px] md:text-xs text-red-500 font-medium flex items-center gap-1 cursor-help" title={saveError}>
+                                                        <AlertCircle className="w-3.5 h-3.5" />
+                                                        <span className="hidden sm:inline">Lỗi lưu (Quyền hạn)</span>
+                                                        <span className="sm:hidden">Lỗi lưu</span>
                                                     </span>
                                                 ) : (
                                                     <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1">
