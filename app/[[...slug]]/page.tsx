@@ -3180,35 +3180,88 @@ export default function Home() {
 
     // === CLIENT GALLERY HELPERS ===
     const saveClientSelectionToDB = async (folderId, newSelectedSet, currentNotes = imageNotes) => {
-        if (!db || !folderId) return;
+        if (!folderId) return;
         setIsSaving(true);
         setSaveError('');
+
+        // Save to localStorage immediately as a fallback
         try {
-            await setDoc(doc(db, 'client_selections', folderId), {
+            const localData = {
                 selectedIds: Array.from(newSelectedSet),
                 imageNotes: currentNotes,
                 updatedAt: new Date().toISOString()
-            }, { merge: true });
-        } catch (e) {
-            console.error('Error saving client selection:', e);
-            setSaveError(e.message || 'Lỗi phân quyền Firestore');
+            };
+            localStorage.setItem(`merci_selection_${folderId}`, JSON.stringify(localData));
+        } catch (localErr) {
+            console.error('Error saving to localStorage:', localErr);
+        }
+
+        if (db) {
+            try {
+                await setDoc(doc(db, 'client_selections', folderId), {
+                    selectedIds: Array.from(newSelectedSet),
+                    imageNotes: currentNotes,
+                    updatedAt: new Date().toISOString()
+                }, { merge: true });
+            } catch (e) {
+                console.error('Error saving client selection:', e);
+                setSaveError(e.message || 'Lỗi phân quyền Firestore');
+            }
         }
         setTimeout(() => setIsSaving(false), 500);
     };
 
     const loadClientSelectionFromDB = async (folderId) => {
-        if (!db || !folderId) return { selectedSet: new Set(), notes: {} };
+        let selectedSet = new Set();
+        let notes = {};
+
+        // 1. Try to load from localStorage first
         try {
-            const docSnap = await getDoc(doc(db, 'client_selections', folderId));
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                return {
-                    selectedSet: new Set(data.selectedIds || []),
-                    notes: data.imageNotes || {}
-                };
+            const localRaw = localStorage.getItem(`merci_selection_${folderId}`);
+            if (localRaw) {
+                const localData = JSON.parse(localRaw);
+                selectedSet = new Set(localData.selectedIds || []);
+                notes = localData.imageNotes || {};
             }
-        } catch (e) { }
-        return { selectedSet: new Set(), notes: {} };
+        } catch (e) {
+            console.warn('Error reading from localStorage:', e);
+        }
+
+        // 2. Try to load from Firestore and merge if available
+        if (db && folderId) {
+            try {
+                const docSnap = await getDoc(doc(db, 'client_selections', folderId));
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    const dbSelectedIds = data.selectedIds || [];
+                    const dbNotes = data.imageNotes || {};
+                    if (dbSelectedIds.length > 0 || Object.keys(dbNotes).length > 0) {
+                        selectedSet = new Set(dbSelectedIds);
+                        notes = dbNotes;
+                    }
+                }
+            } catch (e) {
+                console.warn('Error reading from Firestore selection:', e);
+            }
+        }
+
+        // 3. Merge/override with URL parameter selected (takes priority for shared links)
+        try {
+            if (typeof window !== 'undefined') {
+                const urlParams = new URLSearchParams(window.location.search);
+                const selectedParam = urlParams.get('selected');
+                if (selectedParam) {
+                    const urlIds = selectedParam.split(',').map(decodeURIComponent);
+                    if (urlIds.length > 0) {
+                        selectedSet = new Set(urlIds);
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Error reading selection from URL:', e);
+        }
+
+        return { selectedSet, notes };
     };
 
     const getDriveFolderInputs = (input) => {
@@ -3239,11 +3292,17 @@ export default function Home() {
         return ids.length <= 1 ? (ids[0] || '') : `multi_${ids.join('_')}`;
     };
 
-    const buildClientPageLink = (folders, viewMode = '') => {
+    const buildClientPageLink = (folders, viewMode = '', selectedSet = null) => {
         const origin = window.location.origin;
         const ids = (folders || []).map(f => f.id || f).filter(Boolean);
-        if (ids.length <= 1) return `${origin}?folder=${ids[0] || ''}${viewMode ? `&view=${viewMode}` : ''}`;
-        return `${origin}?folders=${ids.map(id => encodeURIComponent(id)).join(',')}${viewMode ? `&view=${viewMode}` : ''}`;
+        
+        let selectedQuery = '';
+        if (selectedSet && selectedSet.size > 0) {
+            selectedQuery = `&selected=${Array.from(selectedSet).map(id => encodeURIComponent(id)).join(',')}`;
+        }
+
+        if (ids.length <= 1) return `${origin}?folder=${ids[0] || ''}${viewMode ? `&view=${viewMode}` : ''}${selectedQuery}`;
+        return `${origin}?folders=${ids.map(id => encodeURIComponent(id)).join(',')}${viewMode ? `&view=${viewMode}` : ''}${selectedQuery}`;
     };
 
     const loadDriveFolderImages = async (folderId, options = { silent: false }) => {
@@ -3605,7 +3664,7 @@ export default function Home() {
     const generateSelectedImagesLink = () => {
         if (!currentFolderId) return;
         const foldersForLink = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Folder 1' }];
-        const newLink = buildClientPageLink(foldersForLink, 'selected');
+        const newLink = buildClientPageLink(foldersForLink, 'selected', selectedImages);
 
         if (navigator.clipboard && window.isSecureContext) {
             navigator.clipboard.writeText(newLink).then(() => alert("Đã copy link! Bạn có thể gửi link này cho Studio để chốt ảnh."));
@@ -5745,10 +5804,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         <span className="sm:hidden">Lưu...</span>
                                                     </span>
                                                 ) : saveError ? (
-                                                    <span className="text-[10px] md:text-xs text-red-500 font-medium flex items-center gap-1 cursor-help" title={saveError}>
-                                                        <AlertCircle className="w-3.5 h-3.5" />
-                                                        <span className="hidden sm:inline">Lỗi lưu (Quyền hạn)</span>
-                                                        <span className="sm:hidden">Lỗi lưu</span>
+                                                    <span className="text-[10px] md:text-xs text-amber-500 font-medium flex items-center gap-1 cursor-help" title={`Đã lưu tạm thời trên thiết bị của bạn. Lỗi kết nối máy chủ: ${saveError}`}>
+                                                        <CheckCircleIcon className="w-3.5 h-3.5 text-amber-500" />
+                                                        <span className="hidden sm:inline">Đã lưu (Thiết bị)</span>
+                                                        <span className="sm:hidden">Lưu thiết bị</span>
                                                     </span>
                                                 ) : (
                                                     <span className="text-[10px] md:text-xs text-green-500 font-medium flex items-center gap-1">
