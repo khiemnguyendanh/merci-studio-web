@@ -167,8 +167,8 @@ function SmoothImageLightbox({
         >
             <div className="absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 md:px-8 py-4 bg-gradient-to-b from-black/70 to-transparent">
                 <div className="text-white">
-                    <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]">
-                        Merci Studio
+                    <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]" title={currentName || 'Merci Studio'}>
+                        {currentName || 'Merci Studio'}
                     </div>
                     <div className="text-xs text-white/60 mt-0.5">
                         Ảnh {currentIndex + 1} / {images.length}
@@ -5939,7 +5939,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                                         {/* Tên ảnh */}
                                                         <div className="absolute top-1 left-1 right-1 md:top-2 md:left-2 md:right-2 flex justify-between pointer-events-none">
-                                                            <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate">Ảnh {originalIndex + 1}</span>
+                                                            <span className="bg-black/50 text-white text-[8px] md:text-[10px] px-1.5 md:px-2 py-0.5 md:py-1 rounded-md backdrop-blur-sm truncate" title={img.name || `Ảnh ${originalIndex + 1}`}>
+                                                                {img.name || `Ảnh ${originalIndex + 1}`}
+                                                            </span>
                                                         </div>
                                                         </div>
 

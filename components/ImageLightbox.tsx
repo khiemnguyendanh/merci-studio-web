@@ -34,8 +34,13 @@ export default function ImageLightbox({
                 if (isRightSwipe) prevImg();
             }}
         >
-            <div className="absolute top-4 md:top-6 left-4 md:left-6 text-white/50 font-mono text-xs md:text-sm tracking-widest pointer-events-none z-[210]">
-                {lightboxData.index + 1} / {lightboxData.images.length}
+            <div className="absolute top-4 md:top-6 left-4 md:left-6 text-white z-[210] pointer-events-none">
+                <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]">
+                    {lightboxData.images[lightboxData.index]?.name || lightboxData.images[lightboxData.index]?.title || lightboxData.images[lightboxData.index]?.alt || 'Merci Studio'}
+                </div>
+                <div className="text-xs text-white/60 mt-0.5 font-mono">
+                    {lightboxData.index + 1} / {lightboxData.images.length}
+                </div>
             </div>
 
             <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-4 md:top-6 right-4 md:right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-6 h-6 md:w-8 md:h-8"/></button>
