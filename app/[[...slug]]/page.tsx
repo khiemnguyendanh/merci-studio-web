@@ -67,7 +67,8 @@ function SmoothImageLightbox({
     nextImg,
     prevImg,
     getDriveThumbUrl,
-    direction = 0
+    direction = 0,
+    showFileName = false
 }) {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [isChanging, setIsChanging] = useState(false);
@@ -76,7 +77,7 @@ function SmoothImageLightbox({
     const currentIndex = Number(lightboxData?.index || 0);
     const currentImage = images[currentIndex];
     const currentUrl = getLightboxImageUrl(currentImage, getDriveThumbUrl, 'w2400');
-    const currentName = getLightboxImageName(currentImage, 'Merci Studio');
+    const currentName = showFileName ? getLightboxImageName(currentImage, 'Merci Studio') : 'Merci Studio';
 
     const closeLightbox = () => {
         setLightboxData({ isOpen: false, index: 0, images: [] });
@@ -6358,6 +6359,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                 prevImg={prevImg}
                 getDriveThumbUrl={getDriveThumbUrl}
                 direction={lightboxDirection}
+                showFileName={activeTab === 'tool' && activeToolTab === 'gallery'}
             />
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}

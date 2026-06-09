@@ -13,7 +13,8 @@ export default function ImageLightbox({
     setTouchEnd, 
     nextImg, 
     prevImg, 
-    getDriveThumbUrl 
+    getDriveThumbUrl,
+    showFileName = false
 }) {
     if (!lightboxData.isOpen || lightboxData.images.length === 0) return null;
 
@@ -36,7 +37,10 @@ export default function ImageLightbox({
         >
             <div className="absolute top-4 md:top-6 left-4 md:left-6 text-white z-[210] pointer-events-none">
                 <div className="text-sm md:text-base font-bold line-clamp-1 max-w-[68vw]">
-                    {lightboxData.images[lightboxData.index]?.name || lightboxData.images[lightboxData.index]?.title || lightboxData.images[lightboxData.index]?.alt || 'Merci Studio'}
+                    {showFileName 
+                        ? (lightboxData.images[lightboxData.index]?.name || lightboxData.images[lightboxData.index]?.title || lightboxData.images[lightboxData.index]?.alt || 'Merci Studio')
+                        : 'Merci Studio'
+                    }
                 </div>
                 <div className="text-xs text-white/60 mt-0.5 font-mono">
                     {lightboxData.index + 1} / {lightboxData.images.length}
