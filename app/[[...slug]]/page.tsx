@@ -1354,6 +1354,29 @@ export default function Home() {
 
 
     // === HELPERS (Admin Albums) ===
+    const handleAddViewsToAllAlbums = async () => {
+        if (!db || !albums || albums.length === 0) return alert("Không có album nào để cập nhật");
+        if (!confirm(`Bạn có chắc chắn muốn cộng thêm 1000 lượt xem cho tất cả ${albums.length} album?`)) return;
+        setIsLoading(true);
+        let count = 0;
+        try {
+            for (const album of albums) {
+                const docRef = doc(db, 'merci_albums', album.id);
+                const currentViews = album.views || 0;
+                await updateDoc(docRef, {
+                    views: currentViews + 1000
+                });
+                count++;
+            }
+            alert(`Đã cộng thêm 1000 lượt xem cho ${count} album thành công!`);
+        } catch (e) {
+            console.error(e);
+            alert("Đã xảy ra lỗi khi cập nhật lượt xem.");
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const saveAlbumData = async (data) => {
         if (!db) return;
         try { await setDoc(doc(db, 'merci_albums', data.id), data); } catch (e) { console.error(e); }
@@ -5517,6 +5540,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">Bộ Sưu Tập</h2>
                                         {isAdmin && (
                                             <div className="flex items-center gap-2">
+                                                <button onClick={handleAddViewsToAllAlbums} className="bg-amber-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-amber-700 text-sm md:text-base" title="Cộng thêm 1000 lượt xem cho toàn bộ album">
+                                                    <Eye size={18} /> <span className="hidden sm:inline">+1000 Lượt xem</span>
+                                                </button>
                                                 <button onClick={() => setShowSyncModal(true)} className="bg-emerald-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-700 text-sm md:text-base">
                                                     <FolderDown size={18} /> <span className="hidden sm:inline">Đồng bộ Drive</span>
                                                 </button>
