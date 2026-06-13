@@ -4887,9 +4887,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                     {/* --- TAB: BIO HOME TỐI GIẢN --- */}
                     {activeTab === 'home' && (
-                        <div className="min-h-[80vh] flex flex-col items-center justify-center py-10 px-4 animate-in zoom-in-95 duration-700">
-                            <div className="w-full max-w-sm space-y-8 text-center bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden">
-
+                        <div className="min-h-[80vh] flex flex-col items-center justify-center py-10 px-4">
+                            
+                            {/* GIAO DIỆN MOBILE (< 768px): Giữ nguyên giao diện cũ */}
+                            <div className="block md:hidden w-full max-w-sm space-y-8 text-center bg-white p-8 rounded-[3rem] shadow-xl border border-slate-100 relative overflow-hidden animate-in zoom-in-95 duration-700">
                                 {/* Background Design Element */}
                                 <div className="absolute top-0 left-0 right-0 h-32 bg-gradient-to-br from-blue-100 via-pink-50 to-white -z-10"></div>
 
@@ -4977,6 +4978,176 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <User size={16} />
                                 </button>
                             </div>
+
+                            {/* GIAO DIỆN TABLET & PC (>= 768px): Thiết kế 2 cột cao cấp mới */}
+                            <div className="hidden md:flex flex-col lg:flex-row gap-8 lg:gap-12 w-full max-w-6xl mx-auto py-8 animate-in fade-in duration-700">
+                                
+                                {/* CỘT TRÁI: THƯƠNG HIỆU & TIỆN ÍCH (40% width on large screens) */}
+                                <div className="w-full lg:w-[40%] flex flex-col gap-6">
+                                    <div className="bg-white p-8 rounded-[2.5rem] shadow-lg border border-slate-100/80 relative overflow-hidden flex-grow flex flex-col justify-between">
+                                        {/* Gradient backdrop */}
+                                        <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-br from-blue-50/70 via-pink-50/40 to-transparent -z-10"></div>
+                                        
+                                        <div className="space-y-6">
+                                            {/* Logo & Info */}
+                                            <div className="flex items-center gap-4">
+                                                <div className="relative w-20 h-20 rounded-full overflow-hidden shadow-md ring-4 ring-white flex-shrink-0">
+                                                    <img loading="lazy" decoding="async" src={DEFAULT_HERO} className="w-full h-full object-cover" alt="Merci Studio Logo" referrerPolicy="no-referrer" />
+                                                </div>
+                                                <div>
+                                                    <h1 className="text-3xl font-black font-serif text-slate-800 leading-tight">Merci Studio</h1>
+                                                    <p className="text-blue-600 font-bold text-xs uppercase tracking-widest mt-1">Wedding Photography</p>
+                                                </div>
+                                            </div>
+
+                                            {/* Slogan */}
+                                            <div className="space-y-3">
+                                                <h3 className="text-lg font-bold text-slate-800 font-serif italic">"Lưu giữ khoảnh khắc vượt thời gian"</h3>
+                                                <p className="text-slate-500 text-sm leading-relaxed">
+                                                    Merci Studio đồng hành cùng các cặp đôi ghi dấu những khoảnh khắc yêu thương, chân thực và đong đầy cảm xúc nhất trong cuộc đời thông qua những thước phim, khung hình phóng sự cưới duy mỹ.
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        {/* Social Links */}
+                                        <div className="mt-8 pt-6 border-t border-slate-100">
+                                            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Kết nối với chúng tôi</p>
+                                            <div className="flex flex-wrap gap-2">
+                                                <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-50 text-blue-700 hover:bg-blue-600 hover:text-white font-bold rounded-xl text-xs transition-all shadow-sm">
+                                                    <FacebookIcon className="w-4 h-4" /> Facebook
+                                                </a>
+                                                <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3.5 py-2 bg-slate-50 text-slate-800 hover:bg-black hover:text-white font-bold rounded-xl text-xs transition-all shadow-sm">
+                                                    <TikTokIcon className="w-4 h-4" /> TikTok
+                                                </a>
+                                                <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3.5 py-2 bg-pink-50 text-pink-600 hover:bg-gradient-to-r hover:from-purple-500 hover:to-pink-500 hover:text-white font-bold rounded-xl text-xs transition-all shadow-sm">
+                                                    <InstagramIcon className="w-4 h-4" /> Instagram
+                                                </a>
+                                                <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" className="flex items-center gap-1.5 px-3.5 py-2 bg-cyan-50 text-cyan-700 hover:bg-cyan-600 hover:text-white font-bold rounded-xl text-xs transition-all shadow-sm">
+                                                    <Phone className="w-4 h-4" /> Zalo
+                                                </a>
+                                            </div>
+                                        </div>
+
+                                        {/* Contact Info Footer on Desktop */}
+                                        <div className="mt-6 pt-6 border-t border-slate-100 text-xs text-slate-500 space-y-3 font-medium">
+                                            <p className="flex items-center gap-2.5"><MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" /> 244 Đội Cấn, Ba Đình, HN</p>
+                                            <p className="flex items-center gap-2.5"><MapPin className="w-4 h-4 text-blue-400 flex-shrink-0" /> 650 Thân Nhân Trung, Việt Yên, BN</p>
+                                            <p className="flex items-center gap-2.5"><Phone className="w-4 h-4 text-green-500 flex-shrink-0" /> 0888.999.545 - 0877.999.545</p>
+                                            <p className="flex items-center gap-2.5 truncate"><Mail className="w-4 h-4 text-purple-400 flex-shrink-0" /> vaycuoidouyin@gmail.com</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Utilities Box */}
+                                    <div className="bg-white p-6 rounded-3xl shadow-lg border border-slate-100/80">
+                                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4">Dành cho Khách hàng & Studio</h3>
+                                        
+                                        {!user ? (
+                                            <button onClick={() => openClientAuth('login')} className="w-full mb-4 py-3 px-4 bg-slate-950 text-white rounded-xl font-bold hover:bg-blue-600 transition-colors flex items-center justify-center gap-2 text-sm shadow-md">
+                                                <User className="w-4 h-4" /> Đăng nhập / đăng ký
+                                            </button>
+                                        ) : (
+                                            <div className="w-full mb-4 py-2.5 px-4 bg-emerald-50 border border-emerald-100 text-emerald-700 rounded-xl font-bold flex items-center justify-center gap-2 shadow-sm text-xs">
+                                                <CheckCircleIcon className="w-4 h-4" /> Tài khoản: {user.email}
+                                            </div>
+                                        )}
+
+                                        <div className="grid grid-cols-3 gap-2.5">
+                                            <button onClick={() => navigateToTab('tool', 'create')} className="py-2.5 px-2 bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 rounded-xl font-bold transition-all flex flex-col items-center gap-1 shadow-sm">
+                                                <Wand2 className="w-4 h-4" />
+                                                <span className="text-[10px] whitespace-nowrap">Tạo Trang</span>
+                                            </button>
+                                            <button onClick={() => navigateToTab('tool', 'gallery')} className="py-2.5 px-2 bg-emerald-50 hover:bg-emerald-600 hover:text-white text-emerald-700 rounded-xl font-bold transition-all flex flex-col items-center gap-1 shadow-sm">
+                                                <ImageIcon className="w-4 h-4" />
+                                                <span className="text-[10px] whitespace-nowrap">Chọn Ảnh</span>
+                                            </button>
+                                            <button onClick={() => navigateToTab('tool', 'filter')} className="py-2.5 px-2 bg-amber-50 hover:bg-amber-600 hover:text-white text-amber-700 rounded-xl font-bold transition-all flex flex-col items-center gap-1 shadow-sm">
+                                                <Zap className="w-4 h-4" />
+                                                <span className="text-[10px] whitespace-nowrap">Lọc Ảnh</span>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* CỘT PHẢI: LỐI TẮT DỊCH VỤ TRỰC QUAN (60% width on large screens) */}
+                                <div className="w-full lg:w-[60%] flex flex-col gap-6 justify-between">
+                                    
+                                    {/* CARD 1: BỘ SƯU TẬP ẢNH */}
+                                    <div 
+                                        onClick={() => navigateToTab('collection')}
+                                        className="group relative flex flex-col justify-between p-8 min-h-[160px] bg-slate-900 text-white rounded-[2.5rem] shadow-xl overflow-hidden cursor-pointer hover:shadow-2xl transition-all"
+                                    >
+                                        {/* Background Design Lines */}
+                                        <div className="absolute inset-0 bg-gradient-to-r from-slate-900 via-slate-950 to-slate-900 group-hover:scale-105 transition-transform duration-700 -z-10"></div>
+                                        <div className="absolute right-0 bottom-0 w-48 h-48 bg-gradient-to-tr from-blue-500/10 to-transparent rounded-full blur-2xl group-hover:scale-120 transition-transform"></div>
+                                        
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
+                                                <ImageIcon className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                            </div>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest px-3 py-1 bg-white/10 rounded-full border border-white/5 backdrop-blur-md">
+                                                Studio Gallery
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-6">
+                                            <h2 className="text-2xl font-bold font-sans">BỘ SƯU TẬP ẢNH</h2>
+                                            <p className="text-slate-400 text-xs mt-1.5 leading-relaxed max-w-md">
+                                                Khám phá những album ảnh cưới Pre-wedding nghệ thuật, phóng sự ngày cưới cảm xúc của các cặp đôi được thực hiện bởi Merci Studio.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 2: PHIM PHÓNG SỰ */}
+                                    <div 
+                                        onClick={() => navigateToTab('videos')}
+                                        className="group relative flex flex-col justify-between p-8 min-h-[160px] bg-gradient-to-br from-pink-500 to-rose-600 text-white rounded-[2.5rem] shadow-xl overflow-hidden cursor-pointer hover:shadow-2xl transition-all"
+                                    >
+                                        <div className="absolute right-0 bottom-0 w-48 h-48 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition-all"></div>
+                                        
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-white/15 rounded-2xl flex items-center justify-center text-white backdrop-blur-md">
+                                                <PlayCircle className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                            </div>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest px-3 py-1 bg-white/15 rounded-full border border-white/10 backdrop-blur-md">
+                                                Cinematic Films
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-6">
+                                            <h2 className="text-2xl font-bold font-sans">PHIM PHÓNG SỰ CƯỚI</h2>
+                                            <p className="text-pink-100 text-xs mt-1.5 leading-relaxed max-w-md">
+                                                Những thước phim cưới ghi lại câu chuyện tình yêu sống động, lãng mạn và chân thực.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                    {/* CARD 3: BLOG & KINH NGHIỆM */}
+                                    <div 
+                                        onClick={() => navigateToTab('blog')}
+                                        className="group relative flex flex-col justify-between p-8 min-h-[160px] bg-blue-50 hover:bg-blue-100/80 text-blue-900 border border-blue-100 rounded-[2.5rem] shadow-lg overflow-hidden cursor-pointer transition-all"
+                                    >
+                                        <div className="absolute right-0 bottom-0 w-32 h-32 bg-blue-200/20 rounded-full blur-xl group-hover:scale-125 transition-transform"></div>
+                                        
+                                        <div className="flex justify-between items-start">
+                                            <div className="w-12 h-12 bg-blue-100 text-blue-700 rounded-2xl flex items-center justify-center">
+                                                <BookOpen className="w-6 h-6 group-hover:scale-110 transition-transform" />
+                                            </div>
+                                            <span className="text-[10px] uppercase font-bold tracking-widest px-3 py-1 bg-blue-100 text-blue-700 rounded-full">
+                                                Wedding Tips
+                                            </span>
+                                        </div>
+
+                                        <div className="mt-6">
+                                            <h2 className="text-2xl font-bold font-sans text-blue-950">BLOG & KINH NGHIỆM CƯỚI</h2>
+                                            <p className="text-slate-500 text-xs mt-1.5 leading-relaxed max-w-md">
+                                                Lời khuyên, cẩm nang và kinh nghiệm từ Merci Studio giúp ngày trọng đại của bạn diễn ra hoàn hảo nhất.
+                                            </p>
+                                        </div>
+                                    </div>
+
+                                </div>
+                            </div>
+
                         </div>
                     )}
 
