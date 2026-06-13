@@ -11,6 +11,8 @@ import {
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail, Eye,
     BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
+import PromotionManager from '@/components/PromotionManager';
+import LuckyWheelPopup from '@/components/LuckyWheelPopup';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
@@ -1127,7 +1129,8 @@ export default function Home() {
                         'loc-anh': { tab: 'tool', tool: 'filter' },
                         'dat-lich': { tab: 'booking' },
                         'booking': { tab: 'booking' },
-                        'thong-ke': { tab: 'dashboard' }
+                        'thong-ke': { tab: 'dashboard' },
+                        'khuyen-mai': { tab: 'promotion' }
                     };
                     const route = routeMap[pathname];
                     if (route) {
@@ -3986,7 +3989,8 @@ export default function Home() {
             videos: '/video',
             tool: '/tool',
             booking: '/dat-lich',
-            dashboard: '/thong-ke'
+            dashboard: '/thong-ke',
+            promotion: '/khuyen-mai'
         };
         if (tabId === 'tool') {
             if (toolTab === 'create') return '/tao-trang';
@@ -4859,7 +4863,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'blog', label: 'Blog' },
                                     { id: 'tool', label: 'Công cụ' },
                                     { id: 'booking', label: 'Đặt lịch' },
-                                    ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }] : [])
+                                    ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }, { id: 'promotion', label: 'Khuyến mãi' }] : [])
                                 ].map(t => (
                                     <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3.5 py-1.5 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
                                         {t.label}
@@ -6051,6 +6055,36 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
                     )}
 
+                    {/* --- TAB: ADMIN PROMOTION --- */}
+                    {activeTab === 'promotion' && (
+                        <div className="space-y-8 md:space-y-12 animate-in fade-in duration-500">
+                            {/* Header */}
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                                <div>
+                                    <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Promotion</p>
+                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Chương Trình Khuyến Mãi</h2>
+                                    <p className="text-slate-500 text-sm mt-1">Chương trình khuyến mãi nháp dành riêng cho Admin cấu hình.</p>
+                                </div>
+                                <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2 text-xs md:text-sm font-bold text-blue-700">
+                                    Chế độ Admin: Quản lý khuyến mãi
+                                </div>
+                            </div>
+
+                            {!isAdmin ? (
+                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                    <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-3" />
+                                    <p className="text-slate-900 font-bold text-lg">Từ chối truy cập</p>
+                                    <p className="text-slate-400 text-sm mt-1">Bạn cần đăng nhập bằng tài khoản Admin để quản lý khuyến mãi.</p>
+                                    <button onClick={() => openClientAuth('login')} className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-xl font-bold hover:bg-blue-700 transition-colors">
+                                        Đăng nhập Admin
+                                    </button>
+                                </div>
+                            ) : (
+                                <PromotionManager />
+                            )}
+                        </div>
+                    )}
+
                     {/* --- TAB: ĐẶT LỊCH / BÁO GIÁ --- */}
                     {activeTab === 'booking' && (
                         <div className="space-y-8 md:space-y-12">
@@ -6385,6 +6419,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     <ArrowDown className="w-5 h-5" />
                 </button>
             </div>
+
+            {/* POPUP VÒNG QUAY MAY MẮN CHO KHÁCH HÀNG */}
+            <LuckyWheelPopup />
 
         </div>
     );
