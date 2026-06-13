@@ -785,6 +785,8 @@ export default function Home() {
     const [savedClientPages, setSavedClientPages] = useState([]);
     const [loadedImages, setLoadedImages] = useState([]);
     const [selectedImages, setSelectedImages] = useState(new Set());
+    const [allSelections, setAllSelections] = useState([]);
+    const [selectedFilter, setSelectedFilter] = useState('mine'); // 'mine', 'all', or specific userKey
     const [currentFolderId, setCurrentFolderId] = useState(null);
     const [clientFolders, setClientFolders] = useState([]);
     const [activeClientFolderId, setActiveClientFolderId] = useState(null);
@@ -3206,6 +3208,31 @@ export default function Home() {
     };
 
     // === CLIENT GALLERY HELPERS ===
+    const getOrInitGuestId = () => {
+        if (typeof window === 'undefined') return '';
+        let guestId = localStorage.getItem('merci_guest_id');
+        if (!guestId) {
+            guestId = `guest_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+            localStorage.setItem('merci_guest_id', guestId);
+        }
+        return guestId;
+    };
+
+    const fetchAllSelectionsForFolder = async (folderId) => {
+        if (!db || !folderId) return;
+        try {
+            const q = query(collection(db, 'client_selections'), where('folderId', '==', folderId));
+            const querySnapshot = await getDocs(q);
+            const list = [];
+            querySnapshot.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data() });
+            });
+            setAllSelections(list);
+        } catch (e) {
+            console.error('Error fetching all selections:', e);
+        }
+    };
+
     const saveClientSelectionToDB = async (folderId, newSelectedSet, currentNotes = imageNotes) => {
         if (!folderId) return;
         setIsSaving(true);
@@ -3225,11 +3252,39 @@ export default function Home() {
 
         if (db) {
             try {
-                await setDoc(doc(db, 'client_selections', folderId), {
+                let userKey = '';
+                let userEmail = '';
+                let userName = '';
+                let userType = 'guest';
+
+                if (user) {
+                    userEmail = user.email || '';
+                    userKey = user.email || '';
+                    userName = user.email || '';
+                    userType = 'gmail';
+                } else {
+                    const guestId = getOrInitGuestId();
+                    userKey = guestId;
+                    const shortId = guestId.substring(guestId.length - 4);
+                    userName = `Khách vãng lai (${shortId})`;
+                    userType = 'guest';
+                }
+
+                const docId = `${folderId}_${userKey}`;
+
+                await setDoc(doc(db, 'client_selections', docId), {
+                    folderId: folderId,
+                    userKey: userKey,
+                    userEmail: userEmail,
+                    userName: userName,
+                    userType: userType,
                     selectedIds: Array.from(newSelectedSet),
                     imageNotes: currentNotes,
                     updatedAt: new Date().toISOString()
                 }, { merge: true });
+
+                // Refresh the allSelections list to immediately reflect current user's selections
+                fetchAllSelectionsForFolder(folderId);
             } catch (e) {
                 console.error('Error saving client selection:', e);
                 setSaveError(e.message || 'Lỗi phân quyền Firestore');
@@ -3257,7 +3312,15 @@ export default function Home() {
         // 2. Try to load from Firestore and merge if available
         if (db && folderId) {
             try {
-                const docSnap = await getDoc(doc(db, 'client_selections', folderId));
+                let userKey = '';
+                if (user) {
+                    userKey = user.email || '';
+                } else {
+                    userKey = getOrInitGuestId();
+                }
+
+                const docId = `${folderId}_${userKey}`;
+                const docSnap = await getDoc(doc(db, 'client_selections', docId));
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     const dbSelectedIds = data.selectedIds || [];
@@ -3270,6 +3333,9 @@ export default function Home() {
             } catch (e) {
                 console.warn('Error reading from Firestore selection:', e);
             }
+
+            // Load all selections to populate filter options in UI
+            await fetchAllSelectionsForFolder(folderId);
         }
 
         // 3. Merge/override with URL parameter selected (takes priority for shared links)
@@ -3664,6 +3730,10 @@ export default function Home() {
 
     const toggleImageSelect = (id, event) => {
         if (event) event.stopPropagation();
+        if (selectedFilter !== 'mine') {
+            alert("Bạn chỉ có thể thả tim trên danh sách 'Cá nhân (Của bạn)'. Vui lòng chuyển bộ lọc về 'Cá nhân' để thay đổi lựa chọn.");
+            return;
+        }
         setSelectedImages(prev => {
             const newSet = new Set(prev);
             if (newSet.has(id)) newSet.delete(id); else newSet.add(id);
@@ -3673,6 +3743,10 @@ export default function Home() {
     };
 
     const handleSaveNote = async (imgId, noteText) => {
+        if (selectedFilter !== 'mine') {
+            alert("Bạn chỉ có thể viết ghi chú trên danh sách 'Cá nhân (Của bạn)'. Vui lòng chuyển bộ lọc về 'Cá nhân' để thay đổi ghi chú.");
+            return;
+        }
         const nextNotes = { ...imageNotes, [imgId]: noteText };
         setImageNotes(nextNotes);
         if (currentSelectionKey || currentFolderId) {
@@ -3684,7 +3758,7 @@ export default function Home() {
         setNoteModalData({
             isOpen: true,
             img,
-            noteText: imageNotes[img.id] || ''
+            noteText: effectiveImageNotes[img.id] || ''
         });
     };
 
@@ -3756,7 +3830,7 @@ export default function Home() {
     };
 
     const handleDownloadSelected = async () => {
-        if (selectedImages.size === 0) return alert("Bạn chưa chọn ảnh nào!");
+        if (effectiveSelectedImages.size === 0) return alert("Không có ảnh nào được chọn trong bộ lọc hiện tại!");
         if (!window.JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
 
         setIsLoading(true);
@@ -3766,8 +3840,8 @@ export default function Home() {
             const zip = new JSZip();
             const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0, 10);
             const imgFolder = zip.folder(folderName);
-            const selectedIds = Array.from(selectedImages);
-            const selectedIdSet = new Set(selectedIds);
+            const selectedIds = Array.from(effectiveSelectedImages);
+            const selectedIdSet = effectiveSelectedImages;
             const allFolders = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Ảnh đã chọn' }];
             let downloadedCount = 0;
             const usedNames = new Set();
@@ -3965,7 +4039,34 @@ export default function Home() {
         albumMatchesCategory(a, activeCategory) &&
         albumMatchesHashtagQuery(a, albumHashtagQuery)
     );
-    const displayedImages = showOnlySelected ? loadedImages.filter(img => selectedImages.has(img.id)) : loadedImages;
+    const effectiveSelectedImages = (() => {
+        if (selectedFilter === 'mine') return selectedImages;
+        if (selectedFilter === 'all') {
+            const merged = new Set();
+            allSelections.forEach(sel => {
+                if (sel.selectedIds) sel.selectedIds.forEach(id => merged.add(id));
+            });
+            selectedImages.forEach(id => merged.add(id));
+            return merged;
+        }
+        const found = allSelections.find(sel => sel.userKey === selectedFilter);
+        return found && found.selectedIds ? new Set(found.selectedIds) : new Set();
+    })();
+
+    const effectiveImageNotes = (() => {
+        if (selectedFilter === 'mine') return imageNotes;
+        if (selectedFilter === 'all') {
+            const merged = { ...imageNotes };
+            allSelections.forEach(sel => {
+                if (sel.imageNotes) Object.assign(merged, sel.imageNotes);
+            });
+            return merged;
+        }
+        const found = allSelections.find(sel => sel.userKey === selectedFilter);
+        return found && found.imageNotes ? found.imageNotes : {};
+    })();
+
+    const displayedImages = showOnlySelected ? loadedImages.filter(img => effectiveSelectedImages.has(img.id)) : loadedImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
     const IMAGES_PER_PAGE = 50;
@@ -3988,6 +4089,10 @@ export default function Home() {
     useEffect(() => {
         setGalleryPage(1);
     }, [currentFolderId, showOnlySelected, loadedImages.length]);
+
+    useEffect(() => {
+        setSelectedFilter('mine');
+    }, [currentSelectionKey]);
 
     const getPageNumbers = (currentPage, totalPages) => {
         if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
@@ -4205,8 +4310,9 @@ export default function Home() {
                                 value={noteModalData.noteText}
                                 onChange={e => setNoteModalData({ ...noteModalData, noteText: e.target.value })}
                                 rows={4}
-                                placeholder="Ghi chú chi tiết những gì bạn muốn thiết kế/chỉnh sửa cho bức ảnh này..."
-                                className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-pink-500 transition-colors text-sm md:text-base resize-none font-medium shadow-inner"
+                                placeholder={selectedFilter !== 'mine' ? "Không có ghi chú nào từ người dùng này." : "Ghi chú chi tiết những gì bạn muốn thiết kế/chỉnh sửa cho bức ảnh này..."}
+                                className="w-full border-2 border-slate-100 p-3 md:p-4 rounded-xl md:rounded-2xl outline-none focus:border-pink-500 transition-colors text-sm md:text-base resize-none font-medium shadow-inner disabled:bg-slate-50 disabled:text-slate-500"
+                                disabled={selectedFilter !== 'mine'}
                             />
                         </div>
 
@@ -4217,18 +4323,20 @@ export default function Home() {
                                 onClick={() => setNoteModalData({ isOpen: false, img: null, noteText: '' })}
                                 className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl md:rounded-2xl font-bold transition-all text-sm"
                             >
-                                Hủy
+                                {selectedFilter !== 'mine' ? 'Đóng' : 'Hủy'}
                             </button>
-                            <button
-                                type="button"
-                                onClick={async () => {
-                                    await handleSaveNote(noteModalData.img.id, noteModalData.noteText);
-                                    setNoteModalData({ isOpen: false, img: null, noteText: '' });
-                                }}
-                                className="flex-1 bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition-all text-sm"
-                            >
-                                Lưu ghi chú
-                            </button>
+                            {selectedFilter === 'mine' && (
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        await handleSaveNote(noteModalData.img.id, noteModalData.noteText);
+                                        setNoteModalData({ isOpen: false, img: null, noteText: '' });
+                                    }}
+                                    className="flex-1 bg-pink-500 hover:bg-pink-600 text-white py-3 rounded-xl md:rounded-2xl font-bold shadow-lg shadow-pink-500/20 active:scale-95 transition-all text-sm"
+                                >
+                                    Lưu ghi chú
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -5997,7 +6105,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             {/* Info and Save state */}
                                             <div className="flex items-center gap-1.5 px-1 md:pl-2">
                                                 <div className="flex items-center gap-1 text-pink-500 font-bold bg-pink-50 px-2.5 py-1.5 md:px-4 md:py-2 rounded-xl whitespace-nowrap text-xs md:text-base">
-                                                    <Heart className="w-3.5 h-3.5 md:w-5 md:h-5 fill-current" /> <span>{selectedImages.size}</span><span className="hidden sm:inline"> ảnh</span>
+                                                    <Heart className="w-3.5 h-3.5 md:w-5 md:h-5 fill-current" /> <span>{effectiveSelectedImages.size}</span><span className="hidden sm:inline"> ảnh</span>
                                                 </div>
                                                 {isSaving ? (
                                                     <span className="text-[10px] md:text-xs text-slate-400 font-medium flex items-center gap-1">
@@ -6019,6 +6127,26 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 )}
                                             </div>
 
+                                            {/* Bộ lọc theo người chọn */}
+                                            {allSelections.length > 0 && (
+                                                <div className="flex items-center gap-1 text-xs md:text-sm">
+                                                    <span className="text-slate-400 font-bold hidden lg:inline whitespace-nowrap">Người chọn:</span>
+                                                    <select
+                                                        value={selectedFilter}
+                                                        onChange={(e) => setSelectedFilter(e.target.value)}
+                                                        className="px-2.5 py-1.5 md:px-3 md:py-2 bg-slate-50 border border-slate-200 rounded-xl font-bold outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-700 text-xs cursor-pointer max-w-[130px] md:max-w-[160px] truncate"
+                                                    >
+                                                        <option value="mine">Cá nhân (Bạn)</option>
+                                                        <option value="all">Tất cả ({allSelections.length})</option>
+                                                        {allSelections.map(sel => (
+                                                            <option key={sel.userKey} value={sel.userKey}>
+                                                                {sel.userName || sel.userEmail || 'Khách vãng lai'} ({sel.selectedIds?.length || 0})
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            )}
+
                                             {/* Toggle View Mode */}
                                             <div className="flex bg-slate-100 p-0.5 md:p-1 rounded-xl">
                                                 <button onClick={() => setShowOnlySelected(false)} className={`px-2.5 md:px-6 py-1 md:py-2 rounded-lg text-xs md:text-sm font-semibold transition-all ${!showOnlySelected ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500'}`}>
@@ -6039,7 +6167,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 </button>
                                             )}
                                             <button onClick={() => {
-                                                const names = Array.from(selectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
+                                                const names = Array.from(effectiveSelectedImages).map(id => loadedImages.find(img => img.id === id)?.name).filter(Boolean);
                                                 if (navigator.clipboard && window.isSecureContext) {
                                                     navigator.clipboard.writeText(names.join('\n')).then(() => alert("Đã copy danh sách tên file!"));
                                                 } else {
@@ -6050,10 +6178,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </button>
 
                                             <button onClick={() => {
-                                                const selectedList = Array.from(selectedImages).map(id => {
+                                                const selectedList = Array.from(effectiveSelectedImages).map(id => {
                                                     const img = loadedImages.find(item => item.id === id);
                                                     if (!img) return null;
-                                                    const note = imageNotes[id];
+                                                    const note = effectiveImageNotes[id];
                                                     return note ? `${img.name} (Yêu cầu sửa: ${note})` : img.name;
                                                 }).filter(Boolean);
                                                 if (navigator.clipboard && window.isSecureContext) {
@@ -6091,7 +6219,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     {displayedImages.length > 0 ? (
                                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-6">
                                             {paginatedDisplayedImages.map((img, idx) => {
-                                                const isSelected = selectedImages.has(img.id);
+                                                const isSelected = effectiveSelectedImages.has(img.id);
                                                 const originalIndex = galleryStartIndex + idx;
                                                 return (
                                                     <div key={img.id} className="flex flex-col gap-2">
@@ -6132,7 +6260,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                                     e.stopPropagation();
                                                                     openImageNoteModal(img);
                                                                 }}
-                                                                className={`absolute top-1 right-1 md:top-2 md:right-2 w-7 h-7 md:w-9 md:h-9 rounded-full shadow-lg backdrop-blur-md flex items-center justify-center transition-all ${imageNotes[img.id] ? 'bg-pink-500 text-white hover:bg-pink-600' : 'bg-white/90 text-slate-800 hover:bg-pink-500 hover:text-white'}`}
+                                                                className={`absolute top-1 right-1 md:top-2 md:right-2 w-7 h-7 md:w-9 md:h-9 rounded-full shadow-lg backdrop-blur-md flex items-center justify-center transition-all ${effectiveImageNotes[img.id] ? 'bg-pink-500 text-white hover:bg-pink-600' : 'bg-white/90 text-slate-800 hover:bg-pink-500 hover:text-white'}`}
                                                                 title="Thêm yêu cầu sửa ảnh"
                                                             >
                                                                 <MessageSquare className="w-3.5 h-3.5 md:w-4 md:h-4" />
@@ -6148,7 +6276,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         </div>
 
                                                         {/* Ghi chú chỉnh sửa dưới ảnh */}
-                                                        {isSelected && imageNotes[img.id] && (
+                                                        {isSelected && effectiveImageNotes[img.id] && (
                                                             <div
                                                                 onClick={(e) => {
                                                                     e.stopPropagation();
@@ -6159,13 +6287,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                             >
                                                                 <div className="flex-1">
                                                                     <span className="font-bold block text-[8px] md:text-[9px] text-pink-400 uppercase tracking-widest mb-0.5">Yêu cầu sửa:</span>
-                                                                    {imageNotes[img.id]}
+                                                                    {effectiveImageNotes[img.id]}
                                                                 </div>
                                                                 <Edit className="w-3.5 h-3.5 text-pink-400 shrink-0 mt-0.5" />
                                                             </div>
                                                         )}
 
-                                                        {isSelected && !imageNotes[img.id] && showOnlySelected && (
+                                                        {isSelected && !effectiveImageNotes[img.id] && showOnlySelected && (
                                                             <button
                                                                 type="button"
                                                                 onClick={(e) => {
