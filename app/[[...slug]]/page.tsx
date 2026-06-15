@@ -70,7 +70,9 @@ function SmoothImageLightbox({
     prevImg,
     getDriveThumbUrl,
     direction = 0,
-    showFileName = false
+    showFileName = false,
+    effectiveSelectedImages,
+    toggleImageSelect
 }) {
     const [imageLoaded, setImageLoaded] = useState(false);
     const [isChanging, setIsChanging] = useState(false);
@@ -178,17 +180,36 @@ function SmoothImageLightbox({
                     </div>
                 </div>
 
-                <button
-                    type="button"
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        closeLightbox();
-                    }}
-                    className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95"
-                    aria-label="Đóng ảnh"
-                >
-                    <X className="w-6 h-6" />
-                </button>
+                <div className="flex items-center gap-2">
+                    {toggleImageSelect && currentImage?.id && (
+                        <button
+                            type="button"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                toggleImageSelect(currentImage.id, e);
+                            }}
+                            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all active:scale-95 ${
+                                effectiveSelectedImages?.has(currentImage.id)
+                                    ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30 scale-105'
+                                    : 'bg-white/10 hover:bg-white/20 text-white'
+                            }`}
+                            aria-label="Thả tim ảnh"
+                        >
+                            <Heart className={`w-5 h-5 ${effectiveSelectedImages?.has(currentImage.id) ? 'fill-current' : ''}`} />
+                        </button>
+                    )}
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            closeLightbox();
+                        }}
+                        className="w-11 h-11 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-all active:scale-95 hover:rotate-90"
+                        aria-label="Đóng ảnh"
+                    >
+                        <X className="w-6 h-6" />
+                    </button>
+                </div>
             </div>
 
             {images.length > 1 && (
@@ -275,7 +296,7 @@ function SmoothImageLightbox({
                                                 index: realIndex
                                             }));
                                         }}
-                                        className={`w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border-2 transition-all ${isActive
+                                        className={`w-12 h-12 md:w-14 md:h-14 rounded-xl overflow-hidden border-2 transition-all relative ${isActive
                                             ? 'border-white scale-105 opacity-100'
                                             : 'border-white/20 opacity-55 hover:opacity-90'
                                             }`}
@@ -288,6 +309,11 @@ function SmoothImageLightbox({
                                             decoding="async"
                                             className="w-full h-full object-cover"
                                         />
+                                        {effectiveSelectedImages?.has(img.id) && (
+                                            <div className="absolute top-1 right-1 bg-pink-500 text-white rounded-full p-0.5 shadow-md z-10 pointer-events-none">
+                                                <Heart className="w-2.5 h-2.5 fill-current" />
+                                            </div>
+                                        )}
                                     </button>
                                 );
                             })}
@@ -6719,6 +6745,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                 getDriveThumbUrl={getDriveThumbUrl}
                 direction={lightboxDirection}
                 showFileName={activeTab === 'tool' && activeToolTab === 'gallery'}
+                effectiveSelectedImages={effectiveSelectedImages}
+                toggleImageSelect={toggleImageSelect}
             />
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}

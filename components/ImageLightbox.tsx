@@ -2,7 +2,7 @@
 /* eslint-disable */
 'use client';
 import React from 'react';
-import { X, ArrowLeft, ArrowRight } from 'lucide-react';
+import { X, ArrowLeft, ArrowRight, Heart } from 'lucide-react';
 
 export default function ImageLightbox({ 
     lightboxData, 
@@ -14,7 +14,9 @@ export default function ImageLightbox({
     nextImg, 
     prevImg, 
     getDriveThumbUrl,
-    showFileName = false
+    showFileName = false,
+    effectiveSelectedImages,
+    toggleImageSelect
 }) {
     if (!lightboxData.isOpen || lightboxData.images.length === 0) return null;
 
@@ -47,7 +49,32 @@ export default function ImageLightbox({
                 </div>
             </div>
 
-            <button onClick={() => setLightboxData({isOpen: false, index: 0, images: []})} className="absolute top-4 md:top-6 right-4 md:right-6 text-white/50 hover:text-white transition-all z-[210] p-2 bg-white/10 rounded-full hover:rotate-90"><X className="w-6 h-6 md:w-8 md:h-8"/></button>
+            <div className="absolute top-4 md:top-6 right-4 md:right-6 z-[210] flex items-center gap-2">
+                {toggleImageSelect && lightboxData.images[lightboxData.index]?.id && (
+                    <button
+                        type="button"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            toggleImageSelect(lightboxData.images[lightboxData.index].id, e);
+                        }}
+                        className={`text-white transition-all p-2 rounded-full active:scale-95 flex items-center justify-center ${
+                            effectiveSelectedImages?.has(lightboxData.images[lightboxData.index].id)
+                                ? 'bg-pink-500 text-white shadow-lg shadow-pink-500/30 scale-105'
+                                : 'bg-white/10 hover:bg-white/20 text-white/60 hover:text-white'
+                        }`}
+                        aria-label="Thả tim ảnh"
+                    >
+                        <Heart className={`w-6 h-6 md:w-8 md:h-8 ${effectiveSelectedImages?.has(lightboxData.images[lightboxData.index].id) ? 'fill-current' : ''}`} />
+                    </button>
+                )}
+                <button
+                    onClick={() => setLightboxData({isOpen: false, index: 0, images: []})}
+                    className="text-white/50 hover:text-white transition-all p-2 bg-white/10 rounded-full hover:rotate-90 flex items-center justify-center"
+                    aria-label="Đóng ảnh"
+                >
+                    <X className="w-6 h-6 md:w-8 md:h-8"/>
+                </button>
+            </div>
             
             <img loading="lazy" decoding="async" 
                 key={lightboxData.index}
