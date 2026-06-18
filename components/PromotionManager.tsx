@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
     Gift, Plus, Trash2, Settings, Play, Check, X, AlertCircle, 
     Sparkles, Calculator, Ticket, Edit, CheckCircle,
-    Power, Calendar, Search, Users, RefreshCw
+    Power, Calendar, Search, Users, RefreshCw, Coins
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, setDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, setDoc, getDocs, where, updateDoc } from 'firebase/firestore';
 
 interface WheelSlice {
     id: string;
@@ -59,7 +59,7 @@ if (typeof window !== 'undefined') {
 }
 
 export default function PromotionManager() {
-    const [activeSubTab, setActiveSubTab] = useState<'wheel' | 'codes' | 'winners'>('wheel');
+    const [activeSubTab, setActiveSubTab] = useState<'wheel' | 'codes' | 'winners' | 'loyalty'>('wheel');
 
     // --- STATE FOR LUCKY WHEEL ---
     const [slices, setSlices] = useState<WheelSlice[]>([
@@ -120,6 +120,88 @@ export default function PromotionManager() {
     const [winners, setWinners] = useState<WinnerRegistration[]>([]);
     const [searchQuery, setSearchQuery] = useState('');
     const [isLoadingWinners, setIsLoadingWinners] = useState(true);
+
+    // --- LOYALTY POINTS & REFERRALS LOG ---
+    const [usersList, setUsersList] = useState<any[]>([]);
+    const [searchUserQuery, setSearchUserQuery] = useState('');
+    const [isLoadingUsers, setIsLoadingUsers] = useState(false);
+    const [selectedUserForPoints, setSelectedUserForPoints] = useState<any | null>(null);
+    const [pointsChangeVal, setPointsChangeVal] = useState<number>(100);
+    const [pointsChangeReason, setPointsChangeReason] = useState('Tặng điểm thành viên');
+    const [isUpdatingPoints, setIsUpdatingPoints] = useState(false);
+
+    useEffect(() => {
+        if (activeSubTab !== 'loyalty' || !db) return;
+        setIsLoadingUsers(true);
+        const q = query(collection(db, 'merci_users'), orderBy('createdAt', 'desc'));
+        
+        const unsub = onSnapshot(q, (snapshot) => {
+            const list: any[] = [];
+            snapshot.forEach((doc) => {
+                list.push({ id: doc.id, ...doc.data() });
+            });
+            setUsersList(list);
+            setIsLoadingUsers(false);
+        }, (err) => {
+            console.error("Error listening to users:", err);
+            setIsLoadingUsers(false);
+        });
+
+        return () => unsub();
+    }, [activeSubTab, db]);
+
+    const handleUpdateUserPoints = async () => {
+        if (!selectedUserForPoints || !db) return;
+        if (!pointsChangeReason.trim()) {
+            alert('Vui lòng nhập lý do điều chỉnh điểm.');
+            return;
+        }
+
+        setIsUpdatingPoints(true);
+        try {
+            const userDocRef = doc(db, 'merci_users', selectedUserForPoints.uid);
+            const userDoc = await getDoc(userDocRef);
+            if (!userDoc.exists()) {
+                alert('Người dùng không tồn tại.');
+                setIsUpdatingPoints(false);
+                return;
+            }
+
+            const userData = userDoc.data();
+            const newPoints = (userData.points || 0) + Number(pointsChangeVal);
+            
+            await updateDoc(userDocRef, {
+                points: newPoints,
+                history: [
+                    ...(userData.history || []),
+                    {
+                        id: `tx_${Date.now()}_admin`,
+                        amount: Number(pointsChangeVal),
+                        type: 'admin',
+                        description: pointsChangeReason.trim(),
+                        createdAt: Date.now()
+                    }
+                ]
+            });
+
+            alert('Cập nhật điểm thành công!');
+            setSelectedUserForPoints(null);
+            setPointsChangeReason('Tặng điểm thành viên');
+            setPointsChangeVal(100);
+        } catch (error) {
+            console.error('Error updating user points:', error);
+            alert('Có lỗi xảy ra khi cập nhật điểm.');
+        } finally {
+            setIsUpdatingPoints(false);
+        }
+    };
+
+    const filteredUsers = usersList.filter(u => {
+        const email = (u.email || '').toLowerCase();
+        const code = (u.referralCode || '').toLowerCase();
+        const queryVal = searchUserQuery.toLowerCase();
+        return email.includes(queryVal) || code.includes(queryVal);
+    });
 
     // --- CONFETTI STATE ---
     const [showConfetti, setShowConfetti] = useState(false);
@@ -812,6 +894,13 @@ export default function PromotionManager() {
                         <Users size={16} />
                         Khách trúng giải
                     </button>
+                    <button 
+                        onClick={() => setActiveSubTab('loyalty')}
+                        className={`flex-1 md:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-lg text-xs md:text-sm font-bold transition-all whitespace-nowrap ${activeSubTab === 'loyalty' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-500 hover:text-slate-800'}`}
+                    >
+                        <Coins size={16} />
+                        Tích điểm & Giới thiệu
+                    </button>
                 </div>
             </div>
 
@@ -1307,6 +1396,104 @@ export default function PromotionManager() {
                 </div>
             )}
 
+            {/* Sub-tab 4: LOYALTY POINTS & REFERRALS LOG */}
+            {activeSubTab === 'loyalty' && (
+                <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm space-y-6 text-slate-700">
+                    {/* Search and Filters */}
+                    <div className="flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                        <div className="relative w-full md:max-w-md">
+                            <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                                <Search size={16} />
+                            </span>
+                            <input
+                                type="text"
+                                placeholder="Tìm theo Email hoặc Mã giới thiệu..."
+                                value={searchUserQuery}
+                                onChange={e => setSearchUserQuery(e.target.value)}
+                                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+                            />
+                            {searchUserQuery && (
+                                <button 
+                                    onClick={() => setSearchUserQuery('')}
+                                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600"
+                                >
+                                    <X size={16} />
+                                </button>
+                            )}
+                        </div>
+
+                        <div className="text-xs text-slate-400 font-bold self-end md:self-auto">
+                            Tổng số: {filteredUsers.length} tài khoản
+                        </div>
+                    </div>
+
+                    {/* Table of Users */}
+                    {isLoadingUsers ? (
+                        <div className="text-center py-20 flex flex-col items-center justify-center">
+                            <RefreshCw className="w-10 h-10 text-blue-500 animate-spin mb-4" />
+                            <p className="text-slate-500 font-bold">Đang tải danh sách tài khoản tích điểm...</p>
+                        </div>
+                    ) : filteredUsers.length === 0 ? (
+                        <div className="text-center py-20 border-2 border-dashed border-slate-100 rounded-2xl">
+                            <Users size={40} className="mx-auto text-slate-300 mb-3 opacity-50" />
+                            <p className="text-slate-800 font-bold">Không tìm thấy tài khoản nào</p>
+                            <p className="text-slate-400 text-xs mt-1">Chưa có người dùng đăng ký hoặc tìm kiếm không khớp.</p>
+                        </div>
+                    ) : (
+                        <div className="overflow-x-auto rounded-2xl border border-slate-150">
+                            <table className="w-full border-collapse text-left text-sm text-slate-700">
+                                <thead className="bg-slate-50 text-slate-500 text-xs font-bold uppercase border-b border-slate-200">
+                                    <tr>
+                                        <th className="p-4">Email</th>
+                                        <th className="p-4">Mã giới thiệu</th>
+                                        <th className="p-4">Người giới thiệu</th>
+                                        <th className="p-4 text-center">Điểm số</th>
+                                        <th className="p-4">Ngày tham gia</th>
+                                        <th className="p-4 text-center">Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 bg-white">
+                                    {filteredUsers.map((u) => (
+                                        <tr key={u.id} className="hover:bg-slate-50/50 transition-colors">
+                                            <td className="p-4 font-semibold text-slate-900">{u.email}</td>
+                                            <td className="p-4 font-mono font-bold text-sm tracking-wider text-blue-600 uppercase">{u.referralCode}</td>
+                                            <td className="p-4">
+                                                {u.referredBy ? (
+                                                    <span className="font-mono text-xs tracking-wider px-2 py-0.5 bg-slate-100 text-slate-700 rounded border border-slate-200 uppercase">
+                                                        {u.referredBy}
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-slate-400 text-xs italic">Không có</span>
+                                                )}
+                                            </td>
+                                            <td className="p-4 text-center font-bold text-amber-600 font-mono text-base">
+                                                {u.points || 0}
+                                            </td>
+                                            <td className="p-4 text-xs text-slate-400">
+                                                {u.createdAt ? new Date(u.createdAt).toLocaleString('vi-VN') : 'N/A'}
+                                            </td>
+                                            <td className="p-4 text-center">
+                                                <button
+                                                    onClick={() => {
+                                                        setSelectedUserForPoints(u);
+                                                        setPointsChangeVal(100);
+                                                        setPointsChangeReason('Thưởng điểm tri ân khách hàng');
+                                                    }}
+                                                    className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 text-xs font-bold rounded-lg transition-all"
+                                                    title="Điều chỉnh điểm"
+                                                >
+                                                    Sửa điểm
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            )}
+
             {/* Modal for Create/Edit Promo Code */}
             {showCodeForm && (
                 <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -1411,6 +1598,67 @@ export default function PromotionManager() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+            {/* Modal for Admin Adjust Points */}
+            {selectedUserForPoints && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-scale">
+                        <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
+                            <h4 className="font-bold text-slate-800 text-lg">
+                                Điều chỉnh điểm: {selectedUserForPoints.email}
+                            </h4>
+                            <button 
+                                onClick={() => setSelectedUserForPoints(null)}
+                                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all"
+                            >
+                                <X size={20} />
+                            </button>
+                        </div>
+
+                        <div className="p-6 space-y-4 text-slate-700">
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">Số điểm thay đổi (cộng nhập dương, trừ nhập âm)</label>
+                                <input
+                                    type="number"
+                                    required
+                                    value={pointsChangeVal}
+                                    onChange={e => setPointsChangeVal(Number(e.target.value))}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+                                />
+                            </div>
+
+                            <div className="space-y-1">
+                                <label className="text-xs font-bold text-slate-500">Lý do điều chỉnh</label>
+                                <input
+                                    type="text"
+                                    required
+                                    placeholder="Ví dụ: Tặng sinh nhật khách hàng"
+                                    value={pointsChangeReason}
+                                    onChange={e => setPointsChangeReason(e.target.value)}
+                                    className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-blue-500 focus:bg-white transition-all text-slate-800"
+                                />
+                            </div>
+
+                            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
+                                <button
+                                    type="button"
+                                    onClick={() => setSelectedUserForPoints(null)}
+                                    className="px-4 py-2 text-slate-500 hover:text-slate-800 text-sm font-bold rounded-xl hover:bg-slate-50 transition-all"
+                                    disabled={isUpdatingPoints}
+                                >
+                                    Hủy
+                                </button>
+                                <button
+                                    onClick={handleUpdateUserPoints}
+                                    disabled={isUpdatingPoints}
+                                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition-all shadow-sm shadow-blue-100 disabled:opacity-50"
+                                >
+                                    {isUpdatingPoints ? 'Đang cập nhật...' : 'Xác nhận'}
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

@@ -17,7 +17,7 @@ import LuckyWheelPopup from '@/components/LuckyWheelPopup';
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment, runTransaction } from 'firebase/firestore';
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -805,6 +805,14 @@ export default function Home() {
     const [clientAuthData, setClientAuthData] = useState({ email: '', password: '' });
     const [clientAuthError, setClientAuthError] = useState('');
 
+    // Tích điểm & Mã giới thiệu
+    const [userProfile, setUserProfile] = useState(null);
+    const [showClientProfileModal, setShowClientProfileModal] = useState(false);
+    const [referralInput, setReferralInput] = useState('');
+    const [referralError, setReferralError] = useState('');
+    const [referralSuccess, setReferralSuccess] = useState('');
+    const [isApplyingReferral, setIsApplyingReferral] = useState(false);
+
     // Khách hàng & Filter
     const [driveLink, setDriveLink] = useState('');
     const [clientLink, setClientLink] = useState('');
@@ -1120,6 +1128,173 @@ export default function Home() {
 
         return () => unsubAuth();
     }, [mounted]);
+
+    const ensureUserProfile = async (uid, email) => {
+        if (!db) return;
+        const userDocRef = doc(db, 'merci_users', uid);
+        const docSnap = await getDoc(userDocRef);
+        if (!docSnap.exists()) {
+            let referralCode = '';
+            let isUnique = false;
+            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+            for (let attempt = 0; attempt < 10; attempt++) {
+                referralCode = '';
+                for (let i = 0; i < 6; i++) {
+                    referralCode += chars.charAt(Math.floor(Math.random() * chars.length));
+                }
+                const q = query(collection(db, 'merci_users'), where('referralCode', '==', referralCode));
+                const snap = await getDocs(q);
+                if (snap.empty) {
+                    isUnique = true;
+                    break;
+                }
+            }
+            if (!isUnique) {
+                referralCode = 'M' + String(Date.now()).slice(-5);
+            }
+
+            const newUserProfile = {
+                uid,
+                email: email || '',
+                points: 50,
+                referralCode,
+                referredBy: '',
+                createdAt: Date.now(),
+                history: [
+                    {
+                        id: `tx_${Date.now()}_signup`,
+                        amount: 50,
+                        type: 'signup',
+                        description: 'Tặng điểm đăng ký thành viên mới',
+                        createdAt: Date.now()
+                    }
+                ]
+            };
+            await setDoc(userDocRef, newUserProfile);
+        }
+    };
+
+    useEffect(() => {
+        if (!mounted || !db || !user?.uid) {
+            setUserProfile(null);
+            return;
+        }
+
+        let unsubProfile = () => {};
+
+        const setupProfile = async () => {
+            try {
+                await ensureUserProfile(user.uid, user.email);
+                unsubProfile = onSnapshot(doc(db, 'merci_users', user.uid), (snapshot) => {
+                    if (snapshot.exists()) {
+                        setUserProfile(snapshot.data());
+                    }
+                });
+            } catch (err) {
+                console.error("Error setting up user profile:", err);
+            }
+        };
+
+        setupProfile();
+
+        return () => {
+            unsubProfile();
+        };
+    }, [mounted, db, user?.uid]);
+
+    const handleApplyReferralCode = async () => {
+        setReferralError('');
+        setReferralSuccess('');
+        if (!referralInput.trim()) {
+            setReferralError('Vui lòng nhập mã giới thiệu.');
+            return;
+        }
+        if (!db || !user?.uid || !userProfile) return;
+
+        const codeToApply = referralInput.trim().toUpperCase();
+
+        if (codeToApply === userProfile.referralCode) {
+            setReferralError('Bạn không thể tự nhập mã giới thiệu của mình.');
+            return;
+        }
+
+        if (userProfile.referredBy) {
+            setReferralError('Bạn đã sử dụng mã giới thiệu rồi.');
+            return;
+        }
+
+        setIsApplyingReferral(true);
+
+        try {
+            const q = query(collection(db, 'merci_users'), where('referralCode', '==', codeToApply));
+            const snap = await getDocs(q);
+            
+            if (snap.empty) {
+                setReferralError('Mã giới thiệu không tồn tại.');
+                setIsApplyingReferral(false);
+                return;
+            }
+
+            const referrerDoc = snap.docs[0];
+            const referrerData = referrerDoc.data();
+            const referrerUid = referrerDoc.id;
+
+            const userDocRef = doc(db, 'merci_users', user.uid);
+            const referrerDocRef = doc(db, 'merci_users', referrerUid);
+
+            await runTransaction(db, async (transaction) => {
+                const userSnap = await transaction.get(userDocRef);
+                const referrerSnap = await transaction.get(referrerDocRef);
+
+                if (!userSnap.exists() || !referrerSnap.exists()) {
+                    throw new Error('Tài khoản không hợp lệ.');
+                }
+
+                const userData = userSnap.data();
+                if (userData.referredBy) {
+                    throw new Error('Bạn đã nhập mã giới thiệu rồi.');
+                }
+
+                transaction.update(userDocRef, {
+                    referredBy: codeToApply,
+                    points: (userData.points || 0) + 50,
+                    history: [
+                        ...(userData.history || []),
+                        {
+                            id: `tx_${Date.now()}_referred`,
+                            amount: 50,
+                            type: 'referred',
+                            description: `Nhận điểm giới thiệu từ mã ${codeToApply}`,
+                            createdAt: Date.now()
+                        }
+                    ]
+                });
+
+                const referrerPrevData = referrerSnap.data();
+                transaction.update(referrerDocRef, {
+                    points: (referrerPrevData.points || 0) + 100,
+                    history: [
+                        ...(referrerPrevData.history || []),
+                        {
+                            id: `tx_${Date.now()}_referrer`,
+                            amount: 100,
+                            type: 'referrer',
+                            description: `Giới thiệu thành viên mới ${userData.email || 'Ẩn danh'}`,
+                            createdAt: Date.now()
+                        }
+                    ]
+                });
+            });
+
+            setReferralSuccess('Áp dụng mã giới thiệu thành công! Bạn nhận được 50 điểm.');
+            setReferralInput('');
+        } catch (error) {
+            console.error('Error applying referral code:', error);
+            setReferralError(error?.message || 'Có lỗi xảy ra khi áp dụng mã giới thiệu.');
+        } finally {
+            setIsApplyingReferral(false);
+        }
+    };
 
     // Nhận diện URL Pathname (Link Đẹp dạng /ten-album hoặc /ten-bai-viet)
     useEffect(() => {
@@ -1706,6 +1881,7 @@ export default function Home() {
                 date: bookingForm.date || 'Chưa chọn',
                 notes: bookingForm.notes || 'Không có',
                 status: 'Chưa xử lý',
+                ownerUid: user?.uid || null,
                 createdAt: Date.now()
             };
             
@@ -1745,10 +1921,40 @@ export default function Home() {
     };
 
     const handleUpdateBookingStatus = async (bookingId, currentStatus) => {
-        const nextStatus = currentStatus === 'Chưa xử lý' ? 'Đã tư vấn' : 'Chưa xử lý';
+        let nextStatus = 'Chưa xử lý';
+        if (currentStatus === 'Chưa xử lý') nextStatus = 'Đã tư vấn';
+        else if (currentStatus === 'Đã tư vấn') nextStatus = 'Đã hoàn thành';
+
         setIsLoading(true);
         try {
             await updateDoc(doc(db, 'merci_bookings', bookingId), { status: nextStatus });
+
+            if (nextStatus === 'Đã hoàn thành') {
+                const bookingDoc = await getDoc(doc(db, 'merci_bookings', bookingId));
+                if (bookingDoc.exists()) {
+                    const bookingData = bookingDoc.data();
+                    if (bookingData.ownerUid) {
+                        const userDocRef = doc(db, 'merci_users', bookingData.ownerUid);
+                        const userSnap = await getDoc(userDocRef);
+                        if (userSnap.exists()) {
+                            const userData = userSnap.data();
+                            await updateDoc(userDocRef, {
+                                points: (userData.points || 0) + 200,
+                                history: [
+                                    ...(userData.history || []),
+                                    {
+                                        id: `tx_${Date.now()}_booking_${bookingId}`,
+                                        amount: 200,
+                                        type: 'booking',
+                                        description: `Hoàn thành lịch hẹn dịch vụ ${bookingData.service || ''}`,
+                                        createdAt: Date.now()
+                                    }
+                                ]
+                            });
+                        }
+                    }
+                }
+            }
         } catch (err) {
             console.error("Update booking status error:", err);
             alert("Lỗi khi cập nhật trạng thái!");
@@ -4303,6 +4509,134 @@ export default function Home() {
                 </div>
             )}
 
+            {/* Client Profile Modal (Loyalty Points & Referral) */}
+            {showClientProfileModal && userProfile && (
+                <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-[2rem] w-full max-w-lg shadow-2xl border border-white/10 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="font-bold text-2xl font-serif">Tài khoản của bạn</h3>
+                            <button onClick={() => { setShowClientProfileModal(false); setReferralError(''); setReferralSuccess(''); }} className="text-slate-400 hover:text-white p-1 transition-colors"><X /></button>
+                        </div>
+
+                        {/* Account Basic Info */}
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-4 flex items-center gap-4 mb-6">
+                            <div className="bg-blue-600/10 border border-blue-500/20 p-3 rounded-xl text-blue-400">
+                                <User size={24} />
+                            </div>
+                            <div>
+                                <p className="text-xs text-slate-400 font-semibold uppercase tracking-wider">Email đăng nhập</p>
+                                <p className="text-base font-bold text-slate-200">{userProfile.email || user.email}</p>
+                            </div>
+                        </div>
+
+                        {/* Point Card */}
+                        <div className="bg-gradient-to-br from-amber-500/20 via-orange-600/15 to-transparent border border-amber-500/20 rounded-[2rem] p-6 mb-6 text-center relative overflow-hidden">
+                            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -z-10"></div>
+                            <p className="text-xs text-amber-400 font-bold uppercase tracking-widest mb-1.5">Điểm thưởng tích lũy</p>
+                            <div className="flex items-center justify-center gap-2 mb-2">
+                                <span className="text-5xl font-black font-serif text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-orange-400 animate-pulse">
+                                    {userProfile.points || 0}
+                                </span>
+                                <span className="text-amber-400 text-lg font-bold">Điểm</span>
+                            </div>
+                            <p className="text-xs text-slate-400">Đổi mã giảm giá hoặc nhận quà tại Merci Studio</p>
+                        </div>
+
+                        {/* Referral Code Card */}
+                        <div className="bg-white/5 border border-white/5 rounded-2xl p-5 mb-6">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Mã giới thiệu của bạn</p>
+                            <div className="flex gap-2">
+                                <div className="flex-1 bg-white/5 border border-dashed border-white/10 rounded-xl p-3 text-center font-mono text-xl font-black text-blue-400 tracking-wider">
+                                    {userProfile.referralCode}
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        navigator.clipboard.writeText(userProfile.referralCode);
+                                        alert('Đã sao chép mã giới thiệu vào bộ nhớ tạm!');
+                                    }}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white px-5 rounded-xl font-bold transition-all active:scale-95"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                            <p className="text-xs text-slate-400 mt-2.5 leading-relaxed">
+                                Chia sẻ mã này cho bạn bè. Khi họ đăng ký và nhập mã, bạn nhận <span className="text-amber-400 font-bold">+100 điểm</span> và bạn bè nhận <span className="text-amber-400 font-bold">+50 điểm</span>.
+                            </p>
+                        </div>
+
+                        {/* Enter Referral Code Block */}
+                        {!userProfile.referredBy ? (
+                            <div className="bg-white/5 border border-white/5 rounded-2xl p-5 mb-6">
+                                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-2">Bạn được giới thiệu?</p>
+                                <div className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Nhập mã của bạn bè..."
+                                        value={referralInput}
+                                        onChange={(e) => setReferralInput(e.target.value)}
+                                        className="flex-1 bg-white/5 border border-white/10 px-4 py-3 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500 uppercase tracking-widest text-center font-bold"
+                                    />
+                                    <button
+                                        onClick={handleApplyReferralCode}
+                                        disabled={isApplyingReferral}
+                                        className="bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white px-5 rounded-xl font-bold transition-all active:scale-95"
+                                    >
+                                        {isApplyingReferral ? 'Đang áp dụng...' : 'Áp dụng'}
+                                    </button>
+                                </div>
+                                {referralError && <p className="text-red-400 text-xs mt-2 font-medium">{referralError}</p>}
+                                {referralSuccess && <p className="text-emerald-400 text-xs mt-2 font-medium">{referralSuccess}</p>}
+                            </div>
+                        ) : (
+                            <div className="bg-emerald-950/15 border border-emerald-500/20 rounded-2xl p-4 mb-6 flex items-center gap-3 text-emerald-400">
+                                <span className="w-2 h-2 bg-emerald-500 rounded-full"></span>
+                                <p className="text-xs font-semibold">Bạn đã sử dụng mã giới thiệu: <span className="font-bold uppercase font-mono">{userProfile.referredBy}</span></p>
+                            </div>
+                        )}
+
+                        {/* Points Transaction History */}
+                        <div className="mb-6">
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3">Lịch sử tích lũy điểm</p>
+                            <div className="bg-white/5 border border-white/5 rounded-2xl p-4 max-h-48 overflow-y-auto space-y-3 no-scrollbar">
+                                {userProfile.history && userProfile.history.length > 0 ? (
+                                    [...userProfile.history]
+                                        .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0))
+                                        .map((tx) => (
+                                            <div key={tx.id} className="flex justify-between items-center text-sm border-b border-white/5 pb-2 last:border-0 last:pb-0">
+                                                <div>
+                                                    <p className="font-semibold text-slate-200">{tx.description}</p>
+                                                    <p className="text-[10px] text-slate-500">{new Date(tx.createdAt || Date.now()).toLocaleDateString('vi-VN')}</p>
+                                                </div>
+                                                <span className={`font-bold font-mono text-base ${tx.amount >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                                                    {tx.amount >= 0 ? `+${tx.amount}` : tx.amount}
+                                                </span>
+                                            </div>
+                                        ))
+                                ) : (
+                                    <p className="text-xs text-slate-500 text-center py-4">Chưa có giao dịch điểm nào.</p>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Actions */}
+                        <div className="flex gap-3">
+                            <button
+                                onClick={handleClientLogout}
+                                className="flex-1 bg-white/5 hover:bg-red-600/10 hover:text-red-400 border border-white/10 hover:border-red-500/20 py-3 rounded-xl font-bold transition-all text-slate-300"
+                            >
+                                Đăng xuất
+                            </button>
+                            <button
+                                onClick={() => { setShowClientProfileModal(false); setReferralError(''); setReferralSuccess(''); }}
+                                className="flex-1 bg-blue-600 hover:bg-blue-700 py-3 rounded-xl font-bold transition-all"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Image Note Modal */}
             {noteModalData.isOpen && noteModalData.img && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
@@ -5006,7 +5340,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 </div>
                                 <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
                                 <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                         </div>
@@ -5030,7 +5364,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
 
                         <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border transition-colors ${isAdmin ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border transition-colors ${isAdmin ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
                                 <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
                         </div>
@@ -5131,7 +5465,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 </div>
 
                                 {/* Nút đăng nhập nhanh */}
-                                <button onClick={() => user ? handleClientLogout() : openClientAuth('login')} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
+                                <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="absolute top-4 right-4 p-2 text-slate-300 hover:text-slate-600 transition-colors">
                                     <User size={16} />
                                 </button>
                             </div>
