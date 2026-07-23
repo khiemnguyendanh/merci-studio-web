@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
+/*
+  Merci Studio — hệ màu editorial đồng bộ với trang chủ (HomeHub)
+  Tông kem/nâu ấm: CREAM #faf7f1 · BAND #f1ebe0 · LINE #d9d0c3
+  TAN #a08d76 · BROWN #7a5c44 · DARK #3d2f26 · INK #2b241e · SUB #5c5044
+*/
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf7f1;
+  --foreground: #2b241e;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+@theme {
+  /* Font đồng bộ trang chủ */
+  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+
+  /* Remap thang slate -> tông stone ấm (khớp palette trang chủ) */
+  --color-slate-50: #f7f3ea;
+  --color-slate-100: #f1ebe0;  /* BAND */
+  --color-slate-150: #e9e1d2;
+  --color-slate-200: #d9d0c3;  /* LINE */
+  --color-slate-300: #c6bba9;
+  --color-slate-400: #a08d76;  /* TAN */
+  --color-slate-500: #5c5044;  /* SUB */
+  --color-slate-600: #52463b;
+  --color-slate-700: #463a2f;
+  --color-slate-800: #3d2f26;  /* DARK */
+  --color-slate-900: #2b241e;  /* INK */
+  --color-slate-950: #201a15;
+
+  /* Remap màu nhấn blue -> nâu editorial */
+  --color-blue-50: #f4ede3;
+  --color-blue-100: #e9dfd0;
+  --color-blue-200: #d8c5ae;
+  --color-blue-300: #c5a988;
+  --color-blue-400: #b39272;
+  --color-blue-500: #8a6a4f;
+  --color-blue-600: #7a5c44;   /* BROWN */
+  --color-blue-700: #5f4735;
+  --color-blue-800: #4a372a;
+  --color-blue-900: #3a2b21;
+  --color-blue-950: #2b2018;
+
+  /* Trắng ấm cho card/modal trên nền kem */
+  --color-white: #fffdf9;
+
+  /* Bo góc tiết chế hơn cho tinh thần editorial */
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.375rem;
+  --radius-2xl: 0.5rem;
+  --radius-3xl: 0.75rem;
+
+  /* Đổ bóng ấm, nhẹ */
+  --shadow-sm: 0 1px 2px rgb(61 47 38 / 0.05);
+  --shadow-md: 0 2px 8px rgb(61 47 38 / 0.07);
+  --shadow-lg: 0 4px 14px rgb(61 47 38 / 0.08);
+  --shadow-xl: 0 8px 22px rgb(61 47 38 / 0.10);
+  --shadow-2xl: 0 14px 34px rgb(61 47 38 / 0.14);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans);
+}
+
+@layer base {
+  /* Tiêu đề mặc định dùng serif như trang chủ (có thể override bằng font-sans) */
+  h1, h2 {
+    font-family: var(--font-serif);
+    letter-spacing: -0.01em;
+  }
 }

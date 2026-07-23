@@ -477,7 +477,7 @@ export default function LuckyWheelPopup() {
             {/* POPUP MODAL DIALOG */}
             {isOpen && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="relative w-full max-w-lg bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl overflow-hidden animate-fade-in-scale">
+                    <div className="relative w-full max-w-lg bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-hidden animate-fade-in-scale">
                         
                         {/* Confetti Overlay */}
                         {showConfetti && (

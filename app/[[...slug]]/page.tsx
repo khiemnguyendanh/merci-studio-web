@@ -612,7 +612,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
             {/* KPI Cards Row */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
                 {/* CARD 1: Visitors Hôm Nay */}
-                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                <div className="bg-white border border-slate-100 rounded-xl md:rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visitors Hôm Nay</p>
                     <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{visitorsToday}</p>
                     <p className="text-xs text-slate-500 mt-3 font-medium">
@@ -621,7 +621,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
                 </div>
 
                 {/* CARD 2: Booking Hôm Nay */}
-                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                <div className="bg-white border border-slate-100 rounded-xl md:rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Booking Hôm Nay</p>
                     <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{bookingsToday}</p>
                     <p className="text-xs text-slate-500 mt-3 font-medium">
@@ -630,7 +630,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
                 </div>
 
                 {/* CARD 3: Conversion 7d */}
-                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                <div className="bg-white border border-slate-100 rounded-xl md:rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Conversion 7d</p>
                     <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{conversion7d.toFixed(2)}%</p>
                     <p className="text-xs text-slate-500 mt-3 font-medium">
@@ -639,7 +639,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
                 </div>
 
                 {/* CARD 4: Unique Sessions 30d */}
-                <div className="bg-white border border-slate-100 rounded-[1.5rem] md:rounded-[2rem] p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
+                <div className="bg-white border border-slate-100 rounded-xl md:rounded-2xl p-6 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-300">
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Visitors 30 ngày</p>
                     <p className="text-3xl md:text-4xl font-black text-slate-900 mt-2">{totalUnique30d}</p>
                     <p className="text-xs text-slate-500 mt-3 font-medium">
@@ -651,7 +651,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
             {/* Charts Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                 {/* Biểu đồ Booking */}
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-1">
                          <span className="text-red-500">📈</span>
                          <h3 className="text-lg font-bold text-slate-800">Booking 14 ngày gần nhất</h3>
@@ -685,7 +685,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
                 </div>
 
                 {/* Biểu đồ Visitors */}
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm">
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm">
                     <div className="flex items-center gap-2 mb-1">
                          <span className="text-blue-500">👥</span>
                          <h3 className="text-lg font-bold text-slate-800">Visitors 14 ngày</h3>
@@ -722,7 +722,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
             {/* Popular Sections & Funnel Row */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-8">
                 {/* Popular Sections */}
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
                     <div>
                         <h3 className="text-lg font-bold text-slate-800">🔥 Chuyên mục xem nhiều nhất</h3>
                         <p className="text-xs text-slate-400 font-medium mt-1">Lượt truy cập chuyên mục và thời lượng xem TB (30 ngày qua)</p>
@@ -753,7 +753,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
                 </div>
 
                 {/* Funnel Chuyển đổi */}
-                <div className="bg-white border border-slate-100 rounded-[2rem] p-6 md:p-8 shadow-sm space-y-6">
+                <div className="bg-white border border-slate-100 rounded-2xl p-6 md:p-8 shadow-sm space-y-6">
                     <div>
                         <h3 className="text-lg font-bold text-slate-800">🔄 Funnel chuyển đổi (7 ngày qua)</h3>
                         <p className="text-xs text-slate-400 font-medium mt-1">Từ landing tới submit booking — % drop-off ở mỗi bước</p>
@@ -4432,7 +4432,7 @@ export default function Home() {
                 __html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
                 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-                .vi-safe-font { font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; font-feature-settings: normal; font-variant-ligatures: normal; word-break: normal; overflow-wrap: anywhere; }
+                .vi-safe-font { font-family: 'Be Vietnam Pro', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif !important; font-feature-settings: normal; font-variant-ligatures: normal; word-break: normal; overflow-wrap: anywhere; }
                 .blog-content, .blog-content * { font-family: Arial, Helvetica, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important; }
                 .masonry-grid { column-count: 2; column-gap: 0.55rem; }
                 .masonry-item { break-inside: avoid; -webkit-column-break-inside: avoid; page-break-inside: avoid; display: inline-block; width: 100%; }
@@ -4452,7 +4452,7 @@ export default function Home() {
             {/* Client Login / Register Modal */}
             {showClientLoginModal && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-[2rem] w-full max-w-md shadow-2xl border border-white/10 animate-in zoom-in-95">
+                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-2xl w-full max-w-md shadow-2xl border border-white/10 animate-in zoom-in-95">
                         <div className="flex justify-between items-start mb-7">
                             <div>
                                 <h3 className="font-bold text-3xl md:text-4xl font-serif leading-tight">Chào mừng trở lại</h3>
@@ -4513,7 +4513,7 @@ export default function Home() {
             {/* Client Profile Modal (Loyalty Points & Referral) */}
             {showClientProfileModal && userProfile && (
                 <div className="fixed inset-0 bg-black/70 z-[100] flex items-center justify-center p-4">
-                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-[2rem] w-full max-w-lg shadow-2xl border border-white/10 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar">
+                    <div className="bg-[#100d18] text-white p-7 md:p-9 rounded-2xl w-full max-w-lg shadow-2xl border border-white/10 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar">
                         <div className="flex justify-between items-center mb-6">
                             <h3 className="font-bold text-2xl font-serif">Tài khoản của bạn</h3>
                             <button onClick={() => { setShowClientProfileModal(false); setReferralError(''); setReferralSuccess(''); }} className="text-slate-400 hover:text-white p-1 transition-colors"><X /></button>
@@ -4531,7 +4531,7 @@ export default function Home() {
                         </div>
 
                         {/* Point Card */}
-                        <div className="bg-gradient-to-br from-amber-500/20 via-orange-600/15 to-transparent border border-amber-500/20 rounded-[2rem] p-6 mb-6 text-center relative overflow-hidden">
+                        <div className="bg-gradient-to-br from-amber-500/20 via-orange-600/15 to-transparent border border-amber-500/20 rounded-2xl p-6 mb-6 text-center relative overflow-hidden">
                             <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-full blur-3xl -z-10"></div>
                             <p className="text-xs text-amber-400 font-bold uppercase tracking-widest mb-1.5">Điểm thưởng tích lũy</p>
                             <div className="flex items-center justify-center gap-2 mb-2">
@@ -4641,7 +4641,7 @@ export default function Home() {
             {/* Image Note Modal */}
             {noteModalData.isOpen && noteModalData.img && (
                 <div className="fixed inset-0 bg-black/60 z-[110] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
-                    <div className="bg-white p-6 md:p-8 rounded-[2rem] w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 flex flex-col gap-5">
+                    <div className="bg-white p-6 md:p-8 rounded-2xl w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 border border-slate-100 flex flex-col gap-5">
                         <div className="flex justify-between items-center">
                             <h3 className="font-bold text-lg md:text-xl text-slate-900 flex items-center gap-2">
                                 <MessageSquare className="w-5 h-5 text-pink-500" /> Yêu cầu chỉnh sửa
@@ -5327,7 +5327,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* Menu Header */}
             {activeTab !== 'home' && (
-                <header className="relative md:sticky md:top-0 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 py-2.5 px-4 md:p-4 shadow-sm">
+                <header className="relative md:sticky md:top-0 z-40 bg-[#faf7f1]/90 backdrop-blur-md border-b border-slate-200 py-2.5 px-4 md:p-4">
                     <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4">
                         <div className="flex justify-between items-center w-full md:w-auto">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
@@ -5336,18 +5336,16 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 setActiveBlogId(null);
                                 window.history.pushState({}, document.title, '/');
                             }}>
-                                <div className="bg-blue-600 p-2 rounded-xl group-hover:rotate-12 transition-transform">
-                                    <Camera className="text-white" size={20} />
-                                </div>
-                                <h1 className="text-xl font-bold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
+                                <Camera className="text-slate-800 group-hover:rotate-12 transition-transform" size={22} strokeWidth={1.5} />
+                                <h1 className="text-2xl font-semibold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-sm font-bold text-slate-600 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
                                 <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                         </div>
 
                         <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                            <nav className="flex bg-slate-100/50 p-1 rounded-full w-max md:w-auto mx-auto border border-slate-200/50">
+                            <nav className="flex gap-1 md:gap-2 w-max md:w-auto mx-auto">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
@@ -5357,7 +5355,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'booking', label: 'Đặt lịch' },
                                     ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }, { id: 'promotion', label: 'Khuyến mãi' }] : [])
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3.5 py-1.5 md:px-5 md:py-2 rounded-full text-xs md:text-sm font-semibold transition-all whitespace-nowrap ${activeTab === t.id ? 'bg-white shadow-md text-blue-600 scale-105' : 'text-slate-500 hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3 py-2 md:px-4 text-[11px] md:text-xs font-semibold uppercase tracking-[0.15em] whitespace-nowrap border-b-2 transition-colors ${activeTab === t.id ? 'text-slate-900 border-slate-800' : 'text-slate-500 border-transparent hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -5365,7 +5363,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
 
                         <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border transition-colors ${isAdmin ? 'bg-blue-600 text-white border-blue-600 hover:bg-blue-700' : 'text-slate-600 bg-slate-50 border-slate-200 hover:bg-slate-100'}`}>
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
                                 <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
                         </div>
@@ -5391,11 +5389,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     )}
 
                     {activeTab === 'tool' && (
-                        <div className="mb-3 md:mb-8 bg-white border border-slate-100 rounded-xl md:rounded-[2rem] p-2.5 md:p-4 shadow-sm">
+                        <div className="mb-3 md:mb-8 bg-white border border-slate-100 rounded-xl md:rounded-2xl p-2.5 md:p-4 shadow-sm">
                             <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 md:gap-3">
                                 <div className="px-2">
                                     <p className="hidden sm:block text-xs font-bold uppercase tracking-widest text-blue-600">Tool Studio</p>
-                                    <h2 className="text-base md:text-2xl font-black text-slate-900">Tạo trang · Chọn ảnh · Lọc ảnh</h2>
+                                    <h2 className="text-base md:text-2xl font-semibold font-serif text-slate-900">Tạo trang · Chọn ảnh · Lọc ảnh</h2>
                                 </div>
                                 <div className="flex gap-2 overflow-x-auto no-scrollbar bg-slate-50 p-1 rounded-xl md:rounded-2xl border border-slate-100">
                                     {[
@@ -5431,7 +5429,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <User className="w-5 h-5" /> Đăng nhập / đăng ký khách hàng
                                     </button>
                                 )}
-                                <div className="bg-white p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
+                                <div className="bg-white p-6 md:p-8 rounded-2xl md:rounded-2xl shadow-2xl border border-slate-100 space-y-4 md:space-y-6">
                                     <div className="space-y-2">
                                         <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase ml-1 tracking-widest">Link folder Google Drive</label>
                                         <textarea
@@ -5475,7 +5473,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                 )}
                             </div>
-                            <img src={DEFAULT_PROMO} className="rounded-[2rem] md:rounded-[3rem] shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
+                            <img src={DEFAULT_PROMO} className="rounded-2xl md:rounded-3xl shadow-2xl object-cover aspect-[4/3] w-full animate-in zoom-in duration-700" alt="Promo" loading="lazy" decoding="async" referrerPolicy="no-referrer" />
                         </div>
                     )}
 
@@ -5516,7 +5514,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         onDrop={(e) => handleVideoDrop(vid.id, e)}
                                         onDragEnd={() => { setDraggingVideoId(null); setDragOverVideoId(null); }}
                                         onClick={() => setVideoModal({ isOpen: true, youtubeId: vid.youtubeId })}
-                                        className={`group cursor-pointer relative rounded-[2rem] md:rounded-[2.5rem] overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900 ${draggingVideoId === vid.id ? 'opacity-50 scale-95' : ''} ${dragOverVideoId === vid.id ? 'ring-4 ring-blue-400' : ''}`}
+                                        className={`group cursor-pointer relative rounded-2xl md:rounded-2xl overflow-hidden shadow-md hover:shadow-2xl transition-all duration-500 bg-slate-900 ${draggingVideoId === vid.id ? 'opacity-50 scale-95' : ''} ${dragOverVideoId === vid.id ? 'ring-4 ring-blue-400' : ''}`}
                                     >
                                         <img loading="lazy" decoding="async" src={`https://img.youtube.com/vi/${vid.youtubeId}/maxresdefault.jpg`} className="w-full aspect-video object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700" alt={vid.title} referrerPolicy="no-referrer" />
                                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-center justify-center">
@@ -5555,7 +5553,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <div className="flex justify-between items-center gap-3">
                                         <div>
                                             <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Blog Merci Studio</p>
-                                            <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900">Blog Cưới</h2>
+                                            <h2 className="text-2xl md:text-4xl font-semibold font-serif text-slate-900">Blog Cưới</h2>
                                         </div>
                                         {isAdmin && (
                                             <button onClick={openNewBlogModal} className="bg-blue-600 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-blue-700 text-sm md:text-base">
@@ -5593,7 +5591,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 setActiveBlogId(blog.id);
                                                 const slugToUse = blog.slug || createSlug(blog.title) || blog.id;
                                                 window.history.pushState({}, '', `/${slugToUse}`);
-                                            }} className="group cursor-pointer bg-white rounded-2xl md:rounded-[2rem] border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
+                                            }} className="group cursor-pointer bg-white rounded-2xl md:rounded-2xl border border-slate-100 overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col h-full">
                                                 <div className="aspect-[4/3] md:aspect-[16/10] overflow-hidden relative">
                                                     <img src={blog.coverUrl || DEFAULT_PROMO} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" alt={blog.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.target.src = DEFAULT_PROMO; }} />
                                                     {isAdmin && (
@@ -5628,7 +5626,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                             ))}
                                                         </div>
                                                     )}
-                                                    <h3 className="vi-safe-font text-sm md:text-2xl font-black font-sans text-slate-900 mb-2 md:mb-3 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">{blog.title}</h3>
+                                                    <h3 className="text-base md:text-2xl font-semibold font-serif text-slate-900 mb-2 md:mb-3 group-hover:text-blue-600 transition-colors line-clamp-2 leading-snug">{blog.title}</h3>
                                                     <p className="text-slate-500 text-xs md:text-sm leading-relaxed line-clamp-2 md:line-clamp-3 mb-3 md:mb-6 flex-grow">{blog.metaDesc || blog.content}</p>
                                                     <span className="text-blue-600 font-semibold text-xs md:text-sm flex items-center gap-1 mt-auto">Đọc tiếp <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
                                                 </div>
@@ -5642,7 +5640,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
                                 </>
                             ) : (
-                                <div className="animate-in slide-in-from-right duration-500 max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-[2rem] md:rounded-[3rem] shadow-sm border border-slate-100">
+                                <div className="animate-in slide-in-from-right duration-500 max-w-4xl mx-auto bg-white p-6 md:p-12 rounded-2xl md:rounded-3xl shadow-sm border border-slate-100">
                                     <div className="flex items-center justify-between mb-8 pb-8 border-b border-slate-100">
                                         <button onClick={() => {
                                             setActiveBlogId(null);
@@ -5681,7 +5679,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             <div className="flex items-center gap-2 text-sm text-blue-600 font-bold tracking-widest uppercase mb-4">
                                                 <Calendar className="w-4 h-4" /> {new Date(currentViewBlog.createdAt).toLocaleDateString('vi-VN')}
                                             </div>
-                                            <h1 className="vi-safe-font text-3xl md:text-5xl font-black font-sans text-slate-900 leading-tight mb-8">
+                                            <h1 className="text-3xl md:text-5xl font-semibold font-serif text-slate-900 leading-tight mb-8">
                                                 {currentViewBlog.title}
                                             </h1>
                                             {getBlogHashtags(currentViewBlog).length > 0 && (
@@ -5868,9 +5866,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     const slugToUse = a.slug || createSlug(a.title) || a.id;
                                                     window.history.pushState({}, '', `/${slugToUse}`);
                                                 }}
-                                                className={`group cursor-pointer relative transition-all duration-200 ${draggingAlbumId === a.id ? 'opacity-50 scale-95' : ''} ${dragOverAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl md:rounded-[2.5rem]' : ''}`}
+                                                className={`group cursor-pointer relative transition-all duration-200 ${draggingAlbumId === a.id ? 'opacity-50 scale-95' : ''} ${dragOverAlbumId === a.id ? 'ring-4 ring-blue-400 rounded-2xl md:rounded-2xl' : ''}`}
                                             >
-                                                <div className="aspect-[4/5] rounded-2xl md:rounded-[2.5rem] overflow-hidden mb-2 md:mb-3 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
+                                                <div className="aspect-[4/5] rounded-2xl md:rounded-2xl overflow-hidden mb-2 md:mb-3 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-col items-start gap-1 max-w-[88%]">
@@ -5892,7 +5890,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     )}
 
                                                     <div className="absolute bottom-3 md:bottom-8 left-3 md:left-8 right-3 md:right-8 text-white">
-                                                        <h3 className="text-sm md:text-3xl font-bold font-sans mb-1 md:mb-2 leading-tight">{a.title}</h3>
+                                                        <h3 className="text-base md:text-3xl font-semibold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
                                                             <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest"><span>{a.images?.length || 0} tác phẩm</span><span className="opacity-50"> · </span><span className="inline-flex items-center gap-0.5 md:gap-1"><Eye size={10} className="md:w-3.5 md:h-3.5 inline shrink-0" /> {a.views || 0}</span></p>
                                                             {a.sub && <p className="hidden md:block text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
@@ -5987,7 +5985,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             const isFewAlbumImages = paginatedAlbumImages.length <= 8;
 
                                             return (
-                                                <div key={img.id} className={`${isFewAlbumImages ? 'relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5]' : 'masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-[1.75rem] overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white'}`} onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
+                                                <div key={img.id} className={`${isFewAlbumImages ? 'relative group rounded-2xl md:rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5]' : 'masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white'}`} onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
                                                     <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className={`${isFewAlbumImages ? 'w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105' : 'w-full h-auto block transition-transform duration-500 group-hover:scale-105'}`} loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
 
                                                     {/* Nút Tải xuống */}
@@ -6029,22 +6027,22 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     {/* --- TAB: LỌC ẢNH --- */}
                     {activeTab === 'tool' && activeToolTab === 'filter' && (
                         <div className="max-w-4xl mx-auto space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
-                            <div className="bg-white p-6 md:p-10 rounded-[2rem] md:rounded-[3rem] shadow-2xl border border-slate-100 space-y-6 md:space-y-10">
+                            <div className="bg-white p-6 md:p-10 rounded-2xl md:rounded-3xl shadow-2xl border border-slate-100 space-y-6 md:space-y-10">
                                 <h2 className="text-3xl md:text-4xl font-bold text-slate-900 leading-tight">Lọc ảnh và chép sang thư mục mới</h2>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-                                    <div onClick={selectSourceFolder} className={`p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
+                                    <div onClick={selectSourceFolder} className={`p-6 md:p-8 rounded-xl md:rounded-2xl border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${sourceHandle ? 'bg-blue-50 border-blue-400' : 'bg-slate-50 border-slate-200 hover:border-blue-400 hover:bg-white'}`}>
                                         <Folder className="text-blue-600" size={24} />
                                         <p className="font-bold truncate text-slate-700 text-sm md:text-base">{sourceHandle ? sourceHandle.name : 'Chọn thư mục gốc'}</p>
                                     </div>
-                                    <div onClick={selectDestFolder} className={`p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
+                                    <div onClick={selectDestFolder} className={`p-6 md:p-8 rounded-xl md:rounded-2xl border-2 border-dashed cursor-pointer transition-all flex items-center gap-4 md:gap-5 ${destHandle ? 'bg-green-50 border-green-400' : 'bg-slate-50 border-slate-200 hover:border-green-400 hover:bg-white'}`}>
                                         <FolderDown className="text-green-600" size={24} />
                                         <p className="font-bold truncate text-slate-700 text-sm md:text-base">{destHandle ? destHandle.name : 'Chọn thư mục đích'}</p>
                                     </div>
                                 </div>
-                                <textarea className="w-full h-48 md:h-64 border-2 border-slate-100 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] outline-none focus:border-blue-500 transition-colors font-mono text-xs md:text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
+                                <textarea className="w-full h-48 md:h-64 border-2 border-slate-100 p-4 md:p-6 rounded-xl md:rounded-2xl outline-none focus:border-blue-500 transition-colors font-mono text-xs md:text-sm shadow-inner" placeholder="Dán danh sách tên ảnh..." value={filterText} onChange={e => setFilterText(e.target.value)} />
                                 
                                 {/* Lựa chọn đuôi file */}
-                                <div className="space-y-3 bg-slate-50 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2rem] border border-slate-100">
+                                <div className="space-y-3 bg-slate-50 p-4 md:p-6 rounded-xl md:rounded-2xl border border-slate-100">
                                     <label className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest block ml-1">Đuôi file cần sao chép (ARW, CR3, JPG...)</label>
                                     <div className="flex flex-wrap gap-2">
                                         {[
@@ -6081,7 +6079,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 </button>
                             </div>
                             {filterLogs.length > 0 && (
-                                <div className="bg-slate-900 text-green-400 p-6 md:p-8 rounded-[1.5rem] md:rounded-[2rem] font-mono text-[10px] md:text-xs h-48 md:h-64 overflow-y-auto no-scrollbar border border-slate-800 animate-in fade-in duration-500">
+                                <div className="bg-slate-900 text-green-400 p-6 md:p-8 rounded-xl md:rounded-2xl font-mono text-[10px] md:text-xs h-48 md:h-64 overflow-y-auto no-scrollbar border border-slate-800 animate-in fade-in duration-500">
                                     {filterLogs.map((log, idx) => <div key={idx} className="mb-1">{log}</div>)}
                                 </div>
                             )}
@@ -6091,10 +6089,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     {/* --- TAB: GALLERY (Chọn ảnh) --- */}
                     {activeTab === 'tool' && activeToolTab === 'gallery' && (
                         <div className="space-y-8 md:space-y-10 animate-in zoom-in-95 duration-500">
-                            <div className="bg-white border border-slate-100 rounded-2xl md:rounded-[2rem] p-3.5 md:p-6 shadow-sm">
+                            <div className="bg-white border border-slate-100 rounded-2xl md:rounded-2xl p-3.5 md:p-6 shadow-sm">
                                 <div className="flex items-center justify-between gap-3 mb-3 md:mb-4 cursor-pointer select-none" onClick={() => setShowSavedPages(!showSavedPages)}>
                                     <div className="flex items-center gap-2">
-                                        <h2 className="text-sm md:text-3xl font-bold font-sans text-slate-900">Các link chọn ảnh đã tạo</h2>
+                                        <h2 className="text-sm md:text-3xl font-semibold font-serif text-slate-900">Các link chọn ảnh đã tạo</h2>
                                         {user && (
                                             <span className="bg-blue-50 text-blue-600 px-2.5 py-0.5 rounded-full text-xs font-bold shadow-sm">
                                                 {savedClientPages.length}
@@ -6208,7 +6206,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     )}
 
                                     {/* Control Bar */}
-                                    <div className="sticky top-2 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-2 md:p-4 border border-slate-100 rounded-xl md:rounded-[2rem] flex flex-col justify-between gap-2 md:gap-4 shadow-xl">
+                                    <div className="sticky top-2 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-2 md:p-4 border border-slate-100 rounded-xl md:rounded-2xl flex flex-col justify-between gap-2 md:gap-4 shadow-xl">
                                         <div className="flex flex-row items-center justify-between w-full md:w-auto gap-2">
                                             {/* Info and Save state */}
                                             <div className="flex items-center gap-1.5 px-1 md:pl-2">
@@ -6436,7 +6434,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 </>
                             ) : (
                                 currentFolderId ? (
-                                    <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-pink-200 shadow-sm mx-2 space-y-4">
+                                    <div className="text-center py-20 md:py-40 bg-white rounded-2xl md:rounded-3xl border border-dashed border-pink-200 shadow-sm mx-2 space-y-4">
                                         <AlertCircle size={48} className="mx-auto text-pink-500 animate-bounce" />
                                         <h3 className="text-xl font-bold text-slate-900">Không tìm thấy ảnh hoặc thư mục chưa chia sẻ</h3>
                                         <p className="text-slate-500 font-medium text-sm md:text-base max-w-md mx-auto px-4 leading-relaxed">
@@ -6444,7 +6442,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         </p>
                                     </div>
                                 ) : (
-                                    <div className="text-center py-20 md:py-40 bg-white rounded-[2rem] md:rounded-[3rem] border border-dashed border-slate-200 shadow-sm mx-2">
+                                    <div className="text-center py-20 md:py-40 bg-white rounded-2xl md:rounded-3xl border border-dashed border-slate-200 shadow-sm mx-2">
                                         <ImageIcon size={48} className="mx-auto text-slate-300 mb-4 opacity-40" />
                                         <p className="text-slate-400 font-medium text-sm md:text-base px-4">Vui lòng dán link Drive vào mục "Tạo trang" để xem ảnh.</p>
                                     </div>
@@ -6460,7 +6458,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Analytics</p>
-                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Thống Kê Hoạt Động</h2>
+                                    <h2 className="text-2xl md:text-4xl font-semibold font-serif text-slate-900 mt-1">Thống Kê Hoạt Động</h2>
                                     <p className="text-slate-500 text-sm mt-1">Theo dõi hoạt động truy cập và hiệu quả của các chuyên mục.</p>
                                 </div>
                                 <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2 text-xs md:text-sm font-bold text-blue-700">
@@ -6469,7 +6467,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             </div>
 
                             {!isAdmin ? (
-                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
                                     <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-3" />
                                     <p className="text-slate-900 font-bold text-lg">Từ chối truy cập</p>
                                     <p className="text-slate-400 text-sm mt-1">Bạn cần đăng nhập bằng tài khoản Admin để xem thống kê.</p>
@@ -6478,7 +6476,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </button>
                                 </div>
                             ) : isLoadingSessions ? (
-                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                                <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center">
                                     <RefreshCcw className="w-10 h-10 text-blue-600 animate-spin mb-4" />
                                     <p className="text-slate-500 font-bold">Đang tải dữ liệu thống kê...</p>
                                 </div>
@@ -6495,7 +6493,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Promotion</p>
-                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Chương Trình Khuyến Mãi</h2>
+                                    <h2 className="text-2xl md:text-4xl font-semibold font-serif text-slate-900 mt-1">Chương Trình Khuyến Mãi</h2>
                                     <p className="text-slate-500 text-sm mt-1">Chương trình khuyến mãi nháp dành riêng cho Admin cấu hình.</p>
                                 </div>
                                 <div className="bg-blue-50 border border-blue-100 rounded-2xl px-4 py-2 text-xs md:text-sm font-bold text-blue-700">
@@ -6504,7 +6502,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             </div>
 
                             {!isAdmin ? (
-                                <div className="text-center py-20 bg-white rounded-[2rem] border border-slate-100 shadow-sm">
+                                <div className="text-center py-20 bg-white rounded-2xl border border-slate-100 shadow-sm">
                                     <AlertCircle className="w-12 h-12 mx-auto text-red-500 mb-3" />
                                     <p className="text-slate-900 font-bold text-lg">Từ chối truy cập</p>
                                     <p className="text-slate-400 text-sm mt-1">Bạn cần đăng nhập bằng tài khoản Admin để quản lý khuyến mãi.</p>
@@ -6525,7 +6523,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-widest text-blue-600">Merci Studio Booking</p>
-                                    <h2 className="text-2xl md:text-4xl font-bold font-sans text-slate-900 mt-1">Đặt Lịch &amp; Tư Vấn</h2>
+                                    <h2 className="text-2xl md:text-4xl font-semibold font-serif text-slate-900 mt-1">Đặt Lịch &amp; Tư Vấn</h2>
                                     <p className="text-slate-500 text-sm mt-1">Hãy để Merci Studio đồng hành và ghi lại những khoảnh khắc tuyệt vời nhất của bạn.</p>
                                 </div>
                                 {isAdmin && (
@@ -6540,22 +6538,22 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 /* ADMIN BOOKING MANAGEMENT */
                                 <div className="space-y-6 animate-in fade-in duration-500">
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                        <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Tổng lượt đặt</p>
                                             <p className="text-3xl font-black text-slate-900 mt-1">{bookings.length}</p>
                                         </div>
-                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                        <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Chưa xử lý</p>
                                             <p className="text-3xl font-black text-amber-600 mt-1">{bookings.filter(b => b.status === 'Chưa xử lý').length}</p>
                                         </div>
-                                        <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-sm">
+                                        <div className="bg-white border border-slate-100 rounded-xl p-5 shadow-sm">
                                             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Đã tư vấn</p>
                                             <p className="text-3xl font-black text-emerald-600 mt-1">{bookings.filter(b => b.status === 'Đã tư vấn').length}</p>
                                         </div>
                                     </div>
 
                                     {bookings.length > 0 ? (
-                                        <div className="bg-white border border-slate-100 rounded-[2rem] overflow-hidden shadow-sm">
+                                        <div className="bg-white border border-slate-100 rounded-2xl overflow-hidden shadow-sm">
                                             <div className="overflow-x-auto">
                                                 <table className="w-full text-left border-collapse">
                                                     <thead>
@@ -6632,7 +6630,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </div>
                                         </div>
                                     ) : (
-                                        <div className="text-center py-20 bg-white rounded-[2rem] border border-dashed border-slate-200">
+                                        <div className="text-center py-20 bg-white rounded-2xl border border-dashed border-slate-200">
                                             <Calendar className="w-12 h-12 mx-auto text-slate-300 mb-3 opacity-50" />
                                             <p className="text-slate-400 font-medium">Chưa có lượt đặt lịch nào từ khách hàng.</p>
                                         </div>
@@ -6643,7 +6641,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
                                     {/* Left Side: Text and Premium Cards */}
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-gradient-to-tr from-slate-900 to-blue-950 text-white rounded-[2rem] p-8 shadow-xl relative overflow-hidden">
+                                        <div className="bg-gradient-to-tr from-slate-900 to-blue-950 text-white rounded-2xl p-8 shadow-xl relative overflow-hidden">
                                             <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl"></div>
                                             <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl"></div>
                                             
@@ -6670,7 +6668,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </ul>
                                         </div>
 
-                                        <div className="bg-white border border-slate-100 rounded-[2rem] p-8 shadow-sm space-y-6">
+                                        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm space-y-6">
                                             <h4 className="text-lg font-black text-slate-900">Liên hệ trực tiếp</h4>
                                             <div className="space-y-6">
                                                 <div className="flex items-start gap-3">
@@ -6708,7 +6706,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
 
                                     {/* Right Side: Form */}
-                                    <div className="lg:col-span-7 bg-white border border-slate-100 rounded-[2.5rem] p-6 md:p-10 shadow-lg relative overflow-hidden">
+                                    <div className="lg:col-span-7 bg-white border border-slate-100 rounded-2xl p-6 md:p-10 shadow-lg relative overflow-hidden">
                                         <form onSubmit={handleCreateBooking} className="space-y-6">
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Họ và tên *</label>
@@ -6813,6 +6811,34 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                     )}
                 </div>
             </main>
+
+            {/* FOOTER LIÊN HỆ — đồng bộ trang chủ */}
+            {activeTab !== 'home' && (
+                <footer className="border-t border-slate-200 bg-[#faf7f1]">
+                    <div className="max-w-7xl mx-auto px-6 md:px-12 py-12 md:py-16 grid grid-cols-1 md:grid-cols-3 gap-10 md:gap-12">
+                        <div>
+                            <div className="font-serif text-3xl font-semibold text-slate-900">Merci Studio</div>
+                            <p className="mt-3 text-sm font-light text-slate-500 leading-relaxed">“Lưu giữ khoảnh khắc vượt thời gian”<br />Hẹn gặp bạn tại studio.</p>
+                        </div>
+                        <div className="text-sm font-light text-slate-500 leading-loose">
+                            <div className="text-xs tracking-[0.25em] text-slate-400 mb-2">ĐỊA CHỈ</div>
+                            <div>244 Đội Cấn, Ba Đình, Hà Nội</div>
+                            <div>650 Thân Nhân Trung, Việt Yên, Bắc Ninh</div>
+                        </div>
+                        <div className="text-sm font-light text-slate-500 leading-loose">
+                            <div className="text-xs tracking-[0.25em] text-slate-400 mb-2">LIÊN HỆ</div>
+                            <div>0888.999.545 — 0877.999.545</div>
+                            <div>vaycuoidouyin@gmail.com</div>
+                            <div className="flex flex-wrap gap-4 mt-2 text-[13px] tracking-wide">
+                                <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700">Facebook</a>
+                                <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700">Instagram</a>
+                                <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700">TikTok</a>
+                                <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-700">Zalo</a>
+                            </div>
+                        </div>
+                    </div>
+                </footer>
+            )}
 
             {/* LIGHTBOX FOR GALLERY & ALBUMS */}
             <ImageLightbox
