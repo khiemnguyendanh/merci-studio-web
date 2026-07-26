@@ -1621,8 +1621,8 @@ export default function Home() {
 
                     if (existingAlbum) {
                         await updateDoc(doc(db, 'merci_albums', existingAlbum.id), {
-                            title: existingAlbum.title || folder.name,
-                            slug: existingAlbum.slug || createSlug(existingAlbum.title || folder.name),
+                            title: folder.name || existingAlbum.title,
+                            slug: createSlug(folder.name) || existingAlbum.slug,
                             sub: existingAlbum.sub || 'Bộ sưu tập',
                             category: getAlbumMainCategory(existingAlbum, categoryList[0] || 'Wedding'),
                             categories: [getAlbumMainCategory(existingAlbum, categoryList[0] || 'Wedding')],
@@ -3069,7 +3069,10 @@ export default function Home() {
         const folderId = extractDriveFolderId(sourceDriveLink);
 
         try {
-            const files = await getAllDriveImages(folderId);
+            const [files, folderInfo] = await Promise.all([
+                getAllDriveImages(folderId),
+                getDriveFolderInfo(folderId).catch(() => null)
+            ]);
 
             if (files.length > 0) {
                 const newImgs = files.map(normalizeDriveImage);
@@ -3077,8 +3080,13 @@ export default function Home() {
                 const coverStillExists = newImgs.find(img => img.id === existingCoverId);
                 const coverImage = coverStillExists || newImgs[0];
 
+                const updatedTitle = folderInfo?.name || currentAlbum.title;
+                const updatedSlug = folderInfo?.name ? createSlug(folderInfo.name) : currentAlbum.slug;
+
                 const updated = {
                     ...currentAlbum,
+                    title: updatedTitle,
+                    slug: updatedSlug,
                     // Reload Drive: chỉ giữ đúng các ảnh đang có trong folder Drive hiện tại.
                     // Ảnh đã xóa khỏi folder sẽ bị xóa khỏi album, ảnh mới sẽ được thêm vào.
                     images: newImgs,
