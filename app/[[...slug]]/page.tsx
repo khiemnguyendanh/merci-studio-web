@@ -3389,13 +3389,24 @@ export default function Home() {
     };
 
     // Tự động đồng bộ lựa chọn của Khách vãng lai sang Tài khoản khi đăng nhập thành công
+    // VÀ tải lại danh sách thả tim từ DB (khi Firebase Auth khôi phục phiên trên thiết bị khác)
     useEffect(() => {
-        if (user?.email && (currentSelectionKey || currentFolderId)) {
-            const folderId = currentSelectionKey || currentFolderId;
-            if (selectedImages.size > 0 || Object.keys(imageNotes).length > 0) {
-                saveClientSelectionToDB(folderId, selectedImages, imageNotes);
+        const syncSelections = async () => {
+            if (user?.email && (currentSelectionKey || currentFolderId)) {
+                const folderId = currentSelectionKey || currentFolderId;
+                
+                // 1. Nếu có thả tim local chưa lưu (ví dụ vừa chọn xong rồi mới bấm đăng nhập)
+                if (selectedImages.size > 0 || Object.keys(imageNotes).length > 0) {
+                    await saveClientSelectionToDB(folderId, selectedImages, imageNotes);
+                }
+                
+                // 2. Tải lại toàn bộ thả tim của tài khoản này từ DB (hỗ trợ đồng bộ chéo thiết bị)
+                const { selectedSet, notes } = await loadClientSelectionFromDB(folderId);
+                setSelectedImages(selectedSet);
+                setImageNotes(notes);
             }
-        }
+        };
+        syncSelections();
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [user?.email]);
 
