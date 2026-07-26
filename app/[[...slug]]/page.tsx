@@ -2,7 +2,6 @@
 /* eslint-disable */
 'use client';
 import React, { useState, useEffect, useCallback } from 'react';
-import Script from 'next/script';
 import dynamic from 'next/dynamic';
 import {
     Camera, Wand2, Copy, ArrowRight, Heart,
@@ -11,14 +10,13 @@ import {
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail, Eye,
     BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
-import PromotionManager from '@/components/PromotionManager';
-import LuckyWheelPopup from '@/components/LuckyWheelPopup';
 import HomeHub from '@/components/HomeHub';
+import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment, runTransaction } from 'firebase/firestore';
+import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment } from 'firebase/firestore';
 
 // Cấu hình Firebase
 const firebaseConfig = {
@@ -59,6 +57,8 @@ const getLightboxImageName = (img, fallback = 'Merci Studio') => {
     if (!img || typeof img === 'string') return fallback;
     return img.name || img.title || img.alt || fallback;
 };
+
+const hasAnalyticsConsent = () => typeof window !== 'undefined' && localStorage.getItem('merci_analytics_consent') === 'accepted';
 
 function SmoothImageLightbox({
     lightboxData,
@@ -332,6 +332,11 @@ function SmoothImageLightbox({
 
 const ImageLightbox = SmoothImageLightbox;
 const VideoLightbox = dynamic(() => import('@/components/VideoLightbox'), { ssr: false });
+const LuckyWheelPopup = dynamic(() => import('@/components/LuckyWheelPopup'), { ssr: false });
+const PromotionManager = dynamic(() => import('@/components/PromotionManager'), {
+    ssr: false,
+    loading: () => <div className="py-16 text-center text-slate-500">Đang tải trình quản lý khuyến mãi...</div>
+});
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
@@ -401,7 +406,7 @@ const createSlug = (str) => {
 };
 
 const trackPixelEvent = (eventName, params = {}) => {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && hasAnalyticsConsent()) {
         if (window.fbq) {
             try {
                 window.fbq('track', eventName, params);
@@ -791,6 +796,7 @@ function AnalyticsDashboard({ sessions = [], bookings = [], albums = [], getDriv
 export default function Home() {
     // === STATES ===
     const [mounted, setMounted] = useState(false);
+    const [analyticsConsent, setAnalyticsConsent] = useState(false);
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('home');
     const [isLoading, setIsLoading] = useState(false);
@@ -924,11 +930,14 @@ export default function Home() {
     // === EFFECTS ===
     useEffect(() => {
         setMounted(true);
-
+        const syncConsent = () => setAnalyticsConsent(hasAnalyticsConsent());
+        syncConsent();
+        window.addEventListener('merci-consent-change', syncConsent);
+        return () => window.removeEventListener('merci-consent-change', syncConsent);
     }, []);
 
     const updateSessionStep = useCallback(async (stepField) => {
-        if (typeof window === 'undefined' || !db) return;
+        if (typeof window === 'undefined' || !db || !hasAnalyticsConsent()) return;
         const sessionId = sessionStorage.getItem('merci_session_id');
         if (!sessionId) return;
 
@@ -947,7 +956,7 @@ export default function Home() {
     }, []);
 
     const recordAlbumView = useCallback(async (albumId) => {
-        if (typeof window === 'undefined' || !db || !albumId) return;
+        if (typeof window === 'undefined' || !db || !albumId || !hasAnalyticsConsent()) return;
         const sessionId = sessionStorage.getItem('merci_session_id');
         if (!sessionId) return;
 
@@ -987,7 +996,7 @@ export default function Home() {
 
     // Tự động khởi tạo và theo dõi session
     useEffect(() => {
-        if (!mounted || !db) return;
+        if (!mounted || !db || !analyticsConsent) return;
 
         const initSession = async () => {
             let sessionId = sessionStorage.getItem('merci_session_id');
@@ -1021,11 +1030,11 @@ export default function Home() {
         };
 
         initSession();
-    }, [mounted, db]);
+    }, [mounted, db, analyticsConsent]);
 
     // Theo dõi thay đổi tab/nội dung để update bước phễu và bắn Pixel
     useEffect(() => {
-        if (!mounted || !db) return;
+        if (!mounted || !db || !analyticsConsent) return;
 
         if (activeTab === 'collection' || activeAlbumId) {
             updateSessionStep('visitedCollection');
@@ -1059,11 +1068,11 @@ export default function Home() {
             updateSessionStep('visitedBooking');
             trackPixelEvent('InitiateCheckout');
         }
-    }, [activeTab, activeAlbumId, activeBlogId, albums, blogs, mounted, db, updateSessionStep, recordAlbumView]);
+    }, [activeTab, activeAlbumId, activeBlogId, albums, blogs, mounted, db, analyticsConsent, updateSessionStep, recordAlbumView]);
 
     // Theo dõi và tính toán thời lượng xem trang (Time Spent)
     useEffect(() => {
-        if (!mounted || !db) return;
+        if (!mounted || !db || !analyticsConsent) return;
         const sessionId = sessionStorage.getItem('merci_session_id');
         if (!sessionId) return;
 
@@ -1108,19 +1117,20 @@ export default function Home() {
                 updatedAt: Date.now()
             }).catch(err => {});
         };
-    }, [activeTab, mounted, db]);
+    }, [activeTab, mounted, db, analyticsConsent]);
 
     useEffect(() => {
         if (!mounted || !auth) return;
 
-        const unsubAuth = onAuthStateChanged(auth, (currentUser) => {
+        const unsubAuth = onAuthStateChanged(auth, async (currentUser) => {
             setUser(currentUser);
 
             const email = currentUser?.email?.toLowerCase() || '';
+            const tokenResult = currentUser ? await currentUser.getIdTokenResult().catch(() => null) : null;
             const isFirebaseAdmin = Boolean(
                 currentUser &&
                 !currentUser.isAnonymous &&
-                ADMIN_EMAILS.includes(email)
+                (tokenResult?.claims?.admin === true || ADMIN_EMAILS.includes(email))
             );
 
             setIsAdmin(isFirebaseAdmin);
@@ -1131,48 +1141,8 @@ export default function Home() {
     }, [mounted]);
 
     const ensureUserProfile = async (uid, email) => {
-        if (!db) return;
-        const userDocRef = doc(db, 'merci_users', uid);
-        const docSnap = await getDoc(userDocRef);
-        if (!docSnap.exists()) {
-            let referralCode = '';
-            let isUnique = false;
-            const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-            for (let attempt = 0; attempt < 10; attempt++) {
-                referralCode = '';
-                for (let i = 0; i < 6; i++) {
-                    referralCode += chars.charAt(Math.floor(Math.random() * chars.length));
-                }
-                const q = query(collection(db, 'merci_users'), where('referralCode', '==', referralCode));
-                const snap = await getDocs(q);
-                if (snap.empty) {
-                    isUnique = true;
-                    break;
-                }
-            }
-            if (!isUnique) {
-                referralCode = 'M' + String(Date.now()).slice(-5);
-            }
-
-            const newUserProfile = {
-                uid,
-                email: email || '',
-                points: 50,
-                referralCode,
-                referredBy: '',
-                createdAt: Date.now(),
-                history: [
-                    {
-                        id: `tx_${Date.now()}_signup`,
-                        amount: 50,
-                        type: 'signup',
-                        description: 'Tặng điểm đăng ký thành viên mới',
-                        createdAt: Date.now()
-                    }
-                ]
-            };
-            await setDoc(userDocRef, newUserProfile);
-        }
+        if (!uid) return;
+        await apiFetch('/api/account/profile', { method: 'POST' });
     };
 
     useEffect(() => {
@@ -1210,7 +1180,7 @@ export default function Home() {
             setReferralError('Vui lòng nhập mã giới thiệu.');
             return;
         }
-        if (!db || !user?.uid || !userProfile) return;
+        if (!user?.uid || !userProfile) return;
 
         const codeToApply = referralInput.trim().toUpperCase();
 
@@ -1227,64 +1197,9 @@ export default function Home() {
         setIsApplyingReferral(true);
 
         try {
-            const q = query(collection(db, 'merci_users'), where('referralCode', '==', codeToApply));
-            const snap = await getDocs(q);
-            
-            if (snap.empty) {
-                setReferralError('Mã giới thiệu không tồn tại.');
-                setIsApplyingReferral(false);
-                return;
-            }
-
-            const referrerDoc = snap.docs[0];
-            const referrerData = referrerDoc.data();
-            const referrerUid = referrerDoc.id;
-
-            const userDocRef = doc(db, 'merci_users', user.uid);
-            const referrerDocRef = doc(db, 'merci_users', referrerUid);
-
-            await runTransaction(db, async (transaction) => {
-                const userSnap = await transaction.get(userDocRef);
-                const referrerSnap = await transaction.get(referrerDocRef);
-
-                if (!userSnap.exists() || !referrerSnap.exists()) {
-                    throw new Error('Tài khoản không hợp lệ.');
-                }
-
-                const userData = userSnap.data();
-                if (userData.referredBy) {
-                    throw new Error('Bạn đã nhập mã giới thiệu rồi.');
-                }
-
-                transaction.update(userDocRef, {
-                    referredBy: codeToApply,
-                    points: (userData.points || 0) + 50,
-                    history: [
-                        ...(userData.history || []),
-                        {
-                            id: `tx_${Date.now()}_referred`,
-                            amount: 50,
-                            type: 'referred',
-                            description: `Nhận điểm giới thiệu từ mã ${codeToApply}`,
-                            createdAt: Date.now()
-                        }
-                    ]
-                });
-
-                const referrerPrevData = referrerSnap.data();
-                transaction.update(referrerDocRef, {
-                    points: (referrerPrevData.points || 0) + 100,
-                    history: [
-                        ...(referrerPrevData.history || []),
-                        {
-                            id: `tx_${Date.now()}_referrer`,
-                            amount: 100,
-                            type: 'referrer',
-                            description: `Giới thiệu thành viên mới ${userData.email || 'Ẩn danh'}`,
-                            createdAt: Date.now()
-                        }
-                    ]
-                });
+            await apiFetch('/api/referrals/apply', {
+                method: 'POST',
+                body: JSON.stringify({ code: codeToApply })
             });
 
             setReferralSuccess('Áp dụng mã giới thiệu thành công! Bạn nhận được 50 điểm.');
@@ -1391,7 +1306,7 @@ export default function Home() {
                 const data = d.data();
                 return { id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0) };
             });
-            fetched.sort((a, b) => (b.views || 0) - (a.views || 0));
+            fetched.sort((a, b) => (b.order || 0) - (a.order || 0));
             setAlbums(fetched);
         });
         return () => unsubAlbums();
@@ -1873,21 +1788,14 @@ export default function Home() {
         }
         setIsSubmittingBooking(true);
         try {
-            const bookingId = `booking_${Date.now()}`;
             const bookingData = {
-                id: bookingId,
                 name: bookingForm.name,
                 phone: bookingForm.phone,
                 service: bookingForm.service,
                 date: bookingForm.date || 'Chưa chọn',
-                notes: bookingForm.notes || 'Không có',
-                status: 'Chưa xử lý',
-                ownerUid: user?.uid || null,
-                createdAt: Date.now()
+                notes: bookingForm.notes || 'Không có'
             };
-            
-            // 1. Save to Firebase
-            await setDoc(doc(db, 'merci_bookings', bookingId), bookingData);
+            await apiFetch('/api/bookings', { method: 'POST', body: JSON.stringify(bookingData) });
 
             // Update tracking session step & fire Pixel Lead event
             updateSessionStep('completedBooking');
@@ -1897,20 +1805,6 @@ export default function Home() {
                 currency: 'VND'
             });
             
-            // 2. Call API to send Telegram message
-            try {
-                const res = await fetch('/api/send-booking', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(bookingData)
-                });
-                if (!res.ok) {
-                    console.warn("Telegram alert failed on server-side.");
-                }
-            } catch (err) {
-                console.error("Telegram notification failed:", err);
-            }
-
             alert("Đặt lịch thành công! Merci Studio sẽ liên hệ lại với bạn sớm nhất.");
             setBookingForm({ name: '', phone: '', service: 'Chụp ảnh cưới (Wedding)', date: '', notes: '' });
         } catch (error) {
@@ -1928,34 +1822,10 @@ export default function Home() {
 
         setIsLoading(true);
         try {
-            await updateDoc(doc(db, 'merci_bookings', bookingId), { status: nextStatus });
-
-            if (nextStatus === 'Đã hoàn thành') {
-                const bookingDoc = await getDoc(doc(db, 'merci_bookings', bookingId));
-                if (bookingDoc.exists()) {
-                    const bookingData = bookingDoc.data();
-                    if (bookingData.ownerUid) {
-                        const userDocRef = doc(db, 'merci_users', bookingData.ownerUid);
-                        const userSnap = await getDoc(userDocRef);
-                        if (userSnap.exists()) {
-                            const userData = userSnap.data();
-                            await updateDoc(userDocRef, {
-                                points: (userData.points || 0) + 200,
-                                history: [
-                                    ...(userData.history || []),
-                                    {
-                                        id: `tx_${Date.now()}_booking_${bookingId}`,
-                                        amount: 200,
-                                        type: 'booking',
-                                        description: `Hoàn thành lịch hẹn dịch vụ ${bookingData.service || ''}`,
-                                        createdAt: Date.now()
-                                    }
-                                ]
-                            });
-                        }
-                    }
-                }
-            }
+            await apiFetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ status: nextStatus })
+            });
         } catch (err) {
             console.error("Update booking status error:", err);
             alert("Lỗi khi cập nhật trạng thái!");
@@ -1968,7 +1838,7 @@ export default function Home() {
         if (!confirm("Bạn có chắc muốn xóa yêu cầu đặt lịch này không?")) return;
         setIsLoading(true);
         try {
-            await deleteDoc(doc(db, 'merci_bookings', bookingId));
+            await apiFetch(`/api/admin/bookings/${encodeURIComponent(bookingId)}`, { method: 'DELETE' });
         } catch (err) {
             console.error("Delete booking error:", err);
             alert("Lỗi khi xóa!");
@@ -2376,7 +2246,7 @@ export default function Home() {
         setLoadingMessage(publishNow ? `${getAiProviderLabel()} đang viết bài chuẩn SEO và đăng lên blog...` : `${getAiProviderLabel()} đang viết nháp bài chuẩn SEO...`);
 
         try {
-            const response = await fetch('/api/generate-blog', {
+            const response = await apiFetch('/api/generate-blog', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2390,9 +2260,9 @@ export default function Home() {
                 })
             });
 
-            const result = await response.json();
+            const result = response;
 
-            if (!response.ok || !result?.title || !result?.content) {
+            if (!result?.title || !result?.content) {
                 throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được bài viết hợp lệ.`);
             }
 
@@ -2441,13 +2311,12 @@ export default function Home() {
         setIsSearchingTrends(true);
         setSearchTrendsResult([]);
         try {
-            const res = await fetch('/api/search-trends', {
+            const res = await apiFetch('/api/search-trends', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ keyword: kw })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+            const data = res;
             setSearchTrendsResult(data.items || []);
         } catch (error) {
             console.error('handleSearchTrends:', error);
@@ -2461,15 +2330,14 @@ export default function Home() {
         if (!confirm(`Tạo ý tưởng bài viết từ trend: "${trend.title}"?`)) return;
         setIsGeneratingTrendTopics(true);
         try {
-            const res = await fetch('/api/generate-trend-topics', {
+            const res = await apiFetch('/api/generate-trend-topics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     trendTitle: trend.title
                 })
             });
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error);
+            const data = res;
 
             const newTopics = data.items.map((i) => `${i.topic} | ${i.mainKeyword}`).join('\n');
             setBulkBlogTopics(prev => prev ? prev + '\n' + newTopics : newTopics);
@@ -2511,7 +2379,7 @@ export default function Home() {
         setLoadingMessage(`${getAiProviderLabel()} đang lên danh sách ${count} bài liên quan đến: ${keyword}`);
 
         try {
-            const response = await fetch('/api/generate-blog-topics', {
+            const response = await apiFetch('/api/generate-blog-topics', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -2524,9 +2392,9 @@ export default function Home() {
                 })
             });
 
-            const result = await response.json();
+            const result = response;
 
-            if (!response.ok || !Array.isArray(result?.items) || result.items.length === 0) {
+            if (!Array.isArray(result?.items) || result.items.length === 0) {
                 throw new Error(result?.error || `${getAiProviderLabel()} chưa tạo được danh sách bài liên quan.`);
             }
 
@@ -2643,7 +2511,7 @@ export default function Home() {
     };
 
     const generateSingleBlogData = async ({ topic, mainKeyword }, imageIndex = 0) => {
-        const response = await fetch('/api/generate-blog', {
+        const response = await apiFetch('/api/generate-blog', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2657,19 +2525,7 @@ export default function Home() {
             })
         });
 
-        let result = null;
-
-        try {
-            result = await response.json();
-        } catch (error) {
-            const rawText = await response.text().catch(() => '');
-            console.error('API generate-blog không trả JSON:', rawText);
-            throw new Error('API generate-blog không trả về JSON. Kiểm tra file app/api/generate-blog/route.js');
-        }
-
-        if (!response.ok) {
-            throw new Error(result?.error || `${getAiProviderLabel()} API lỗi.`);
-        }
+        const result = response;
 
         if (!result?.title || !result?.content) {
             console.error('Response thiếu dữ liệu:', result);
@@ -3493,8 +3349,14 @@ export default function Home() {
                 if (user) {
                     userEmail = user.email || '';
                     userKey = user.email || '';
-                    userName = user.email || '';
+                    userName = userProfile?.displayName || userProfile?.name || user.displayName || user.email || '';
                     userType = 'gmail';
+
+                    // Xóa dữ liệu khách vãng lai cũ nếu có để tránh trùng lặp
+                    const guestId = typeof window !== 'undefined' ? localStorage.getItem('merci_guest_id') : null;
+                    if (guestId) {
+                        deleteDoc(doc(db, 'client_selections', `${folderId}_${guestId}`)).catch(() => {});
+                    }
                 } else {
                     const guestId = getOrInitGuestId();
                     userKey = guestId;
@@ -3525,6 +3387,17 @@ export default function Home() {
         }
         setTimeout(() => setIsSaving(false), 500);
     };
+
+    // Tự động đồng bộ lựa chọn của Khách vãng lai sang Tài khoản khi đăng nhập thành công
+    useEffect(() => {
+        if (user?.email && (currentSelectionKey || currentFolderId)) {
+            const folderId = currentSelectionKey || currentFolderId;
+            if (selectedImages.size > 0 || Object.keys(imageNotes).length > 0) {
+                saveClientSelectionToDB(folderId, selectedImages, imageNotes);
+            }
+        }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [user?.email]);
 
     const loadClientSelectionFromDB = async (folderId) => {
         let selectedSet = new Set();
@@ -4064,12 +3937,11 @@ export default function Home() {
 
     const handleDownloadSelected = async () => {
         if (effectiveSelectedImages.size === 0) return alert("Không có ảnh nào được chọn trong bộ lọc hiện tại!");
-        if (!window.JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
 
         setIsLoading(true);
         setLoadingMessage('Đang tải file gốc từ Google Drive và nén ZIP...');
         try {
-            const JSZip = window.JSZip;
+            const { default: JSZip } = await import('jszip');
             const zip = new JSZip();
             const folderName = "Merci_Album_Da_Chon_" + new Date().toISOString().slice(0, 10);
             const imgFolder = zip.folder(folderName);
@@ -4124,8 +3996,6 @@ export default function Home() {
 
     // Tải toàn bộ ảnh trong tất cả folder con của link chọn ảnh: file gốc Google Drive, KHÔNG watermark
     const handleDownloadAllOriginal = async () => {
-        if (!window.JSZip) return alert("Thư viện nén file chưa sẵn sàng, vui lòng thử lại sau vài giây.");
-
         const allFolders = clientFolders.length > 0 ? clientFolders : [{ id: currentFolderId, name: 'Tat ca anh' }];
         if (!allFolders.some(folder => folder?.id)) return alert('Chưa có folder Google Drive để tải.');
 
@@ -4133,7 +4003,7 @@ export default function Home() {
         setLoadingMessage('Đang chuẩn bị tải toàn bộ ảnh gốc...');
 
         try {
-            const JSZip = window.JSZip;
+            const { default: JSZip } = await import('jszip');
             const zip = new JSZip();
             const rootName = "Merci_Toan_Bo_Anh_" + new Date().toISOString().slice(0, 10);
             const rootFolder = zip.folder(rootName);
@@ -4427,7 +4297,6 @@ export default function Home() {
 
     return (
         <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font">
-            <Script strategy="lazyOnload" src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" />
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -5384,7 +5253,6 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             openClientAuth={openClientAuth}
                             handleClientLogout={handleClientLogout}
                             setShowClientProfileModal={setShowClientProfileModal}
-                            heroSrc={DEFAULT_HERO}
                         />
                     )}
 
