@@ -1,10 +1,12 @@
+import { cleanString, enforceRateLimit, errorResponse, getClientIp, requireAdmin } from '@/lib/server/api-security';
+
 export const runtime = 'nodejs';
 
 function safeJsonParse(text = '') {
     const raw = String(text || '').trim();
-    try { return JSON.parse(raw); } catch (_) {}
+    try { return JSON.parse(raw); } catch { }
     const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-    try { return JSON.parse(cleaned); } catch (_) {}
+    try { return JSON.parse(cleaned); } catch { }
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     throw new Error('AI không trả về JSON hợp lệ.');
@@ -69,8 +71,10 @@ async function fetchWithGeminiRotation(prompt, generationConfig, tools) {
 
 export async function POST(request) {
     try {
+        const admin = await requireAdmin(request);
+        enforceRateLimit(`search-trends:${admin.uid}:${getClientIp(request)}`, 10, 60 * 60 * 1000);
         const body = await request.json();
-        const keyword = (body.keyword || '').trim();
+        const keyword = cleanString(body.keyword, 'Chủ đề tìm kiếm', 200, true);
 
         if (!keyword) {
             return Response.json({ error: 'Vui lòng nhập chủ đề tìm kiếm trend.' }, { status: 400 });
@@ -103,9 +107,6 @@ Không giải thích thêm.`;
         return Response.json({ keyword, items });
     } catch (error) {
         console.error('Search trends error:', error);
-        return Response.json(
-            { error: error.message || 'Không tìm được xu hướng.' },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

@@ -1,6 +1,12 @@
-// @ts-nocheck
 'use client';
-import React from 'react';
+import Image, { type StaticImageData } from 'next/image';
+import type { CSSProperties, KeyboardEvent } from 'react';
+import strip1 from '@/public/home/strip-1.png';
+import strip2 from '@/public/home/strip-2.png';
+import strip3 from '@/public/home/strip-3.png';
+import cardAlbum from '@/public/home/card-album.png';
+import cardFilm from '@/public/home/card-film.png';
+import cardBlog from '@/public/home/card-blog.png';
 
 // Merci Studio — trang chủ redesign (editorial, tông kem/nâu ấm)
 // Fluid responsive: không cần media query, dùng clamp() + auto-fit grid.
@@ -9,24 +15,48 @@ const INK = '#2b241e', SUB = '#5c5044', LINE = '#d9d0c3', TAN = '#a08d76', BROWN
 
 // Ảnh trang chủ — đặt trong /public/home/ của repo
 const IMG = {
-    strip1: '/home/strip-1.png',
-    strip2: '/home/strip-2.png',
-    strip3: '/home/strip-3.png',
-    cardAlbum: '/home/card-album.png',
-    cardFilm: '/home/card-film.png',
-    cardBlog: '/home/card-blog.png'
+    strip1,
+    strip2,
+    strip3,
+    cardAlbum,
+    cardFilm,
+    cardBlog
 };
 
-const capsBtn = (filled) => ({
+const capsBtn = (filled: boolean): CSSProperties => ({
     display: 'inline-block', padding: filled ? '15px 36px' : '14px 36px', fontSize: 13, letterSpacing: 2,
     background: filled ? DARK : 'transparent', color: filled ? '#f5f0e8' : DARK,
     border: filled ? 'none' : `1px solid #b7a992`, cursor: 'pointer', fontFamily: 'inherit'
 });
 
-export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, handleClientLogout, setShowClientProfileModal, heroSrc }) {
-    const onAuthClick = () => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login');
+type HomeHubProps = {
+    user: { email?: string | null } | null;
+    isAdmin: boolean;
+    navigateToTab: (tab: string, tool?: string) => void;
+    openClientAuth: (mode: 'login' | 'register') => void;
+    handleClientLogout: () => void;
+    setShowClientProfileModal: (show: boolean) => void;
+};
 
-    const cards = [
+type DestinationCard = {
+    tab: string;
+    tag: string;
+    title: string;
+    desc: string;
+    cta: string;
+    dark: boolean;
+    img: StaticImageData;
+};
+
+export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, handleClientLogout, setShowClientProfileModal }: HomeHubProps) {
+    const onAuthClick = () => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login');
+    const openCardFromKeyboard = (event: KeyboardEvent<HTMLDivElement>, tab: string) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        navigateToTab(tab);
+    };
+
+    const cards: DestinationCard[] = [
         { tab: 'collection', tag: 'STUDIO GALLERY', title: 'Bộ sưu tập ảnh', desc: 'Album Pre-wedding nghệ thuật và phóng sự ngày cưới cảm xúc của các cặp đôi.', cta: 'XEM ALBUM →', dark: false, img: IMG.cardAlbum },
         { tab: 'videos', tag: 'CINEMATIC FILMS', title: 'Phim phóng sự cưới', desc: 'Những thước phim ghi lại câu chuyện tình yêu sống động, lãng mạn và chân thực.', cta: 'XEM PHIM →', dark: true, img: IMG.cardFilm },
         { tab: 'blog', tag: 'WEDDING TIPS', title: 'Blog & kinh nghiệm cưới', desc: 'Lời khuyên và cẩm nang giúp ngày trọng đại của bạn diễn ra hoàn hảo nhất.', cta: 'ĐỌC BÀI VIẾT →', dark: false, img: IMG.cardBlog }
@@ -55,11 +85,11 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
             </div>
             {/* hero image strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, padding: '0 clamp(16px, 4vw, 64px)', alignItems: 'end' }}>
-                <img src={IMG.strip1} alt="Cô dâu — Merci Studio" loading="lazy" decoding="async"
+                <Image src={IMG.strip1} alt="Cô dâu tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
                     style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
-                <img src={IMG.strip2} alt="Cặp đôi — Merci Studio" loading="lazy" decoding="async"
+                <Image src={IMG.strip2} alt="Cặp đôi tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw" fetchPriority="high"
                     style={{ width: '100%', height: 'clamp(280px, 35vw, 420px)', objectFit: 'cover', display: 'block' }} />
-                <img src={IMG.strip3} alt="Chi tiết — Merci Studio" loading="lazy" decoding="async"
+                <Image src={IMG.strip3} alt="Chi tiết váy cưới tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
                     style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
             </div>
             {/* destination cards */}
@@ -71,13 +101,14 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 20 }}>
                     {cards.map(c => (
                         <div key={c.tab} onClick={() => navigateToTab(c.tab)} role="button" tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && navigateToTab(c.tab)}
+                            onKeyDown={(event) => openCardFromKeyboard(event, c.tab)}
+                            aria-label={`${c.title}: ${c.cta.replace(' →', '').toLocaleLowerCase('vi')}`}
                             style={{
                                 display: 'flex', flexDirection: 'column', cursor: 'pointer',
                                 background: c.dark ? DARK : CREAM, color: c.dark ? '#ede5d8' : INK,
                                 border: `1px solid ${c.dark ? DARK : LINE}`
                             }}>
-                            <img src={c.img} alt={c.title} loading="lazy" decoding="async"
+                            <Image src={c.img} alt={c.title} sizes="(max-width: 720px) 100vw, 33vw"
                                 style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
                             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '26px 28px 30px', flex: 1 }}>
                             <div style={{ fontSize: 11, letterSpacing: 3, color: c.dark ? '#b99f80' : TAN }}>{c.tag}</div>

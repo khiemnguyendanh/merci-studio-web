@@ -18,8 +18,8 @@
 
 @theme {
   /* Font đồng bộ trang chủ */
-  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
-  --font-serif: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
+  --font-sans: var(--font-be-vietnam-pro), system-ui, -apple-system, 'Segoe UI', Arial, sans-serif;
+  --font-serif: var(--font-cormorant-garamond), Georgia, 'Times New Roman', serif;
 
   /* Remap thang slate -> tông stone ấm (khớp palette trang chủ) */
   --color-slate-50: #f7f3ea;
@@ -69,6 +69,24 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-sans);
+}
+
+button, [role="button"], a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+:focus-visible {
+  outline: 2px solid #7a5c44;
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 @layer base {

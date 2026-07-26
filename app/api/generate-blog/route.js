@@ -1,3 +1,5 @@
+import { cleanString, enforceRateLimit, errorResponse, getClientIp, requireAdmin } from '@/lib/server/api-security';
+
 export const runtime = 'nodejs';
 
 function createSlug(str = '') {
@@ -17,7 +19,7 @@ function createSlug(str = '') {
 
 function safeJsonParse(text = '') {
     const raw = String(text || '').trim();
-    try { return JSON.parse(raw); } catch (_) {}
+    try { return JSON.parse(raw); } catch { }
 
     const cleaned = raw
         .replace(/^```json\s*/i, '')
@@ -25,7 +27,7 @@ function safeJsonParse(text = '') {
         .replace(/```$/i, '')
         .trim();
 
-    try { return JSON.parse(cleaned); } catch (_) {}
+    try { return JSON.parse(cleaned); } catch { }
 
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
@@ -227,18 +229,20 @@ async function generateWithGemini(prompt) {
 
 export async function POST(request) {
     try {
+        const admin = await requireAdmin(request);
+        enforceRateLimit(`generate-blog:${admin.uid}:${getClientIp(request)}`, 20, 60 * 60 * 1000);
         const body = await request.json();
 
         const provider = 'gemini'; // Force Gemini
-        const topic = String(body.topic || '').trim();
-        const mainKeyword = String(body.mainKeyword || body.keyword || '').trim();
+        const topic = cleanString(body.topic, 'Chủ đề', 300, true);
+        const mainKeyword = cleanString(body.mainKeyword || body.keyword, 'Từ khóa', 160);
 
-        const brandName = body.brandName || body.brand || 'Merci Studio';
-        const serviceArea = body.serviceArea || 'Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội';
+        const brandName = cleanString(body.brandName || body.brand, 'Thương hiệu', 120) || 'Merci Studio';
+        const serviceArea = cleanString(body.serviceArea, 'Khu vực', 200) || 'Bắc Ninh, Bắc Giang, Việt Yên, Hà Nội';
         const services = Array.isArray(body.services)
-            ? body.services.join(', ')
-            : body.services || 'chụp ảnh cưới, chụp ảnh kỷ yếu, chụp ảnh couple, chụp ảnh baby/family, photobooth tiệc cưới và sự kiện, makeup, váy cưới';
-        const tone = body.tone || 'sinh động, chuyên nghiệp như marketer, chuẩn SEO, dễ đọc, có cảm xúc, có emoji vừa phải, có CTA inbox/đặt lịch';
+            ? body.services.slice(0, 20).map((item) => cleanString(item, 'Dịch vụ', 80)).filter(Boolean).join(', ')
+            : cleanString(body.services, 'Dịch vụ', 500) || 'chụp ảnh cưới, chụp ảnh kỷ yếu, chụp ảnh couple, chụp ảnh baby/family, photobooth tiệc cưới và sự kiện, makeup, váy cưới';
+        const tone = cleanString(body.tone, 'Giọng văn', 300) || 'sinh động, chuyên nghiệp như marketer, chuẩn SEO, dễ đọc, có cảm xúc, có emoji vừa phải, có CTA inbox/đặt lịch';
 
         if (!topic) {
             return Response.json({ error: 'Vui lòng nhập chủ đề bài viết.' }, { status: 400 });
@@ -251,6 +255,6 @@ export async function POST(request) {
         return Response.json({ provider, ...article });
     } catch (error) {
         console.error('Generate blog route error:', error);
-        return Response.json({ error: error.message || 'Không tạo được bài viết.' }, { status: 500 });
+        return errorResponse(error);
     }
 }

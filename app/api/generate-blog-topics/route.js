@@ -1,8 +1,10 @@
+import { cleanString, enforceRateLimit, errorResponse, getClientIp, requireAdmin } from '@/lib/server/api-security';
+
 export const runtime = 'nodejs';
 
 function safeJsonParse(text = '') {
     const raw = String(text || '').trim();
-    try { return JSON.parse(raw); } catch (_) {}
+    try { return JSON.parse(raw); } catch { }
 
     const cleaned = raw
         .replace(/^```json\s*/i, '')
@@ -10,7 +12,7 @@ function safeJsonParse(text = '') {
         .replace(/```$/i, '')
         .trim();
 
-    try { return JSON.parse(cleaned); } catch (_) {}
+    try { return JSON.parse(cleaned); } catch { }
 
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
@@ -131,9 +133,11 @@ async function generateTopicsWithGemini({ prompt }) {
 
 export async function POST(request) {
     try {
+        const admin = await requireAdmin(request);
+        enforceRateLimit(`generate-blog-topics:${admin.uid}:${getClientIp(request)}`, 20, 60 * 60 * 1000);
         const body = await request.json();
         const provider = 'gemini'; // Force Gemini
-        const keyword = (body.keyword || '').trim();
+        const keyword = cleanString(body.keyword, 'Từ khóa', 200, true);
         const count = clampCount(body.count);
 
         if (!keyword) {
@@ -143,9 +147,9 @@ export async function POST(request) {
         const prompt = buildTopicPrompt({
             keyword,
             count,
-            brandName: body.brandName,
-            serviceArea: body.serviceArea,
-            services: body.services
+            brandName: cleanString(body.brandName, 'Thương hiệu', 120),
+            serviceArea: cleanString(body.serviceArea, 'Khu vực', 200),
+            services: Array.isArray(body.services) ? body.services.slice(0, 20).map((item) => cleanString(item, 'Dịch vụ', 80)).filter(Boolean) : undefined
         });
 
         const result = await generateTopicsWithGemini({ prompt });
@@ -162,9 +166,6 @@ export async function POST(request) {
         return Response.json({ provider, keyword, count, items: cleanedItems });
     } catch (error) {
         console.error('Generate blog topics error:', error);
-        return Response.json(
-            { error: error.message || 'Không tạo được danh sách bài liên quan.' },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

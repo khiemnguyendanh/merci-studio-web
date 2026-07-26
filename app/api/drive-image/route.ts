@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { ApiError, enforceRateLimit, errorResponse, getClientIp } from '@/lib/server/api-security';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: NextRequest) {
+  try {
+  enforceRateLimit(`drive-image:${getClientIp(req)}`, 120, 60 * 1000);
   const fileId = req.nextUrl.searchParams.get('id');
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 
-  if (!fileId) {
-    return NextResponse.json({ error: 'Missing file id' }, { status: 400 });
+  if (!fileId || !/^[a-zA-Z0-9_-]{10,200}$/.test(fileId)) {
+    throw new ApiError(400, 'Google Drive file ID không hợp lệ.');
   }
 
   if (!apiKey) {
@@ -39,6 +42,15 @@ export async function GET(req: NextRequest) {
         continue;
       }
 
+      const contentLength = Number(res.headers.get('content-length') || 0);
+      if (contentLength > 30 * 1024 * 1024) {
+        lastError = 'Image exceeds 30 MB limit';
+        continue;
+      }
+      if (!contentType.startsWith('image/')) {
+        lastError = 'Upstream response is not an image';
+        continue;
+      }
       const buffer = await res.arrayBuffer();
 
       if (!buffer || buffer.byteLength === 0) {
@@ -49,13 +61,13 @@ export async function GET(req: NextRequest) {
       return new NextResponse(buffer, {
         status: 200,
         headers: {
-          'Content-Type': contentType.startsWith('image/') ? contentType : 'application/octet-stream',
+          'Content-Type': contentType,
           'Cache-Control': 'public, max-age=31536000, s-maxage=31536000, stale-while-revalidate=86400',
           'Access-Control-Allow-Origin': '*',
         },
       });
-    } catch (error: any) {
-      lastError = error?.message || 'Unknown fetch error';
+    } catch (error: unknown) {
+      lastError = error instanceof Error ? error.message : 'Unknown fetch error';
     }
   }
 
@@ -63,4 +75,7 @@ export async function GET(req: NextRequest) {
     { error: 'Cannot fetch image from Google Drive', detail: lastError },
     { status: 502 }
   );
+  } catch (error) {
+    return errorResponse(error);
+  }
 }

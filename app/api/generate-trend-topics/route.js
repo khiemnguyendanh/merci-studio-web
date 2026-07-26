@@ -1,10 +1,12 @@
+import { cleanString, enforceRateLimit, errorResponse, getClientIp, requireAdmin } from '@/lib/server/api-security';
+
 export const runtime = 'nodejs';
 
 function safeJsonParse(text = '') {
     const raw = String(text || '').trim();
-    try { return JSON.parse(raw); } catch (_) {}
+    try { return JSON.parse(raw); } catch { }
     const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```$/i, '').trim();
-    try { return JSON.parse(cleaned); } catch (_) {}
+    try { return JSON.parse(cleaned); } catch { }
     const match = cleaned.match(/\{[\s\S]*\}/);
     if (match) return JSON.parse(match[0]);
     throw new Error('AI không trả về JSON hợp lệ.');
@@ -66,17 +68,19 @@ async function fetchWithGeminiRotation(prompt, generationConfig) {
 
 export async function POST(request) {
     try {
+        const admin = await requireAdmin(request);
+        enforceRateLimit(`generate-trend-topics:${admin.uid}:${getClientIp(request)}`, 20, 60 * 60 * 1000);
         const body = await request.json();
-        const trendTitle = (body.trendTitle || '').trim();
+        const trendTitle = cleanString(body.trendTitle, 'Tiêu đề xu hướng', 300, true);
         const count = 5;
 
         if (!trendTitle) {
             return Response.json({ error: 'Vui lòng cung cấp tiêu đề xu hướng.' }, { status: 400 });
         }
 
-        const brandName = body.brandName || 'Merci Studio';
-        const serviceArea = body.serviceArea || 'Bắc Ninh, Bắc Giang, Hà Nội';
-        const services = Array.isArray(body.services) ? body.services.join(', ') : (body.services || 'ảnh cưới, kỷ yếu, photobooth');
+        const brandName = cleanString(body.brandName, 'Thương hiệu', 120) || 'Merci Studio';
+        const serviceArea = cleanString(body.serviceArea, 'Khu vực', 200) || 'Bắc Ninh, Bắc Giang, Hà Nội';
+        const services = Array.isArray(body.services) ? body.services.slice(0, 20).map((item) => cleanString(item, 'Dịch vụ', 80)).filter(Boolean).join(', ') : (cleanString(body.services, 'Dịch vụ', 500) || 'ảnh cưới, kỷ yếu, photobooth');
 
         const prompt = `Bạn là chuyên gia SEO content tiếng Việt cho studio: ${brandName}.
 
@@ -135,9 +139,6 @@ Không thêm giải thích ngoài JSON.`;
         return Response.json({ trendTitle, items });
     } catch (error) {
         console.error('Generate trend topics error:', error);
-        return Response.json(
-            { error: error.message || 'Không tạo được danh sách bài liên quan đến trend.' },
-            { status: 500 }
-        );
+        return errorResponse(error);
     }
 }

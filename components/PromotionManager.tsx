@@ -1,13 +1,14 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
     Gift, Plus, Trash2, Settings, Play, Check, X, AlertCircle, 
     Sparkles, Calculator, Ticket, Edit, CheckCircle,
-    Power, Calendar, Search, Users, RefreshCw, Coins
+    Power, Search, Users, RefreshCw, Coins
 } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, setDoc, getDocs, where, updateDoc } from 'firebase/firestore';
+import { getFirestore, collection, onSnapshot, query, orderBy, deleteDoc, doc, getDoc, type Firestore } from 'firebase/firestore';
+import { apiFetch } from '@/lib/client/api';
 
 interface WheelSlice {
     id: string;
@@ -37,6 +38,42 @@ interface WinnerRegistration {
     createdAt: string;
 }
 
+interface StoredSpinResult {
+    name: string;
+    phone: string;
+    prize: string;
+    code: string;
+    date: string;
+}
+
+interface LoyaltyHistoryEntry {
+    id: string;
+    amount: number;
+    type: string;
+    description: string;
+    createdAt: number;
+}
+
+interface LoyaltyUser {
+    id: string;
+    uid: string;
+    email?: string;
+    referralCode?: string;
+    referredBy?: string;
+    points?: number;
+    createdAt?: number;
+    history?: LoyaltyHistoryEntry[];
+}
+
+interface WheelConfigDocument {
+    slices?: WheelSlice[];
+    isPublished?: boolean;
+}
+
+interface WebkitAudioWindow extends Window {
+    webkitAudioContext?: typeof AudioContext;
+}
+
 // Cấu hình Firebase
 const firebaseConfig = {
     apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -48,7 +85,7 @@ const firebaseConfig = {
 };
 
 // Khởi tạo Firebase Firestore
-let db: any = null;
+let db: Firestore | null = null;
 if (typeof window !== 'undefined') {
     try {
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -82,7 +119,7 @@ export default function PromotionManager() {
     // Publication state
     const [isPublished, setIsPublished] = useState(false);
     const [publishedSlices, setPublishedSlices] = useState<WheelSlice[]>([]);
-    const [isLoadingConfig, setIsLoadingConfig] = useState(true);
+    const [, setIsLoadingConfig] = useState(true);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number | null>(null);
@@ -122,23 +159,25 @@ export default function PromotionManager() {
     const [isLoadingWinners, setIsLoadingWinners] = useState(true);
 
     // --- LOYALTY POINTS & REFERRALS LOG ---
-    const [usersList, setUsersList] = useState<any[]>([]);
+    const [usersList, setUsersList] = useState<LoyaltyUser[]>([]);
     const [searchUserQuery, setSearchUserQuery] = useState('');
     const [isLoadingUsers, setIsLoadingUsers] = useState(false);
-    const [selectedUserForPoints, setSelectedUserForPoints] = useState<any | null>(null);
+    const [selectedUserForPoints, setSelectedUserForPoints] = useState<LoyaltyUser | null>(null);
     const [pointsChangeVal, setPointsChangeVal] = useState<number>(100);
     const [pointsChangeReason, setPointsChangeReason] = useState('Tặng điểm thành viên');
     const [isUpdatingPoints, setIsUpdatingPoints] = useState(false);
 
     useEffect(() => {
         if (activeSubTab !== 'loyalty' || !db) return;
+        // Reset loading whenever the admin opens this live subscription.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoadingUsers(true);
         const q = query(collection(db, 'merci_users'), orderBy('createdAt', 'desc'));
         
         const unsub = onSnapshot(q, (snapshot) => {
-            const list: any[] = [];
-            snapshot.forEach((doc) => {
-                list.push({ id: doc.id, ...doc.data() });
+            const list: LoyaltyUser[] = [];
+            snapshot.forEach((snapshotDoc) => {
+                list.push({ id: snapshotDoc.id, ...snapshotDoc.data() } as LoyaltyUser);
             });
             setUsersList(list);
             setIsLoadingUsers(false);
@@ -148,7 +187,7 @@ export default function PromotionManager() {
         });
 
         return () => unsub();
-    }, [activeSubTab, db]);
+    }, [activeSubTab]);
 
     const handleUpdateUserPoints = async () => {
         if (!selectedUserForPoints || !db) return;
@@ -159,29 +198,13 @@ export default function PromotionManager() {
 
         setIsUpdatingPoints(true);
         try {
-            const userDocRef = doc(db, 'merci_users', selectedUserForPoints.uid);
-            const userDoc = await getDoc(userDocRef);
-            if (!userDoc.exists()) {
-                alert('Người dùng không tồn tại.');
-                setIsUpdatingPoints(false);
-                return;
-            }
-
-            const userData = userDoc.data();
-            const newPoints = (userData.points || 0) + Number(pointsChangeVal);
-            
-            await updateDoc(userDocRef, {
-                points: newPoints,
-                history: [
-                    ...(userData.history || []),
-                    {
-                        id: `tx_${Date.now()}_admin`,
-                        amount: Number(pointsChangeVal),
-                        type: 'admin',
-                        description: pointsChangeReason.trim(),
-                        createdAt: Date.now()
-                    }
-                ]
+            await apiFetch('/api/admin/points', {
+                method: 'POST',
+                body: JSON.stringify({
+                    uid: selectedUserForPoints.uid || selectedUserForPoints.id,
+                    amount: Number(pointsChangeVal),
+                    reason: pointsChangeReason
+                })
             });
 
             alert('Cập nhật điểm thành công!');
@@ -211,12 +234,18 @@ export default function PromotionManager() {
     useEffect(() => {
         const savedSlices = localStorage.getItem('merci_draft_wheel_slices');
         if (savedSlices) {
-            try { setSlices(JSON.parse(savedSlices)); } catch (e) { console.error(e); }
+            try {
+                // Hydrate admin drafts after mount to avoid server/client markup differences.
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setSlices(JSON.parse(savedSlices) as WheelSlice[]);
+            } catch (e) { console.error(e); }
         }
 
         const savedCodes = localStorage.getItem('merci_draft_promo_codes');
         if (savedCodes) {
-            try { setPromoCodes(JSON.parse(savedCodes)); } catch (e) { console.error(e); }
+            try {
+                setPromoCodes(JSON.parse(savedCodes) as PromoCode[]);
+            } catch (e) { console.error(e); }
         }
 
         const fetchPublishedConfig = async () => {
@@ -228,7 +257,7 @@ export default function PromotionManager() {
                 const docRef = doc(db, 'merci_wheel_config', 'settings');
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
+                    const data = docSnap.data() as WheelConfigDocument;
                     setIsPublished(!!data.isPublished);
                     if (data.slices) {
                         setPublishedSlices(data.slices);
@@ -258,7 +287,7 @@ export default function PromotionManager() {
     const playAudio = (type: 'tick' | 'win') => {
         if (typeof window === 'undefined') return;
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
             if (!AudioContextClass) return;
             const ctx = new AudioContextClass();
             
@@ -379,6 +408,8 @@ export default function PromotionManager() {
     useEffect(() => {
         if (activeSubTab !== 'winners') return;
 
+        // Reset loading whenever the winners tab opens.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsLoadingWinners(true);
 
         let unsubscribe = () => {};
@@ -410,8 +441,8 @@ export default function PromotionManager() {
             const localLog = localStorage.getItem('merci_local_registrations_log');
             if (localLog) {
                 try {
-                    const parsed = JSON.parse(localLog);
-                    const formatted = parsed.map((item: any, index: number) => ({
+                    const parsed = JSON.parse(localLog) as StoredSpinResult[];
+                    const formatted = parsed.map((item, index: number) => ({
                         id: `local_${index}`,
                         name: item.name,
                         phone: item.phone,
@@ -440,12 +471,12 @@ export default function PromotionManager() {
             const localLog = localStorage.getItem('merci_local_registrations_log');
             if (localLog) {
                 try {
-                    const parsed = JSON.parse(localLog);
+                    const parsed = JSON.parse(localLog) as StoredSpinResult[];
                     parsed.splice(index, 1);
                     localStorage.setItem('merci_local_registrations_log', JSON.stringify(parsed));
                     
                     // update UI list
-                    const formatted = parsed.map((item: any, idx: number) => ({
+                    const formatted = parsed.map((item, idx: number) => ({
                         id: `local_${idx}`,
                         name: item.name,
                         phone: item.phone,
@@ -472,7 +503,7 @@ export default function PromotionManager() {
     };
 
     // --- DRAW WHEEL ON CANVAS ---
-    const drawWheel = (angle: number) => {
+    const drawWheel = useCallback((angle: number) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -543,12 +574,12 @@ export default function PromotionManager() {
         ctx.arc(center, center, 12, 0, Math.PI * 2);
         ctx.fillStyle = '#3b82f6'; // Blue center
         ctx.fill();
-    };
+    }, [slices]);
 
     // Redraw wheel when slices or wheelAngle changes
     useEffect(() => {
         drawWheel(wheelAngle);
-    }, [slices, wheelAngle]);
+    }, [drawWheel, wheelAngle]);
 
     // --- SPIN LOGIC ---
     const spinWheel = () => {
@@ -660,16 +691,10 @@ export default function PromotionManager() {
 
     // --- PUBLISH / UNPUBLISH WHEEL ---
     const handlePublish = async () => {
-        if (!db) {
-            alert('Lỗi: Firebase Database chưa được khởi tạo.');
-            return;
-        }
         try {
-            const docRef = doc(db, 'merci_wheel_config', 'settings');
-            await setDoc(docRef, {
-                slices: slices,
-                isPublished: true,
-                updatedAt: new Date().toISOString()
+            await apiFetch('/api/admin/wheel', {
+                method: 'PUT',
+                body: JSON.stringify({ slices, isPublished: true })
             });
             setIsPublished(true);
             setPublishedSlices(slices);
@@ -681,16 +706,10 @@ export default function PromotionManager() {
     };
 
     const handleUnpublish = async () => {
-        if (!db) {
-            alert('Lỗi: Firebase Database chưa được khởi tạo.');
-            return;
-        }
         try {
-            const docRef = doc(db, 'merci_wheel_config', 'settings');
-            await setDoc(docRef, {
-                slices: publishedSlices.length > 0 ? publishedSlices : slices,
-                isPublished: false,
-                updatedAt: new Date().toISOString()
+            await apiFetch('/api/admin/wheel', {
+                method: 'PUT',
+                body: JSON.stringify({ slices: publishedSlices.length > 0 ? publishedSlices : slices, isPublished: false })
             });
             setIsPublished(false);
             alert('Đã ẩn vòng quay khỏi trang chủ thành công!');
@@ -1496,14 +1515,15 @@ export default function PromotionManager() {
 
             {/* Modal for Create/Edit Promo Code */}
             {showCodeForm && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div role="dialog" aria-modal="true" aria-labelledby="promo-code-dialog-title" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-scale">
                         <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
-                            <h4 className="font-bold text-slate-800 text-lg">
+                            <h4 id="promo-code-dialog-title" className="font-bold text-slate-800 text-lg">
                                 {editingCode ? 'Cập nhật Mã Khuyến Mãi' : 'Tạo Mã Khuyến Mãi Mới'}
                             </h4>
                             <button 
                                 onClick={() => setShowCodeForm(false)}
+                                aria-label="Đóng biểu mẫu mã khuyến mãi"
                                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all"
                             >
                                 <X size={20} />
@@ -1603,14 +1623,15 @@ export default function PromotionManager() {
             )}
             {/* Modal for Admin Adjust Points */}
             {selectedUserForPoints && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                <div role="dialog" aria-modal="true" aria-labelledby="points-dialog-title" className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                     <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in-scale">
                         <div className="flex justify-between items-center p-5 border-b border-slate-100 bg-slate-50">
-                            <h4 className="font-bold text-slate-800 text-lg">
+                            <h4 id="points-dialog-title" className="font-bold text-slate-800 text-lg">
                                 Điều chỉnh điểm: {selectedUserForPoints.email}
                             </h4>
                             <button 
                                 onClick={() => setSelectedUserForPoints(null)}
+                                aria-label="Đóng biểu mẫu điều chỉnh điểm"
                                 className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-all"
                             >
                                 <X size={20} />

@@ -1,15 +1,32 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Gift, X, CheckCircle, Phone, User, Sparkles, AlertCircle } from 'lucide-react';
 import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, collection, doc, setDoc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDoc, type Firestore } from 'firebase/firestore';
 
 interface WheelSlice {
     id: string;
     text: string;
     color: string;
     weight: number;
+}
+
+interface StoredSpinResult {
+    prize: string;
+    code: string;
+    name: string;
+    phone: string;
+    date: string;
+}
+
+interface WheelConfigDocument {
+    slices?: WheelSlice[];
+    isPublished?: boolean;
+}
+
+interface WebkitAudioWindow extends Window {
+    webkitAudioContext?: typeof AudioContext;
 }
 
 // Cấu hình Firebase
@@ -23,7 +40,7 @@ const firebaseConfig = {
 };
 
 // Khởi tạo Firebase Firestore
-let db: any = null;
+let db: Firestore | null = null;
 if (typeof window !== 'undefined') {
     try {
         const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
@@ -55,13 +72,8 @@ export default function LuckyWheelPopup() {
     const [customerName, setCustomerName] = useState('');
     const [customerPhone, setCustomerPhone] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [savedResult, setSavedResult] = useState<{
-        prize: string;
-        code: string;
-        name: string;
-        phone: string;
-        date: string;
-    } | null>(null);
+    const [savedResult, setSavedResult] = useState<StoredSpinResult | null>(null);
+    const [claimError, setClaimError] = useState('');
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const requestRef = useRef<number | null>(null);
@@ -77,7 +89,9 @@ export default function LuckyWheelPopup() {
         const userSpinResult = localStorage.getItem('merci_lucky_spin_user_result');
         if (userSpinResult) {
             try {
-                setSavedResult(JSON.parse(userSpinResult));
+                // Synchronize the persisted result when the popup is opened again.
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setSavedResult(JSON.parse(userSpinResult) as StoredSpinResult);
             } catch (e) {
                 console.error(e);
             }
@@ -96,7 +110,7 @@ export default function LuckyWheelPopup() {
                 const docRef = doc(db, 'merci_wheel_config', 'settings');
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists()) {
-                    const data = docSnap.data();
+                    const data = docSnap.data() as WheelConfigDocument;
                     const published = !!data.isPublished;
                     setIsPublished(published);
                     if (data.slices) {
@@ -127,18 +141,11 @@ export default function LuckyWheelPopup() {
         fetchPublishedSettings();
     }, []);
 
-    // Redraw wheel when slices or wheelAngle changes
-    useEffect(() => {
-        if (isOpen) {
-            drawWheel(wheelAngle);
-        }
-    }, [slices, wheelAngle, isOpen]);
-
     // Sound effect
     const playAudio = (type: 'tick' | 'win') => {
         if (typeof window === 'undefined') return;
         try {
-            const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+            const AudioContextClass = window.AudioContext || (window as WebkitAudioWindow).webkitAudioContext;
             if (!AudioContextClass) return;
             const ctx = new AudioContextClass();
             
@@ -255,7 +262,7 @@ export default function LuckyWheelPopup() {
     }, [showConfetti, isOpen]);
 
     // Canvas drawing
-    const drawWheel = (angle: number) => {
+    const drawWheel = useCallback((angle: number) => {
         const canvas = canvasRef.current;
         if (!canvas) return;
         const ctx = canvas.getContext('2d');
@@ -320,30 +327,20 @@ export default function LuckyWheelPopup() {
         ctx.arc(center, center, 10, 0, Math.PI * 2);
         ctx.fillStyle = '#db2777'; // Pink center peg
         ctx.fill();
-    };
+    }, [slices]);
+
+    useEffect(() => {
+        if (isOpen) drawWheel(wheelAngle);
+    }, [drawWheel, wheelAngle, isOpen]);
 
     // Spin trigger
-    const startSpin = () => {
+    const animateToPrize = (selectedIndex: number, selectedPrize: WheelSlice) => {
         if (isSpinning || slices.length === 0 || savedResult) return;
 
         setIsSpinning(true);
         setWinner(null);
         setShowConfetti(false);
 
-        // Weighted Selection
-        const totalWeight = slices.reduce((sum, s) => sum + s.weight, 0);
-        let randomWeight = Math.random() * totalWeight;
-        let selectedIndex = 0;
-
-        for (let i = 0; i < slices.length; i++) {
-            randomWeight -= slices[i].weight;
-            if (randomWeight <= 0) {
-                selectedIndex = i;
-                break;
-            }
-        }
-
-        const selectedPrize = slices[selectedIndex];
         const arc = (Math.PI * 2) / slices.length;
         const targetSliceAngle = (1.5 * Math.PI) - (selectedIndex * arc + arc / 2);
         const baseSpins = 6 + Math.random() * 2; // 6-8 spins
@@ -380,69 +377,51 @@ export default function LuckyWheelPopup() {
                 playAudio('win');
                 setShowConfetti(true);
                 
-                // Show form to claim prize
-                setTimeout(() => {
-                    setShowForm(true);
-                }, 800);
             }
         };
 
         requestRef.current = requestAnimationFrame(animate);
     };
 
-    // Form Submission
+    const startSpin = () => {
+        if (isSpinning || savedResult) return;
+        setClaimError('');
+        setShowForm(true);
+    };
+
     const handleClaimPrize = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!customerName.trim() || !customerPhone.trim() || !winner) return;
+        if (!customerName.trim() || !customerPhone.trim()) return;
 
         setIsSubmitting(true);
-
-        // Generate cross-check verification code: MC-[6 Alphanumeric characters]
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let randomCode = 'MC-';
-        for (let i = 0; i < 6; i++) {
-            randomCode += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-
-        const dateStr = new Date().toISOString();
-        const payload = {
-            name: customerName.trim(),
-            phone: customerPhone.trim(),
-            prizeText: winner.text,
-            prizeCode: randomCode,
-            createdAt: dateStr
-        };
+        setClaimError('');
 
         try {
-            // Save to Firestore if database is available
-            if (db) {
-                const docId = `${Date.now()}_${customerPhone}`;
-                await setDoc(doc(collection(db, 'merci_spin_registrations'), docId), payload);
-            }
+            const response = await fetch('/api/wheel/spin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: customerName, phone: customerPhone })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Không thể quay thưởng.');
+            const selectedIndex = slices.findIndex((slice) => slice.id === data.sliceId || slice.text === data.prize);
+            const selectedPrize = slices[Math.max(0, selectedIndex)] || { id: data.sliceId || 'result', text: data.prize, color: '#db2777', weight: 1 };
+            const userResult: StoredSpinResult = {
+                prize: data.prize,
+                code: data.code,
+                name: customerName.trim(),
+                phone: customerPhone.trim(),
+                date: data.date
+            };
+            localStorage.setItem('merci_lucky_spin_user_result', JSON.stringify(userResult));
+            setShowForm(false);
+            animateToPrize(Math.max(0, selectedIndex), selectedPrize);
+            window.setTimeout(() => setSavedResult(userResult), data.alreadySpun ? 0 : 4300);
         } catch (err) {
-            console.error('Failed to save to Firestore:', err);
+            setClaimError(err instanceof Error ? err.message : 'Không thể nhận quà.');
+        } finally {
+            setIsSubmitting(false);
         }
-
-        // Always save to localStorage to persist user status and guarantee fallback
-        const userResult = {
-            prize: winner.text,
-            code: randomCode,
-            name: payload.name,
-            phone: payload.phone,
-            date: dateStr
-        };
-
-        localStorage.setItem('merci_lucky_spin_user_result', JSON.stringify(userResult));
-        
-        // Also save to a local registrations log in localStorage (for simulation purposes)
-        const localRegs = localStorage.getItem('merci_local_registrations_log');
-        const regsArray = localRegs ? JSON.parse(localRegs) : [];
-        regsArray.push(userResult);
-        localStorage.setItem('merci_local_registrations_log', JSON.stringify(regsArray));
-
-        setSavedResult(userResult);
-        setIsSubmitting(false);
-        setShowForm(false);
     };
 
     // Clean up animation frame
@@ -460,6 +439,7 @@ export default function LuckyWheelPopup() {
             <div className="fixed bottom-32 right-4 z-40">
                 <button
                     onClick={() => setIsOpen(true)}
+                    aria-label="Mở vòng quay may mắn"
                     className="group relative flex items-center justify-center w-14 h-14 bg-gradient-to-tr from-pink-500 to-rose-500 text-white rounded-full shadow-2xl hover:scale-110 transition-transform active:scale-95 cursor-pointer animate-bounce"
                     title="Vòng quay may mắn"
                 >
@@ -476,7 +456,7 @@ export default function LuckyWheelPopup() {
 
             {/* POPUP MODAL DIALOG */}
             {isOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+                <div role="dialog" aria-modal="true" aria-labelledby="lucky-wheel-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
                     <div className="relative w-full max-w-lg bg-white rounded-2xl border border-slate-100 shadow-2xl overflow-hidden animate-fade-in-scale">
                         
                         {/* Confetti Overlay */}
@@ -490,6 +470,7 @@ export default function LuckyWheelPopup() {
                         {/* Close Button */}
                         <button
                             onClick={() => setIsOpen(false)}
+                            aria-label="Đóng vòng quay"
                             className="absolute top-4 right-4 z-55 p-2 bg-slate-100/60 hover:bg-slate-200/80 text-slate-500 rounded-full transition-all cursor-pointer"
                         >
                             <X size={18} />
@@ -500,7 +481,7 @@ export default function LuckyWheelPopup() {
                             <div className="w-12 h-12 bg-pink-500/10 text-pink-500 rounded-2xl flex items-center justify-center mx-auto mb-2.5">
                                 <Sparkles size={24} className="animate-spin" style={{ animationDuration: '6s' }} />
                             </div>
-                            <h3 className="text-xl md:text-2xl font-black text-slate-800">Vòng Quay May Mắn</h3>
+                            <h3 id="lucky-wheel-title" className="text-xl md:text-2xl font-black text-slate-800">Vòng Quay May Mắn</h3>
                             <p className="text-slate-500 text-xs md:text-sm mt-1">
                                 Quay thử vận may - nhận ngay ưu đãi cực khủng từ Merci Studio!
                             </p>
@@ -542,7 +523,6 @@ export default function LuckyWheelPopup() {
                                 /* CASE 2: NORMAL PLAYING */
                                 <div className="w-full flex flex-col items-center">
                                     
-                                    {/* Spinner view */}
                                     {!showForm ? (
                                         <div className="flex flex-col items-center w-full">
                                             <div className="relative w-64 h-64 md:w-72 md:h-72 flex items-center justify-center select-none">
@@ -572,7 +552,7 @@ export default function LuckyWheelPopup() {
                                             </div>
 
                                             <p className="text-slate-400 text-xs text-center mt-6 flex items-center gap-1">
-                                                <AlertCircle size={14} /> Mỗi số điện thoại chỉ được quay thưởng tối đa 1 lần.
+                                                <AlertCircle size={14} /> Mỗi số điện thoại chỉ được nhận thưởng tối đa 1 lần.
                                             </p>
                                         </div>
                                     ) : (
@@ -625,6 +605,7 @@ export default function LuckyWheelPopup() {
                                             >
                                                 {isSubmitting ? 'Đang đăng ký...' : 'Nhận mã quà tặng'}
                                             </button>
+                                            {claimError && <p role="alert" className="text-center text-sm font-semibold text-red-600">{claimError}</p>}
                                         </form>
                                     )}
                                 </div>
