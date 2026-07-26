@@ -1,65 +1,93 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // 1. Client selection links created by admin
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return signedIn() && (
+        request.auth.token.admin == true ||
+        request.auth.token.email == 'khiemnguyendanh@gmail.com'
+      );
+    }
+
+    function validSelection() {
+      return request.resource.data.keys().hasOnly([
+        'folderId', 'userKey', 'userEmail', 'userName', 'userType',
+        'selectedIds', 'imageNotes', 'updatedAt'
+      ]) &&
+      request.resource.data.folderId is string &&
+      request.resource.data.userKey is string &&
+      request.resource.data.userName is string &&
+      request.resource.data.userType in ['gmail', 'guest'] &&
+      request.resource.data.selectedIds is list &&
+      request.resource.data.selectedIds.size() <= 5000 &&
+      request.resource.data.imageNotes is map;
+    }
+
     match /client_pages/{pageId} {
-      allow read, write: if true;
+      allow get: if true;
+      allow list: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
+      allow create: if signedIn() && request.resource.data.ownerUid == request.auth.uid;
+      allow update, delete: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
     }
 
-    // 2. Client selected images and notes
-    match /client_selections/{folderId} {
-      allow read, write: if true;
+    match /client_selections/{selectionId} {
+      allow get: if true;
+      allow list: if isAdmin();
+      allow create, update: if validSelection();
+      allow delete: if isAdmin();
     }
 
-    // 3. Portfolio albums
     match /merci_albums/{albumId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // 4. Portfolio videos
     match /merci_videos/{videoId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // 5. Portfolio blog posts
     match /merci_blogs/{blogId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // 6. Booking forms submitted by clients
     match /merci_bookings/{bookingId} {
-      allow read: if request.auth != null;
-      allow create: if true;
-      allow update, delete: if request.auth != null;
+      allow read, write: if isAdmin();
     }
 
-    // 7. Session analytics tracked for dashboard
     match /merci_sessions/{sessionId} {
-      allow read, write: if true;
+      allow read, delete: if isAdmin();
+      allow create: if request.resource.data.id == sessionId &&
+        request.resource.data.keys().hasOnly([
+          'id', 'createdAt', 'dateStr', 'visitedHome', 'visitedCollection',
+          'visitedVideos', 'visitedBlog', 'visitedBooking', 'completedBooking',
+          'albumViews', 'timeSpent', 'updatedAt'
+        ]);
+      allow update: if request.resource.data.id == resource.data.id &&
+        request.resource.data.createdAt == resource.data.createdAt;
     }
 
-    // 8. Spin registrations for lucky wheel promotion
-    match /merci_spin_registrations/{regId} {
-      allow create: if true;
-      allow read, update, delete: if request.auth != null;
+    match /merci_spin_registrations/{registrationId} {
+      allow read, write: if isAdmin();
     }
 
-    // 9. Wheel configuration settings
-    match /merci_wheel_config/{docId} {
+    match /merci_wheel_config/{documentId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow write: if isAdmin();
     }
 
-    // 10. Customer profiles, loyalty points, and referrals
     match /merci_users/{userId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null && request.auth.uid == userId;
+      allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

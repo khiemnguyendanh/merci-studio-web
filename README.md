@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Merci Studio
 
-## Getting Started
+Next.js 16 website for Merci Studio with public galleries, booking, customer image selection, blog tools and an admin promotion dashboard.
 
-First, run the development server:
+## Development
+
+Copy `.env.example` to `.env.local`, fill the public Firebase values and server integrations, then run:
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open `http://localhost:3000`.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Verification
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run lint
+npm test
+npm run build
+```
 
-## Learn More
+## Firebase Admin
 
-To learn more about Next.js, take a look at the following resources:
+Sensitive writes use authenticated server routes. Configure `FIREBASE_SERVICE_ACCOUNT_JSON`, or these equivalent variables:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- `FIREBASE_PROJECT_ID`
+- `FIREBASE_CLIENT_EMAIL`
+- `FIREBASE_PRIVATE_KEY`
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Grant admin access to a Firebase user:
 
-## Deploy on Vercel
+```powershell
+$env:FIREBASE_SERVICE_ACCOUNT_JSON = '{...}'
+npm run admin:set-claim -- admin@example.com
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The user must sign out and sign in again to refresh the ID token. Firestore Rules authorize administrators through the `admin=true` custom claim. `ADMIN_EMAILS` is a temporary server fallback only.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Deploy
+
+1. Add all production variables from `.env.example` to Vercel.
+2. Deploy Firestore Rules with `firebase deploy --only firestore:rules`.
+3. Set the admin custom claim for each staff Firebase account.
+4. Run `npm run build` before deploying.
+
+Never commit `.env.local` or service-account credentials. Rotate Gemini and Telegram credentials if they have ever been exposed.
+
+## Security Model
+
+- Public visitors can read portfolio content and public wheel configuration.
+- Booking, referral, loyalty-point and wheel-spin writes run through server routes.
+- CMS, booking management, winner logs and customer lists require an admin token.
+- Analytics and advertising scripts load only after consent.
+- Client-selection pages remain shareable; owners control page updates and admin controls aggregate selection access.
