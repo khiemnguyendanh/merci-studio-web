@@ -2886,15 +2886,22 @@ export default function Home() {
             `?key=${GOOGLE_API_KEY}` +
             `&fields=id,name,mimeType`;
 
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data.error) {
-            console.warn('Không lấy được tên folder Drive:', folderId, data.error);
+        try {
+            const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+            const timeoutId = controller ? setTimeout(() => controller.abort(), 8000) : null;
+            const res = await fetch(url, { signal: controller?.signal });
+            if (timeoutId) clearTimeout(timeoutId);
+            
+            const data = await res.json();
+            if (data.error) {
+                console.warn('Không lấy được tên folder Drive:', folderId, data.error);
+                return null;
+            }
+            return data;
+        } catch (err) {
+            console.warn('Lỗi mạng hoặc timeout khi lấy tên folder Drive:', folderId, err);
             return null;
         }
-
-        return data;
     };
 
     const enrichDriveFolders = async (folders) => {
@@ -3188,6 +3195,14 @@ export default function Home() {
 
                     if (oldDefaultTitle && folders.length === 1 && folders[0]?.name) {
                         nextPage.title = folders[0].name;
+                    }
+
+                    // Lưu lại vào Firestore để lần sau không phải gọi API Google Drive nữa
+                    if (db && page.id) {
+                        updateDoc(doc(db, 'client_pages', page.id), {
+                            folders: folders,
+                            title: nextPage.title
+                        }).catch(() => {});
                     }
 
                     return nextPage;
