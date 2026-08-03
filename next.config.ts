@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
+// Expose Cloudflare bindings while using `next dev` locally.
+import('@opennextjs/cloudflare').then(({ initOpenNextCloudflareForDev }) => {
+  initOpenNextCloudflareForDev();
+});
+
 const nextConfig: NextConfig = {
-  serverExternalPackages: ['firebase-admin'],
   async headers() {
     return [
       {

@@ -9,11 +9,15 @@ const eslintConfig = defineConfig([
   globalIgnores([
     // Default ignores of eslint-config-next:
     ".next/**",
+    ".open-next/**",
+    ".wrangler/**",
     "out/**",
     "build/**",
     "scratch/**",
     "optimize-phase*.js",
     "next-env.d.ts",
+    "cloudflare-env.d.ts",
+    "cloudflare-worker.js",
   ]),
   {
     rules: {

@@ -5,6 +5,7 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mercistudio.net
 const reservedMetadata: Record<string, { title: string; description: string; noIndex?: boolean }> = {
   '': { title: 'Merci Wedding Studio', description: 'Photo - Makeup - Bridal' },
   'bo-su-tap': { title: 'Bộ sưu tập ảnh', description: 'Album ảnh cưới, phóng sự cưới và những câu chuyện hình ảnh của Merci Studio.' },
+  'vest': { title: 'Bộ sưu tập Vest', description: 'Khám phá các mẫu Vest tại Merci Studio và lọc nhanh theo kích cỡ phù hợp.' },
   'blog': { title: 'Blog kinh nghiệm cưới', description: 'Cẩm nang chụp ảnh, chuẩn bị đám cưới và kinh nghiệm dành cho các cặp đôi.' },
   'video': { title: 'Phim phóng sự cưới', description: 'Những thước phim cưới chân thực và giàu cảm xúc từ Merci Studio.' },
   'dat-lich': { title: 'Đặt lịch tư vấn', description: 'Đặt lịch chụp ảnh và nhận tư vấn từ Merci Studio.' },
@@ -13,8 +14,7 @@ const reservedMetadata: Record<string, { title: string; description: string; noI
   'tao-trang': { title: 'Tạo trang chọn ảnh', description: 'Công cụ nội bộ Merci Studio.', noIndex: true },
   'chon-anh': { title: 'Chọn ảnh', description: 'Trang chọn ảnh dành cho khách hàng Merci Studio.', noIndex: true },
   'loc-anh': { title: 'Lọc ảnh', description: 'Công cụ lọc ảnh Merci Studio.', noIndex: true },
-  'thong-ke': { title: 'Thống kê', description: 'Khu vực quản trị Merci Studio.', noIndex: true },
-  'khuyen-mai': { title: 'Quản lý khuyến mãi', description: 'Khu vực quản trị Merci Studio.', noIndex: true }
+  'thong-ke': { title: 'Thống kê', description: 'Khu vực quản trị Merci Studio.', noIndex: true }
 };
 
 export async function generateMetadata({ params }: { params: Promise<{ slug?: string[] }> }): Promise<Metadata> {

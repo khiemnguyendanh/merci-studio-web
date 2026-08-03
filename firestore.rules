@@ -71,15 +71,6 @@ service cloud.firestore {
         request.resource.data.createdAt == resource.data.createdAt;
     }
 
-    match /merci_spin_registrations/{registrationId} {
-      allow read, write: if isAdmin();
-    }
-
-    match /merci_wheel_config/{documentId} {
-      allow read: if true;
-      allow write: if isAdmin();
-    }
-
     match /merci_users/{userId} {
       allow get: if signedIn() && (request.auth.uid == userId || isAdmin());
       allow list: if isAdmin();

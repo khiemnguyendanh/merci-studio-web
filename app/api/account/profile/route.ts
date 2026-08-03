@@ -1,6 +1,5 @@
-import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError, cleanString, errorResponse, requireUser } from '@/lib/server/api-security';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 

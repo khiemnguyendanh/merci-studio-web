@@ -1,8 +1,7 @@
 import 'server-only';
 
-import type { DecodedIdToken } from 'firebase-admin/auth';
 import { NextResponse } from 'next/server';
-import { adminAuth } from './firebase-admin';
+import { adminAuth, type DecodedIdToken } from './firebase-admin';
 export { cleanString, hashValue, normalizePhone } from './validation';
 
 type RateEntry = { count: number; resetAt: number };

@@ -1,6 +1,5 @@
-import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError, cleanString, enforceRateLimit, errorResponse, escapeTelegram, getClientIp, normalizePhone, requireUser } from '@/lib/server/api-security';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -57,7 +56,7 @@ export async function POST(request: Request) {
     const ip = getClientIp(request);
     enforceRateLimit(`booking:${ip}`, 5, 15 * 60 * 1000);
     const token = await getOptionalUser(request);
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const name = cleanString(body.name, 'Họ tên', 100, true);
     const phone = normalizePhone(body.phone);
     const service = cleanString(body.service, 'Dịch vụ', 80, true);

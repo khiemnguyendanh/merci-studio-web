@@ -1,13 +1,12 @@
-import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError, cleanString, errorResponse, requireUser } from '@/lib/server/api-security';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const token = await requireUser(request);
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const code = cleanString(body.code, 'Mã giới thiệu', 20, true).toUpperCase();
     const referrerQuery = await adminDb.collection('merci_users').where('referralCode', '==', code).limit(1).get();
     if (referrerQuery.empty) throw new ApiError(404, 'Mã giới thiệu không tồn tại.');

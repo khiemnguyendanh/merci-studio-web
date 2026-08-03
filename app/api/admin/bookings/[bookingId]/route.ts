@@ -1,6 +1,5 @@
-import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError, cleanString, errorResponse, requireAdmin } from '@/lib/server/api-security';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 
@@ -10,7 +9,7 @@ export async function PATCH(request: Request, context: { params: Promise<{ booki
   try {
     const admin = await requireAdmin(request);
     const { bookingId } = await context.params;
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const status = cleanString(body.status, 'Trạng thái', 30, true);
     if (!STATUSES.has(status)) throw new ApiError(400, 'Trạng thái không hợp lệ.');
 

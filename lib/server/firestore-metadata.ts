@@ -29,7 +29,7 @@ async function fetchCollection(collection: string, masks: string[]) {
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}?${params}`;
   const response = await fetch(url, { next: { revalidate: 300 } });
   if (!response.ok) return [];
-  const data = await response.json();
+  const data = await response.json() as { documents?: FirestoreDocument[] };
   return Array.isArray(data.documents) ? data.documents as FirestoreDocument[] : [];
 }
 

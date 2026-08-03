@@ -1,13 +1,12 @@
-import { FieldValue } from 'firebase-admin/firestore';
 import { ApiError, cleanString, errorResponse, requireAdmin } from '@/lib/server/api-security';
-import { adminDb } from '@/lib/server/firebase-admin';
+import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
     const admin = await requireAdmin(request);
-    const body = await request.json();
+    const body = await request.json() as Record<string, unknown>;
     const uid = cleanString(body.uid, 'UID', 128, true);
     const reason = cleanString(body.reason, 'Lý do', 200, true);
     const amount = Number(body.amount);

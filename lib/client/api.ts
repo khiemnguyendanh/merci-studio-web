@@ -10,7 +10,7 @@ export async function apiFetch(input: RequestInfo | URL, init: RequestInit = {})
   if (init.body && !headers.has('Content-Type')) headers.set('Content-Type', 'application/json');
 
   const response = await fetch(input, { ...init, headers });
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(data.error || 'Yêu cầu không thành công.');
+  const data = await response.json().catch(() => ({})) as Record<string, unknown>;
+  if (!response.ok) throw new Error(String(data.error || 'Yêu cầu không thành công.'));
   return data;
 }
