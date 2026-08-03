@@ -1,6 +1,6 @@
 'use client';
 import Image, { type StaticImageData } from 'next/image';
-import type { CSSProperties, KeyboardEvent } from 'react';
+import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import strip1 from '@/public/home/strip-1.png';
 import strip2 from '@/public/home/strip-2.png';
 import strip3 from '@/public/home/strip-3.png';
@@ -48,7 +48,28 @@ type DestinationCard = {
     img: StaticImageData;
 };
 
+const feedbackImages = Array.from({ length: 17 }, (_, index) => ({
+    src: `/home/feedback/${index + 1}.webp`,
+    alt: `Phản hồi thực tế từ khách hàng Merci Studio ${index + 1}`
+}));
+
 export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, handleClientLogout, setShowClientProfileModal }: HomeHubProps) {
+    const [activeFeedback, setActiveFeedback] = useState<(typeof feedbackImages)[number] | null>(null);
+
+    useEffect(() => {
+        if (!activeFeedback) return;
+        const previousOverflow = document.body.style.overflow;
+        const closeOnEscape = (event: globalThis.KeyboardEvent) => {
+            if (event.key === 'Escape') setActiveFeedback(null);
+        };
+        document.body.style.overflow = 'hidden';
+        window.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.body.style.overflow = previousOverflow;
+            window.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [activeFeedback]);
+
     const onAuthClick = () => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login');
     const openCardFromKeyboard = (event: KeyboardEvent<HTMLDivElement>, tab: string) => {
         if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -120,6 +141,56 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                     ))}
                 </div>
             </div>
+            {/* customer feedback */}
+            <section style={{ padding: 'clamp(54px, 8vw, 96px) 0', overflow: 'hidden', borderBottom: `1px solid ${LINE}` }}>
+                <div style={{ padding: '0 clamp(20px, 5vw, 72px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '28px 60px', alignItems: 'end' }}>
+                    <div>
+                        <div style={{ fontSize: 11, letterSpacing: 3.5, color: TAN, marginBottom: 14 }}>LOVE NOTES · 5/5</div>
+                        <h2 style={{ fontFamily: serif, fontSize: 'clamp(34px, 5vw, 60px)', lineHeight: 1.05, fontWeight: 500, margin: 0 }}>
+                            Những lời thương<br /><em style={{ fontWeight: 400 }}>được gửi lại</em>
+                        </h2>
+                    </div>
+                    <div style={{ maxWidth: 520, justifySelf: 'end' }}>
+                        <p style={{ margin: 0, color: SUB, fontSize: 'clamp(14px, 1.5vw, 16px)', lineHeight: 1.8, fontWeight: 300 }}>
+                            Không có lời giới thiệu nào chân thật hơn cảm nhận của những cô dâu, chú rể đã đồng hành cùng Merci. Mỗi tin nhắn là một kỷ niệm chúng tôi luôn trân trọng.
+                        </p>
+                        <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, color: BROWN }}>
+                            <span aria-label="5 trên 5 sao" style={{ letterSpacing: 4, fontSize: 16 }}>★★★★★</span>
+                            <span style={{ width: 36, height: 1, background: LINE }} />
+                            <span style={{ fontSize: 11, letterSpacing: 2 }}>17 CÂU CHUYỆN THẬT</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div className="feedback-rail" aria-label="Phản hồi của khách hàng Merci Studio">
+                    {feedbackImages.map((feedback, index) => (
+                        <button
+                            type="button"
+                            key={feedback.src}
+                            onClick={() => setActiveFeedback(feedback)}
+                            className="feedback-card"
+                            aria-label={`Xem phản hồi khách hàng ${index + 1}`}
+                        >
+                            <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
+                            <Image
+                                src={feedback.src}
+                                alt={feedback.alt}
+                                width={1080}
+                                height={1350}
+                                sizes="(max-width: 640px) 78vw, 340px"
+                                className="feedback-card-image"
+                            />
+                            <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
+                        </button>
+                    ))}
+                </div>
+
+                <div style={{ padding: '18px clamp(20px, 5vw, 72px) 0', display: 'flex', alignItems: 'center', gap: 14, color: TAN, fontSize: 10, letterSpacing: 2.5 }}>
+                    <span>VUỐT ĐỂ XEM THÊM</span>
+                    <span style={{ flex: 1, height: 1, background: LINE }} />
+                    <span>MERCI COUPLES</span>
+                </div>
+            </section>
             {/* utilities */}
             <div style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 5vw, 64px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px 40px', borderBottom: `1px solid ${LINE}` }}>
                 <div>
@@ -162,6 +233,31 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                     </div>
                 </div>
             </div>
+
+            {activeFeedback && (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label="Phản hồi của khách hàng Merci Studio"
+                    className="feedback-modal"
+                    onClick={() => setActiveFeedback(null)}
+                >
+                    <button type="button" className="feedback-modal-close" onClick={() => setActiveFeedback(null)} aria-label="Đóng ảnh phản hồi">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                    <div className="feedback-modal-frame" onClick={(event) => event.stopPropagation()}>
+                        <Image
+                            src={activeFeedback.src}
+                            alt={activeFeedback.alt}
+                            width={1080}
+                            height={1350}
+                            sizes="(max-width: 720px) 94vw, 70vh"
+                            className="feedback-modal-image"
+                            priority
+                        />
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
