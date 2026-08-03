@@ -8,6 +8,7 @@ const reservedMetadata: Record<string, { title: string; description: string; noI
   'vest': { title: 'Bộ sưu tập Vest', description: 'Khám phá các mẫu Vest tại Merci Studio và lọc nhanh theo kích cỡ phù hợp.' },
   'blog': { title: 'Blog kinh nghiệm cưới', description: 'Cẩm nang chụp ảnh, chuẩn bị đám cưới và kinh nghiệm dành cho các cặp đôi.' },
   'video': { title: 'Phim phóng sự cưới', description: 'Những thước phim cưới chân thực và giàu cảm xúc từ Merci Studio.' },
+  'feedback': { title: 'Feedback khách hàng', description: 'Những lời nhắn và đánh giá thực tế từ khách hàng của Merci Studio.' },
   'dat-lich': { title: 'Đặt lịch tư vấn', description: 'Đặt lịch chụp ảnh và nhận tư vấn từ Merci Studio.' },
   'booking': { title: 'Đặt lịch tư vấn', description: 'Đặt lịch chụp ảnh và nhận tư vấn từ Merci Studio.' },
   'tool': { title: 'Công cụ khách hàng', description: 'Công cụ dành cho khách hàng Merci Studio.', noIndex: true },

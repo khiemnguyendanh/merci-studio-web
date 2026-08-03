@@ -11,6 +11,7 @@ import {
     BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
 } from 'lucide-react';
 import HomeHub from '@/components/HomeHub';
+import FeedbackPage from '@/components/FeedbackPage';
 import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
@@ -1260,6 +1261,7 @@ export default function Home() {
                         'vest': { tab: 'collection', category: 'Vest' },
                         'blog': { tab: 'blog' },
                         'video': { tab: 'videos' },
+                        'feedback': { tab: 'feedback' },
                         'tool': { tab: 'tool', tool: 'create' },
                         'tao-trang': { tab: 'tool', tool: 'create' },
                         'chon-anh': { tab: 'tool', tool: 'gallery' },
@@ -4197,10 +4199,10 @@ export default function Home() {
     };
 
     const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
-    const albumCategoryFilters = ['Tất cả', ...Array.from(new Set([
+    const albumCategoryFilters = ['Tất cả', ...Array.from(new Map([
         ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
         ...albums.map(a => getAlbumMainCategory(a, '')).filter(Boolean)
-    ]))];
+    ].map(category => [createSlug(category), category])).values())];
     const albumHashtagFilters = Array.from(new Set(
         albums
             .filter(a => albumMatchesCategory(a, activeCategory))
@@ -4295,6 +4297,7 @@ export default function Home() {
             collection: '/bo-su-tap',
             blog: '/blog',
             videos: '/video',
+            feedback: '/feedback',
             tool: '/tool',
             booking: '/dat-lich',
             dashboard: '/thong-ke'
@@ -5353,6 +5356,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'vest', label: 'Vest' },
                                     { id: 'videos', label: 'Video' },
                                     { id: 'blog', label: 'Blog' },
+                                    { id: 'feedback', label: 'Feedback' },
                                     { id: 'tool', label: 'Công cụ' },
                                     { id: 'booking', label: 'Đặt lịch' },
                                     ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }] : [])
@@ -5388,6 +5392,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             setShowClientProfileModal={setShowClientProfileModal}
                         />
                     )}
+
+                    {activeTab === 'feedback' && <FeedbackPage />}
 
                     {activeTab === 'tool' && (
                         <div className="mb-3 md:mb-8 bg-white border border-slate-100 rounded-xl md:rounded-2xl p-2.5 md:p-4 shadow-sm">
@@ -5771,16 +5777,17 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         )}
                                     </div>
 
-                                    <div className="flex overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar pb-2">
+                                    <div className="flex w-full min-w-0 overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar px-1 pt-1 pb-3 scroll-smooth">
                                         {albumCategoryFilters.map(cat => (
                                             <button
                                                 key={cat}
                                                 onClick={() => { setActiveCategory(cat); setVestSizeFilter(''); setAlbumHashtagQuery(''); if (createSlug(cat) === 'vest') window.history.pushState({}, '', '/vest'); else if (cat === 'Tất cả') window.history.pushState({}, '', '/bo-su-tap'); else window.history.pushState({}, '', `/bo-su-tap${getCategoryHash(cat)}`); }}
-                                                className={`px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${createSlug(activeCategory) === createSlug(cat) ? 'bg-slate-900 text-white shadow-md scale-105' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
+                                                className={`shrink-0 px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${createSlug(activeCategory) === createSlug(cat) ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat}
                                             </button>
                                         ))}
+                                        <span aria-hidden="true" className="w-4 shrink-0" />
                                     </div>
 
                                     {createSlug(activeCategory) === 'vest' && (
