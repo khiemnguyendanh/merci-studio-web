@@ -5,7 +5,31 @@ import './globals.css';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
 const facebookPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
-const siteDescription = 'Merci Wedding Studio chuyên chụp ảnh cưới, phóng sự cưới, makeup và váy cưới tại Hà Nội, Bắc Ninh. Xem album thực tế và đặt lịch tư vấn.';
+const siteDescription = 'Chụp ảnh cưới đẹp, phóng sự cưới và váy cưới Douyin tại Hà Nội, Bắc Ninh. Xem album thực tế, chọn váy cưới xinh và đặt lịch Merci Studio.';
+const seoKeywords = [
+  'Merci Studio',
+  'ảnh cưới',
+  'ảnh cưới đẹp',
+  'chụp ảnh cưới',
+  'chụp ảnh cưới Hà Nội',
+  'chụp ảnh cưới Bắc Ninh',
+  'studio ảnh cưới',
+  'phóng sự cưới',
+  'đám cưới',
+  'váy cưới',
+  'váy cưới xinh',
+  'váy cưới Hà Nội',
+  'váy cưới Douyin',
+  'makeup cô dâu',
+  'anhcuoi',
+  'anhcuoidep',
+  'chupanhcuoi',
+  'vaycuoi',
+  'vaycuoihanoi',
+  'vaycuoixinh',
+  'damcuoi',
+  'douyin'
+];
 
 const sansFont = Be_Vietnam_Pro({
   variable: '--font-be-vietnam-pro',
@@ -25,16 +49,16 @@ const serifFont = Cormorant_Garamond({
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: 'Merci Wedding Studio | Ảnh cưới, Makeup & Váy cưới',
+    default: 'Ảnh Cưới Đẹp & Váy Cưới Douyin Hà Nội | Merci Studio',
     template: '%s | Merci Wedding Studio'
   },
   description: siteDescription,
   applicationName: 'Merci Wedding Studio',
   category: 'Wedding photography',
-  keywords: ['Merci Studio', 'ảnh cưới', 'chụp ảnh cưới Hà Nội', 'phóng sự cưới', 'makeup cô dâu', 'váy cưới', 'wedding studio'],
+  keywords: seoKeywords,
   alternates: { canonical: siteUrl },
   openGraph: {
-    title: 'Merci Wedding Studio | Ảnh cưới, Makeup & Váy cưới',
+    title: 'Ảnh Cưới Đẹp & Váy Cưới Douyin Hà Nội | Merci Studio',
     description: siteDescription,
     url: siteUrl,
     siteName: 'Merci Wedding Studio',
@@ -43,7 +67,7 @@ export const metadata: Metadata = {
         url: '/og-merci-studio-v2.png',
         width: 1200,
         height: 630,
-        alt: 'Merci Studio - Photo Makeup Bridal'
+        alt: 'Merci Studio - Chụp ảnh cưới đẹp và váy cưới Douyin Hà Nội'
       }
     ],
     locale: 'vi_VN',
@@ -51,7 +75,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Merci Wedding Studio | Ảnh cưới, Makeup & Váy cưới',
+    title: 'Ảnh Cưới Đẹp & Váy Cưới Douyin Hà Nội | Merci Studio',
     description: siteDescription,
     images: ['/og-merci-studio-v2.png']
   }
@@ -71,6 +95,14 @@ export default function RootLayout({
     image: `${siteUrl}/og-merci-studio-v2.png`,
     logo: `${siteUrl}/merci-logo-watermark.png`,
     description: siteDescription,
+    knowsAbout: [
+      'Chụp ảnh cưới',
+      'Ảnh cưới đẹp',
+      'Phóng sự đám cưới',
+      'Váy cưới Douyin',
+      'Váy cưới Hà Nội',
+      'Makeup cô dâu'
+    ],
     email: 'vaycuoidouyin@gmail.com',
     telephone: '+84888999545',
     priceRange: '$$',

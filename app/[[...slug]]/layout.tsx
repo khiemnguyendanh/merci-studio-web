@@ -3,14 +3,14 @@ import { findPublicContent } from '@/lib/server/firestore-metadata';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
 const reservedMetadata: Record<string, { title: string; description: string; noIndex?: boolean }> = {
-  '': { title: 'Ảnh cưới, Makeup & Váy cưới', description: 'Merci Wedding Studio chuyên chụp ảnh cưới, phóng sự cưới, makeup và váy cưới tại Hà Nội, Bắc Ninh. Xem album thực tế và đặt lịch tư vấn.' },
-  'bo-su-tap': { title: 'Bộ sưu tập ảnh', description: 'Album ảnh cưới, phóng sự cưới và những câu chuyện hình ảnh của Merci Studio.' },
-  'vest': { title: 'Bộ sưu tập Vest', description: 'Khám phá các mẫu Vest tại Merci Studio và lọc nhanh theo kích cỡ phù hợp.' },
-  'blog': { title: 'Blog kinh nghiệm cưới', description: 'Cẩm nang chụp ảnh, chuẩn bị đám cưới và kinh nghiệm dành cho các cặp đôi.' },
-  'video': { title: 'Phim phóng sự cưới', description: 'Những thước phim cưới chân thực và giàu cảm xúc từ Merci Studio.' },
+  '': { title: 'Ảnh Cưới Đẹp & Váy Cưới Douyin', description: 'Chụp ảnh cưới đẹp, phóng sự cưới và váy cưới Douyin tại Hà Nội, Bắc Ninh. Xem album thực tế, chọn váy cưới xinh và đặt lịch Merci Studio.' },
+  'bo-su-tap': { title: 'Bộ Sưu Tập Ảnh Cưới Đẹp', description: 'Xem album ảnh cưới đẹp, chụp ảnh cưới studio và phóng sự đám cưới thực tế của Merci Studio tại Hà Nội, Bắc Ninh.' },
+  'vest': { title: 'Vest Cưới Nam', description: 'Khám phá các mẫu vest cưới nam tại Merci Studio và lọc nhanh theo kích cỡ phù hợp.' },
+  'blog': { title: 'Kinh Nghiệm Chụp Ảnh Cưới', description: 'Cẩm nang chụp ảnh cưới, chọn váy cưới, makeup cô dâu và chuẩn bị đám cưới dành cho các cặp đôi.' },
+  'video': { title: 'Phim Phóng Sự Đám Cưới', description: 'Những thước phim phóng sự đám cưới chân thực, tự nhiên và giàu cảm xúc từ Merci Studio.' },
   'feedback': { title: 'Feedback khách hàng', description: 'Những lời nhắn và đánh giá thực tế từ khách hàng của Merci Studio.' },
-  'dat-lich': { title: 'Đặt lịch tư vấn', description: 'Đặt lịch chụp ảnh và nhận tư vấn từ Merci Studio.' },
-  'booking': { title: 'Đặt lịch tư vấn', description: 'Đặt lịch chụp ảnh và nhận tư vấn từ Merci Studio.' },
+  'dat-lich': { title: 'Đặt Lịch Chụp Ảnh Cưới', description: 'Đặt lịch chụp ảnh cưới, thử váy cưới Douyin và nhận tư vấn concept từ Merci Studio.' },
+  'booking': { title: 'Đặt Lịch Chụp Ảnh Cưới', description: 'Đặt lịch chụp ảnh cưới, thử váy cưới Douyin và nhận tư vấn concept từ Merci Studio.' },
   'tool': { title: 'Công cụ khách hàng', description: 'Công cụ dành cho khách hàng Merci Studio.', noIndex: true },
   'tao-trang': { title: 'Tạo trang chọn ảnh', description: 'Công cụ nội bộ Merci Studio.', noIndex: true },
   'chon-anh': { title: 'Chọn ảnh', description: 'Trang chọn ảnh dành cho khách hàng Merci Studio.', noIndex: true },
