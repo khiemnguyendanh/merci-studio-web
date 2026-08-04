@@ -34,30 +34,42 @@ async function fetchCollection(collection: string, masks: string[]) {
 }
 
 export async function findPublicContent(slug: string): Promise<PublicContentMetadata | null> {
-  const [albums, blogs] = await Promise.all([
-    fetchCollection('merci_albums', ['title', 'slug', 'sub', 'coverUrl']),
-    fetchCollection('merci_blogs', ['title', 'slug', 'metaDesc', 'coverUrl'])
-  ]);
+  const [albums, blogs] = await fetchPublicDocuments();
   const matches = (document: FirestoreDocument) => {
     const id = document.name.split('/').pop() || '';
     const title = field(document, 'title');
     return field(document, 'slug') === slug || createSlug(title) === slug || id === slug;
   };
   const album = albums.find(matches);
-  if (album) return {
-    type: 'album',
-    title: field(album, 'title'),
-    slug,
-    description: field(album, 'sub') || `${field(album, 'title')} - Bộ sưu tập ảnh Merci Studio`,
-    coverUrl: field(album, 'coverUrl')
-  };
+  if (album) return toPublicContent(album, 'album', slug);
   const blog = blogs.find(matches);
-  if (blog) return {
-    type: 'blog',
-    title: field(blog, 'title'),
-    slug,
-    description: field(blog, 'metaDesc') || field(blog, 'title'),
-    coverUrl: field(blog, 'coverUrl')
+  return blog ? toPublicContent(blog, 'blog', slug) : null;
+}
+
+function fetchPublicDocuments() {
+  return Promise.all([
+    fetchCollection('merci_albums', ['title', 'slug', 'sub', 'coverUrl']),
+    fetchCollection('merci_blogs', ['title', 'slug', 'metaDesc', 'coverUrl'])
+  ]);
+}
+
+function toPublicContent(document: FirestoreDocument, type: PublicContentMetadata['type'], slug?: string): PublicContentMetadata {
+  const title = field(document, 'title');
+  const canonicalSlug = slug || field(document, 'slug') || createSlug(title) || document.name.split('/').pop() || '';
+  return {
+    type,
+    title,
+    slug: canonicalSlug,
+    description: type === 'album' ? field(document, 'sub') || `${title} - Bộ sưu tập ảnh Merci Studio` : field(document, 'metaDesc') || title,
+    coverUrl: field(document, 'coverUrl')
   };
-  return null;
+}
+
+export async function listPublicContent(): Promise<PublicContentMetadata[]> {
+  const [albums, blogs] = await fetchPublicDocuments();
+  const content = [
+    ...albums.map((album) => toPublicContent(album, 'album')),
+    ...blogs.map((blog) => toPublicContent(blog, 'blog'))
+  ];
+  return content.filter((item) => item.title && item.slug);
 }

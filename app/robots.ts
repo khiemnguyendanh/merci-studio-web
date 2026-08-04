@@ -1,5 +1,7 @@
 import { MetadataRoute } from 'next';
 
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
+
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
@@ -7,6 +9,7 @@ export default function robots(): MetadataRoute.Robots {
       allow: '/',
       disallow: '/api/',
     },
-    // sitemap: 'https://merci-studio.com/sitemap.xml', // Update with actual domain later
+    sitemap: `${siteUrl}/sitemap.xml`,
+    host: siteUrl,
   };
 }

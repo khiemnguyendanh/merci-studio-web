@@ -1,9 +1,9 @@
 import type { Metadata } from 'next';
 import { findPublicContent } from '@/lib/server/firestore-metadata';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.mercistudio.net';
+const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
 const reservedMetadata: Record<string, { title: string; description: string; noIndex?: boolean }> = {
-  '': { title: 'Merci Wedding Studio', description: 'Photo - Makeup - Bridal' },
+  '': { title: 'Ảnh cưới, Makeup & Váy cưới', description: 'Merci Wedding Studio chuyên chụp ảnh cưới, phóng sự cưới, makeup và váy cưới tại Hà Nội, Bắc Ninh. Xem album thực tế và đặt lịch tư vấn.' },
   'bo-su-tap': { title: 'Bộ sưu tập ảnh', description: 'Album ảnh cưới, phóng sự cưới và những câu chuyện hình ảnh của Merci Studio.' },
   'vest': { title: 'Bộ sưu tập Vest', description: 'Khám phá các mẫu Vest tại Merci Studio và lọc nhanh theo kích cỡ phù hợp.' },
   'blog': { title: 'Blog kinh nghiệm cưới', description: 'Cẩm nang chụp ảnh, chuẩn bị đám cưới và kinh nghiệm dành cho các cặp đôi.' },
@@ -25,7 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug?: st
   if (reserved) return {
     title: reserved.title,
     description: reserved.description,
-    alternates: { canonical: `${siteUrl}/${slug}` },
+    alternates: { canonical: slug ? `${siteUrl}/${slug}` : siteUrl },
     robots: reserved.noIndex ? { index: false, follow: false } : undefined
   };
   if (parts?.length !== 1) return { robots: { index: false, follow: false } };
