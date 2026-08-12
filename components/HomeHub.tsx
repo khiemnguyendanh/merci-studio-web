@@ -1,6 +1,7 @@
 'use client';
 import Image, { type StaticImageData } from 'next/image';
 import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
+import { Reveal, TiltCard } from '@/components/Motion';
 import strip1 from '@/public/home/strip-1.png';
 import strip2 from '@/public/home/strip-2.png';
 import strip3 from '@/public/home/strip-3.png';
@@ -92,58 +93,71 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
         <div style={{ background: CREAM, color: INK, border: `1px solid ${LINE}` }}>
             {/* hero */}
             <div style={{ textAlign: 'center', padding: 'clamp(52px, 8vw, 88px) clamp(20px, 6vw, 120px) clamp(36px, 5vw, 56px)' }}>
-                <div style={{ fontSize: 12, letterSpacing: 4, color: TAN, marginBottom: 'clamp(16px, 3vw, 26px)' }}>PHOTO · MAKEUP · BRIDAL</div>
-                <h1 style={{ fontFamily: serif, fontSize: 'clamp(38px, 6.5vw, 82px)', lineHeight: 1.08, fontWeight: 500, margin: 0, textWrap: 'balance' }}>
+                <div className="animate-in fade-in slide-in-from-bottom-4" style={{ fontSize: 12, letterSpacing: 4, color: TAN, marginBottom: 'clamp(16px, 3vw, 26px)' }}>PHOTO · MAKEUP · BRIDAL</div>
+                <h1 className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: '90ms', fontFamily: serif, fontSize: 'clamp(38px, 6.5vw, 82px)', lineHeight: 1.08, fontWeight: 500, margin: 0, textWrap: 'balance' }}>
                     Lưu giữ khoảnh khắc<br /><em style={{ fontWeight: 400 }}>vượt thời gian</em>
                 </h1>
-                <p style={{ maxWidth: 580, margin: 'clamp(18px, 3vw, 30px) auto 0', fontSize: 'clamp(14px, 1.6vw, 16px)', lineHeight: 1.8, fontWeight: 300, color: SUB }}>
+                <p className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: '180ms', maxWidth: 580, margin: 'clamp(18px, 3vw, 30px) auto 0', fontSize: 'clamp(14px, 1.6vw, 16px)', lineHeight: 1.8, fontWeight: 300, color: SUB }}>
                     Merci Studio đồng hành cùng các cặp đôi ghi dấu những khoảnh khắc yêu thương, chân thực và đong đầy cảm xúc nhất — qua những thước phim, khung hình phóng sự cưới duy mỹ.
                 </p>
-                <div style={{ marginTop: 'clamp(26px, 4vw, 38px)', display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
-                    <button onClick={() => navigateToTab('collection')} style={capsBtn(true)}>XEM BỘ SƯU TẬP</button>
-                    <button onClick={() => navigateToTab('booking')} style={capsBtn(false)}>ĐẶT LỊCH TƯ VẤN</button>
+                <div className="animate-in fade-in slide-in-from-bottom-4" style={{ animationDelay: '270ms', marginTop: 'clamp(26px, 4vw, 38px)', display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
+                    <button className="btn-3d" onClick={() => navigateToTab('collection')} style={capsBtn(true)}>XEM BỘ SƯU TẬP</button>
+                    <button className="btn-3d" onClick={() => navigateToTab('booking')} style={capsBtn(false)}>ĐẶT LỊCH TƯ VẤN</button>
                 </div>
             </div>
             {/* hero image strip */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, padding: '0 clamp(16px, 4vw, 64px)', alignItems: 'end' }}>
-                <Image src={IMG.strip1} alt="Cô dâu tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
-                    style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
-                <Image src={IMG.strip2} alt="Cặp đôi tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw" fetchPriority="high"
-                    style={{ width: '100%', height: 'clamp(280px, 35vw, 420px)', objectFit: 'cover', display: 'block' }} />
-                <Image src={IMG.strip3} alt="Chi tiết váy cưới tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
-                    style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, padding: '0 clamp(16px, 4vw, 64px)', alignItems: 'end', perspective: 1400 }}>
+                <Reveal delay={0}>
+                    <Image src={IMG.strip1} alt="Cô dâu tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
+                        style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
+                </Reveal>
+                <Reveal delay={110}>
+                    <Image src={IMG.strip2} alt="Cặp đôi tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw" fetchPriority="high"
+                        style={{ width: '100%', height: 'clamp(280px, 35vw, 420px)', objectFit: 'cover', display: 'block' }} />
+                </Reveal>
+                <Reveal delay={220}>
+                    <Image src={IMG.strip3} alt="Chi tiết váy cưới tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
+                        style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
+                </Reveal>
             </div>
             {/* destination cards */}
             <div style={{ background: BAND, marginTop: 'clamp(48px, 7vw, 88px)', padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
-                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(28px, 4vw, 44px)' }}>
+                <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(28px, 4vw, 44px)' }}>
                     <h2 style={{ fontFamily: serif, fontSize: 'clamp(30px, 4vw, 44px)', fontWeight: 500, margin: 0 }}>Khám phá Merci</h2>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN }}>ALBUM · PHIM · CẨM NANG</div>
-                </div>
+                </Reveal>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 20 }}>
-                    {cards.map(c => (
-                        <div key={c.tab} onClick={() => navigateToTab(c.tab)} role="button" tabIndex={0}
-                            onKeyDown={(event) => openCardFromKeyboard(event, c.tab)}
-                            aria-label={`${c.title}: ${c.cta.replace(' →', '').toLocaleLowerCase('vi')}`}
-                            style={{
-                                display: 'flex', flexDirection: 'column', cursor: 'pointer',
-                                background: c.dark ? DARK : CREAM, color: c.dark ? '#ede5d8' : INK,
-                                border: `1px solid ${c.dark ? DARK : LINE}`
-                            }}>
-                            <Image src={c.img} alt={c.title} sizes="(max-width: 720px) 100vw, 33vw"
-                                style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '26px 28px 30px', flex: 1 }}>
-                            <div style={{ fontSize: 11, letterSpacing: 3, color: c.dark ? '#b99f80' : TAN }}>{c.tag}</div>
-                            <div style={{ fontFamily: serif, fontSize: 30, fontWeight: 500 }}>{c.title}</div>
-                            <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 1.7, color: c.dark ? '#c9bda9' : SUB }}>{c.desc}</div>
-                            <div style={{ marginTop: 'auto', paddingTop: 14, fontSize: 13, letterSpacing: 2, color: c.dark ? '#d9b998' : BROWN }}>{c.cta}</div>
-                            </div>
-                        </div>
+                    {cards.map((c, cardIndex) => (
+                        <Reveal key={c.tab} delay={cardIndex * 110}>
+                            <TiltCard onClick={() => navigateToTab(c.tab)} role="button" tabIndex={0}
+                                onKeyDown={(event: KeyboardEvent<HTMLDivElement>) => openCardFromKeyboard(event, c.tab)}
+                                aria-label={`${c.title}: ${c.cta.replace(' →', '').toLocaleLowerCase('vi')}`}
+                                maxTilt={5.5}
+                                lift={12}
+                                style={{
+                                    display: 'flex', flexDirection: 'column', cursor: 'pointer', height: '100%',
+                                    background: c.dark ? DARK : CREAM, color: c.dark ? '#ede5d8' : INK,
+                                    border: `1px solid ${c.dark ? DARK : LINE}`
+                                }}>
+                                <div style={{ overflow: 'hidden' }}>
+                                    <Image src={c.img} alt={c.title} sizes="(max-width: 720px) 100vw, 33vw"
+                                        className="destination-card-image"
+                                        style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
+                                </div>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, padding: '26px 28px 30px', flex: 1 }}>
+                                    <div style={{ fontSize: 11, letterSpacing: 3, color: c.dark ? '#b99f80' : TAN }}>{c.tag}</div>
+                                    <div style={{ fontFamily: serif, fontSize: 30, fontWeight: 500 }}>{c.title}</div>
+                                    <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 1.7, color: c.dark ? '#c9bda9' : SUB }}>{c.desc}</div>
+                                    <div style={{ marginTop: 'auto', paddingTop: 14, fontSize: 13, letterSpacing: 2, color: c.dark ? '#d9b998' : BROWN }}>{c.cta}</div>
+                                </div>
+                            </TiltCard>
+                        </Reveal>
                     ))}
                 </div>
             </div>
             {/* customer feedback */}
             <section style={{ padding: 'clamp(54px, 8vw, 96px) 0', overflow: 'hidden', borderBottom: `1px solid ${LINE}` }}>
-                <div style={{ padding: '0 clamp(20px, 5vw, 72px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '28px 60px', alignItems: 'end' }}>
+                <Reveal style={{ padding: '0 clamp(20px, 5vw, 72px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '28px 60px', alignItems: 'end' }}>
                     <div>
                         <div style={{ fontSize: 11, letterSpacing: 3.5, color: TAN, marginBottom: 14 }}>LOVE NOTES · 5/5</div>
                         <h2 style={{ fontFamily: serif, fontSize: 'clamp(34px, 5vw, 60px)', lineHeight: 1.05, fontWeight: 500, margin: 0 }}>
@@ -157,19 +171,22 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                         <div style={{ marginTop: 18, display: 'flex', alignItems: 'center', gap: 12, color: BROWN }}>
                             <span aria-label="5 trên 5 sao" style={{ letterSpacing: 4, fontSize: 16 }}>★★★★★</span>
                             <span style={{ width: 36, height: 1, background: LINE }} />
-                            <span style={{ fontSize: 11, letterSpacing: 2 }}>17 CÂU CHUYỆN THẬT</span>
+                            <span style={{ fontSize: 11, letterSpacing: 2 }}>VÀ CÒN NHIỀU HƠN THẾ</span>
                         </div>
                     </div>
-                </div>
+                </Reveal>
 
                 <div className="feedback-rail" aria-label="Phản hồi của khách hàng Merci Studio">
                     {feedbackImages.map((feedback, index) => (
-                        <button
+                        <TiltCard
+                            as="button"
                             type="button"
                             key={feedback.src}
                             onClick={() => setActiveFeedback(feedback)}
                             className="feedback-card"
                             aria-label={`Xem phản hồi khách hàng ${index + 1}`}
+                            maxTilt={5}
+                            lift={8}
                         >
                             <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
                             <Image
@@ -181,7 +198,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                                 className="feedback-card-image"
                             />
                             <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
-                        </button>
+                        </TiltCard>
                     ))}
                 </div>
 
@@ -200,16 +217,16 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                     </div>
                 </div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
-                    <button onClick={onAuthClick} style={capsBtn(true)}>
+                    <button className="btn-3d" onClick={onAuthClick} style={capsBtn(true)}>
                         {user ? (isAdmin ? 'ĐĂNG XUẤT (ADMIN)' : 'TÀI KHOẢN') : 'ĐĂNG NHẬP / ĐĂNG KÝ'}
                     </button>
                     {tools.map(t => (
-                        <button key={t.tool} onClick={() => navigateToTab('tool', t.tool)} style={capsBtn(false)}>{t.label}</button>
+                        <button className="btn-3d" key={t.tool} onClick={() => navigateToTab('tool', t.tool)} style={capsBtn(false)}>{t.label}</button>
                     ))}
                 </div>
             </div>
             {/* contact footer */}
-            <div style={{ padding: 'clamp(44px, 6vw, 72px) clamp(20px, 5vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '40px 48px' }}>
+            <Reveal style={{ padding: 'clamp(44px, 6vw, 72px) clamp(20px, 5vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '40px 48px' }}>
                 <div>
                     <div style={{ fontFamily: serif, fontSize: 34, fontWeight: 600 }}>Merci Studio</div>
                     <div style={{ marginTop: 12, fontSize: 14, fontWeight: 300, color: SUB, lineHeight: 1.7 }}>
@@ -232,7 +249,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                         <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Zalo</a>
                     </div>
                 </div>
-            </div>
+            </Reveal>
 
             {activeFeedback && (
                 <div

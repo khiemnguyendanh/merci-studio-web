@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
+import { TiltCard } from '@/components/Motion';
 import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
@@ -5355,7 +5356,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <Camera className="text-slate-800 group-hover:rotate-12 transition-transform" size={22} strokeWidth={1.5} />
                                 <h1 className="text-2xl font-semibold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="btn-3d md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
                                 <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                         </div>
@@ -5374,7 +5375,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'booking', label: 'Đặt lịch' },
                                     ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }] : [])
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => t.id === 'vest' ? navigateToVest() : t.id === 'dress' ? navigateToDress() : navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-2.5 py-2 md:px-2.5 lg:px-3 text-[10px] md:text-[11px] lg:text-xs font-semibold uppercase tracking-[0.1em] lg:tracking-[0.12em] whitespace-nowrap border-b-2 transition-colors ${(t.id === 'vest' ? activeTab === 'collection' && createSlug(activeCategory) === 'vest' : t.id === 'dress' ? activeTab === 'collection' && createSlug(activeCategory) === 'vay-cuoi' : activeTab === t.id && !(t.id === 'collection' && ['vest', 'vay-cuoi'].includes(createSlug(activeCategory)))) ? 'text-slate-900 border-slate-800' : 'text-slate-500 border-transparent hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => t.id === 'vest' ? navigateToVest() : t.id === 'dress' ? navigateToDress() : navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-2.5 py-2 md:px-2.5 lg:px-3 text-[10px] md:text-[11px] lg:text-xs font-semibold uppercase tracking-[0.1em] lg:tracking-[0.12em] whitespace-nowrap border-b-2 transition-colors ${(t.id === 'vest' ? activeTab === 'collection' && createSlug(activeCategory) === 'vest' : t.id === 'dress' ? activeTab === 'collection' && createSlug(activeCategory) === 'vay-cuoi' : activeTab === t.id && !(t.id === 'collection' && ['vest', 'vay-cuoi'].includes(createSlug(activeCategory)))) ? 'text-slate-900 border-slate-800' : 'nav-link-3d text-slate-500 border-transparent hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -5382,7 +5383,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
 
                         <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
+                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
                                 <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
                         </div>
@@ -5517,8 +5518,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-10">
                                 {videos.length > 0 ? videos.map(vid => (
-                                    <div
+                                    <TiltCard
                                         key={vid.id}
+                                        maxTilt={5}
+                                        lift={10}
                                         draggable={isAdmin}
                                         onDragStart={(e) => {
                                             if (!isAdmin) return;
@@ -5554,7 +5557,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 </button>
                                             </div>
                                         )}
-                                    </div>
+                                    </TiltCard>
                                 )) : (
                                     <div className="col-span-full text-center py-20 text-slate-400">
                                         <PlayCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -5607,7 +5610,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                     <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-8">
                                         {getFilteredBlogsByHashtag().length > 0 ? getFilteredBlogsByHashtag().map(blog => (
-                                            <div key={blog.id} onClick={() => {
+                                            <TiltCard key={blog.id} maxTilt={5} lift={10} onClick={() => {
                                                 setActiveBlogId(blog.id);
                                                 const slugToUse = blog.slug || createSlug(blog.title) || blog.id;
                                                 window.history.pushState({}, '', `/${slugToUse}`);
@@ -5650,7 +5653,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     <p className="text-slate-500 text-xs md:text-sm leading-relaxed line-clamp-2 md:line-clamp-3 mb-3 md:mb-6 flex-grow">{blog.metaDesc || blog.content}</p>
                                                     <span className="text-blue-600 font-semibold text-xs md:text-sm flex items-center gap-1 mt-auto">Đọc tiếp <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
                                                 </div>
-                                            </div>
+                                            </TiltCard>
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
                                                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -5895,8 +5898,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-8">
                                         {filteredAlbums.length > 0 ? filteredAlbums.map(a => (
-                                            <div
+                                            <TiltCard
                                                 key={a.id}
+                                                maxTilt={4.5}
+                                                lift={8}
+                                                glare={false}
                                                 draggable={isAdmin}
                                                 onDragStart={(e) => {
                                                     if (!isAdmin) return;
@@ -5923,6 +5929,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-2xl overflow-hidden mb-2 md:mb-3 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
                                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
+                                                    <span aria-hidden="true" className="tilt-glare" />
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-col items-start gap-1 max-w-[88%]">
                                                         <span className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
                                                             {getAlbumMainCategory(a, 'Wedding')}
@@ -5949,7 +5956,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     <div className="absolute bottom-3 md:bottom-8 left-3 md:left-8 right-3 md:right-8 text-white">
                                                         <h3 className="text-base md:text-3xl font-semibold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
                                                         <div className="flex items-center justify-between">
-                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest"><span>{a.images?.length || 0} tác phẩm</span><span className="opacity-50"> · </span><span className="inline-flex items-center gap-0.5 md:gap-1"><Eye size={10} className="md:w-3.5 md:h-3.5 inline shrink-0" /> {a.views || 0}</span></p>
+                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest"><span>{a.images?.length || 0} tác phẩm</span></p>
                                                             {a.sub && <p className="hidden md:block text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
                                                         </div>
                                                     </div>
@@ -5969,7 +5976,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         )}
                                                     </div>
                                                 )}
-                                            </div>
+                                            </TiltCard>
                                         )) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
                                                 <ImageIcon className="w-12 h-12 mx-auto mb-3 opacity-30" />
@@ -6021,10 +6028,6 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     <div className="text-center px-4 flex flex-col items-center gap-2">
                                         <h2 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-2">{currentViewAlbum?.title}</h2>
                                         {currentViewAlbum?.sub && <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>}
-                                        <div className="flex items-center gap-1.5 text-slate-400 text-xs md:text-sm font-semibold mt-1">
-                                            <Eye size={14} className="opacity-80" />
-                                            <span>{currentViewAlbum?.views || 0} lượt xem</span>
-                                        </div>
                                     </div>
 
                                     <PaginationControls
@@ -6668,7 +6671,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start animate-in fade-in duration-500">
                                     {/* Left Side: Text and Premium Cards */}
                                     <div className="lg:col-span-5 space-y-6">
-                                        <div className="bg-gradient-to-tr from-slate-900 to-blue-950 text-white rounded-2xl p-8 shadow-xl relative overflow-hidden">
+                                        <div className="card-3d bg-gradient-to-tr from-slate-900 to-blue-950 text-white rounded-2xl p-8 shadow-xl relative overflow-hidden">
                                             <div className="absolute -top-12 -right-12 w-40 h-40 bg-blue-500/20 rounded-full blur-2xl"></div>
                                             <div className="absolute -bottom-12 -left-12 w-40 h-40 bg-pink-500/10 rounded-full blur-2xl"></div>
                                             
@@ -6695,7 +6698,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </ul>
                                         </div>
 
-                                        <div className="bg-white border border-slate-100 rounded-2xl p-8 shadow-sm space-y-6">
+                                        <div className="card-3d bg-white border border-slate-100 rounded-2xl p-8 shadow-sm space-y-6">
                                             <h4 className="text-lg font-black text-slate-900">Liên hệ trực tiếp</h4>
                                             <div className="space-y-6">
                                                 <div className="flex items-start gap-3">
@@ -6733,7 +6736,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     </div>
 
                                     {/* Right Side: Form */}
-                                    <div className="lg:col-span-7 bg-white border border-slate-100 rounded-2xl p-6 md:p-10 shadow-lg relative overflow-hidden">
+                                    <div className="card-3d lg:col-span-7 bg-white border border-slate-100 rounded-2xl p-6 md:p-10 shadow-lg relative overflow-hidden">
                                         <form onSubmit={handleCreateBooking} className="space-y-6">
                                             <div>
                                                 <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-2 ml-1">Họ và tên *</label>
@@ -6816,7 +6819,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             <button
                                                 type="submit"
                                                 disabled={isSubmittingBooking}
-                                                className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/20 active:scale-[0.99] hover:shadow-xl transition-all flex items-center justify-center gap-2 text-base disabled:opacity-50"
+                                                className="btn-3d w-full py-4 bg-blue-600 hover:bg-blue-700 text-white rounded-2xl font-bold shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 text-base disabled:opacity-50"
                                             >
                                                 {isSubmittingBooking ? (
                                                     <>

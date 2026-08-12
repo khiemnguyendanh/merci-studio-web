@@ -65,6 +65,10 @@
   --shadow-2xl: 0 14px 34px rgb(61 47 38 / 0.14);
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -229,11 +233,210 @@ button, [role="button"], a {
   cursor: pointer;
 }
 
+.feedback-modal {
+  animation: merci-fade 0.35s ease both;
+}
+
+.feedback-modal-frame {
+  animation: merci-modal-pop 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (max-width: 640px) {
   .feedback-rail {
     grid-auto-columns: 82vw;
     padding-right: 9vw;
   }
+}
+
+/* ============================================================
+   MERCI MOTION SYSTEM
+   1) Enter animations — thay thế plugin tailwindcss-animate
+      (markup sẵn có dùng animate-in, fade-in, zoom-in, slide-in
+      nhưng plugin chưa từng được cài nên các class này vô hiệu).
+      Đọc --tw-duration và --tw-ease do utility duration/ease của
+      Tailwind v4 set sẵn, nên các class hiện có chạy đúng ý.
+   ============================================================ */
+
+@keyframes merci-enter {
+  from {
+    opacity: var(--enter-opacity, 1);
+    transform: translate3d(var(--enter-tx, 0), var(--enter-ty, 0), 0)
+      scale(var(--enter-scale, 1));
+  }
+}
+
+@keyframes merci-fade {
+  from { opacity: 0; }
+}
+
+@keyframes merci-modal-pop {
+  from {
+    opacity: 0;
+    transform: perspective(1200px) translateY(16px) scale(0.94) rotateX(4deg);
+  }
+}
+
+.animate-in {
+  animation: merci-enter var(--tw-duration, 0.6s)
+    var(--tw-ease, cubic-bezier(0.22, 0.61, 0.36, 1)) both;
+}
+
+.fade-in { --enter-opacity: 0; }
+.zoom-in { --enter-opacity: 0; --enter-scale: 0.9; }
+.zoom-in-95 { --enter-opacity: 0; --enter-scale: 0.95; }
+.slide-in-from-bottom { --enter-ty: 100%; }
+.slide-in-from-bottom-4 { --enter-ty: 1rem; }
+.slide-in-from-left { --enter-opacity: 0; --enter-tx: -1.25rem; }
+.slide-in-from-right { --enter-opacity: 0; --enter-tx: 1.25rem; }
+
+/* ============================================================
+   2) Tilt 3D — thẻ nghiêng theo con trỏ (điều khiển bởi TiltCard).
+      Biến --rx/--ry/--tz/--gx/--gy do JS cập nhật qua rAF;
+      lúc thả chuột thẻ đàn hồi về vị trí cũ bằng transition dài.
+   ============================================================ */
+
+.tilt-3d {
+  --rx: 0deg;
+  --ry: 0deg;
+  --tz: 0px;
+  --gx: 50%;
+  --gy: 50%;
+  --glare-o: 0;
+  transform: perspective(var(--persp, 1100px)) rotateX(var(--rx))
+    rotateY(var(--ry)) translateZ(var(--tz));
+  transform-style: preserve-3d;
+  transition:
+    transform 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.7s cubic-bezier(0.16, 1, 0.3, 1),
+    opacity 0.3s ease;
+}
+
+.tilt-3d.is-tilting {
+  transition-duration: 0.14s, 0.7s, 0.3s;
+  will-change: transform;
+}
+
+.destination-card-image {
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.tilt-3d:hover .destination-card-image {
+  transform: scale(1.05);
+}
+
+.tilt-glare {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  border-radius: inherit;
+  background: radial-gradient(
+    520px circle at var(--gx, 50%) var(--gy, 50%),
+    rgb(255 253 246 / 0.24),
+    rgb(255 253 246 / 0.07) 42%,
+    transparent 64%
+  );
+  opacity: var(--glare-o, 0);
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+
+/* ============================================================
+   3) card-3d — hover nổi khối thuần CSS cho thẻ tĩnh (form, panel)
+   ============================================================ */
+
+@media (hover: hover) and (pointer: fine) {
+  .card-3d {
+    transition:
+      transform 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+      box-shadow 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .card-3d:hover {
+    transform: perspective(900px) translateY(-4px) rotateX(1.2deg) scale(1.006);
+    box-shadow: 0 24px 48px -20px rgb(43 36 30 / 0.26);
+  }
+}
+
+/* ============================================================
+   4) btn-3d — nút nổi nhẹ khi hover, lún xuống khi bấm
+   ============================================================ */
+
+.btn-3d {
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    background-color 0.25s ease,
+    color 0.25s ease,
+    border-color 0.25s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn-3d:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 12px 24px -12px rgb(43 36 30 / 0.4);
+  }
+}
+
+.btn-3d:active {
+  transform: translateY(1px) scale(0.98);
+  box-shadow: 0 3px 8px -5px rgb(43 36 30 / 0.35);
+  transition-duration: 0.08s;
+}
+
+/* ============================================================
+   nav-link-3d — link menu: nhấc nhẹ + gạch chân mọc từ giữa
+   (chỉ gắn cho tab chưa active; tab active giữ border sẵn có)
+   ============================================================ */
+
+.nav-link-3d {
+  position: relative;
+  transition:
+    color 0.25s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nav-link-3d::after {
+  content: '';
+  position: absolute;
+  right: 10px;
+  bottom: -2px;
+  left: 10px;
+  height: 2px;
+  background: currentColor;
+  transform: scaleX(0);
+  transform-origin: 50% 50%;
+  transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nav-link-3d:hover {
+    transform: translateY(-1px);
+  }
+
+  .nav-link-3d:hover::after {
+    transform: scaleX(1);
+  }
+}
+
+/* ============================================================
+   5) reveal-3d — nội dung trồi lên có chiều sâu khi cuộn tới
+      (điều khiển bởi component Reveal; chỉ gắn class sau khi
+      hydrate nên SSR/no-JS vẫn thấy đủ nội dung)
+   ============================================================ */
+
+.reveal-3d {
+  opacity: 0;
+  transform: perspective(900px) translateY(28px) rotateX(3.5deg);
+  transform-origin: 50% 100%;
+  transition:
+    opacity 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms),
+    transform 0.9s cubic-bezier(0.16, 1, 0.3, 1) var(--reveal-delay, 0ms);
+  will-change: opacity, transform;
+}
+
+.reveal-3d.is-inview {
+  opacity: 1;
+  transform: perspective(900px) translateY(0) rotateX(0deg);
 }
 
 .feedback-page {

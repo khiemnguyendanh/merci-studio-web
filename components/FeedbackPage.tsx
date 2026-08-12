@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { Reveal, TiltCard } from '@/components/Motion';
 
 const feedbackImages = Array.from({ length: 17 }, (_, index) => ({
     src: `/home/feedback/${index + 1}.webp`,
@@ -34,17 +35,19 @@ export default function FeedbackPage() {
                 </div>
                 <div className="feedback-page-intro">
                     <p>Không có lời giới thiệu nào chân thật hơn cảm nhận của những cô dâu, chú rể đã đồng hành cùng Merci. Mỗi tin nhắn là một kỷ niệm chúng tôi luôn trân trọng.</p>
-                    <div className="feedback-page-rating"><span aria-label="5 trên 5 sao">★★★★★</span><i /><small>17 CÂU CHUYỆN THẬT</small></div>
+                    <div className="feedback-page-rating"><span aria-label="5 trên 5 sao">★★★★★</span><i /><small>VÀ CÒN NHIỀU HƠN THẾ</small></div>
                 </div>
             </header>
 
             <div className="feedback-page-grid">
                 {feedbackImages.map((feedback, index) => (
-                    <button type="button" key={feedback.src} onClick={() => setActiveFeedback(feedback)} className="feedback-card" aria-label={`Xem phản hồi khách hàng ${index + 1}`}>
-                        <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
-                        <Image src={feedback.src} alt={feedback.alt} width={1080} height={1350} sizes="(max-width: 640px) 92vw, (max-width: 1100px) 45vw, 30vw" className="feedback-card-image" />
-                        <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
-                    </button>
+                    <Reveal key={feedback.src} delay={(index % 3) * 90}>
+                        <TiltCard as="button" type="button" onClick={() => setActiveFeedback(feedback)} className="feedback-card" style={{ width: '100%' }} aria-label={`Xem phản hồi khách hàng ${index + 1}`} maxTilt={5} lift={8}>
+                            <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
+                            <Image src={feedback.src} alt={feedback.alt} width={1080} height={1350} sizes="(max-width: 640px) 92vw, (max-width: 1100px) 45vw, 30vw" className="feedback-card-image" />
+                            <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
+                        </TiltCard>
+                    </Reveal>
                 ))}
             </div>
 
