@@ -348,7 +348,7 @@ const ADMIN_EMAILS = Array.from(new Set([
 ]));
 
 // Danh mục Album
-const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Vest', 'Phóng sự cưới', 'Kỷ Yếu', 'Baby / Family', 'Event', 'Concept'];
+const ALBUM_CATEGORIES = ['Tất cả', 'Wedding', 'Váy cưới', 'Vest', 'Phóng sự cưới', 'Kỷ Yếu', 'Baby / Family', 'Event', 'Concept'];
 
 // Component Icon Facebook 
 const FacebookIcon = ({ className }) => (
@@ -1258,6 +1258,7 @@ export default function Home() {
                 } else {
                     const routeMap = {
                         'bo-su-tap': { tab: 'collection' },
+                        'vay-cuoi': { tab: 'collection', category: 'Váy cưới' },
                         'vest': { tab: 'collection', category: 'Vest' },
                         'blog': { tab: 'blog' },
                         'video': { tab: 'videos' },
@@ -4295,6 +4296,7 @@ export default function Home() {
         const routes = {
             home: '/',
             collection: '/bo-su-tap',
+            dress: '/vay-cuoi',
             blog: '/blog',
             videos: '/video',
             feedback: '/feedback',
@@ -4333,6 +4335,16 @@ export default function Home() {
         setAlbumHashtagQuery('');
         setVestSizeFilter('');
         window.history.pushState({}, document.title, '/vest');
+    };
+
+    const navigateToDress = () => {
+        setActiveTab('collection');
+        setActiveAlbumId(null);
+        setActiveBlogId(null);
+        setActiveCategory('Váy cưới');
+        setAlbumHashtagQuery('');
+        setVestSizeFilter('');
+        window.history.pushState({}, document.title, '/vay-cuoi');
     };
 
     const PaginationControls = ({ currentPage, totalPages, totalItems, onPageChange, label }) => {
@@ -5331,8 +5343,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* Menu Header */}
             {activeTab !== 'home' && (
-                <header className="relative md:sticky md:top-0 z-40 bg-[#faf7f1]/90 backdrop-blur-md border-b border-slate-200 py-2.5 px-4 md:p-4">
-                    <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-4">
+                <header className="relative md:sticky md:top-0 z-40 bg-[#faf7f1]/90 backdrop-blur-md border-b border-slate-200 py-2.5 px-3 md:px-4 md:py-3">
+                    <div className="max-w-[1480px] mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-3">
                         <div className="flex justify-between items-center w-full md:w-auto">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                                 setActiveTab('home');
@@ -5348,11 +5360,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             </button>
                         </div>
 
-                        <div className="w-full md:w-auto overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                            <nav className="flex gap-1 md:gap-2 w-max md:w-auto mx-auto">
+                        <div className="w-full min-w-0 md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                            <nav className="flex gap-0.5 md:gap-1 w-max md:w-full md:justify-center">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
+                                    { id: 'dress', label: 'Váy cưới' },
                                     { id: 'vest', label: 'Vest' },
                                     { id: 'videos', label: 'Video' },
                                     { id: 'blog', label: 'Blog' },
@@ -5361,7 +5374,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                     { id: 'booking', label: 'Đặt lịch' },
                                     ...(isAdmin ? [{ id: 'dashboard', label: 'Thống kê' }] : [])
                                 ].map(t => (
-                                    <button key={t.id} onClick={() => t.id === 'vest' ? navigateToVest() : navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-3 py-2 md:px-4 text-[11px] md:text-xs font-semibold uppercase tracking-[0.15em] whitespace-nowrap border-b-2 transition-colors ${(t.id === 'vest' ? activeTab === 'collection' && createSlug(activeCategory) === 'vest' : activeTab === t.id && !(t.id === 'collection' && createSlug(activeCategory) === 'vest')) ? 'text-slate-900 border-slate-800' : 'text-slate-500 border-transparent hover:text-slate-800'}`}>
+                                    <button key={t.id} onClick={() => t.id === 'vest' ? navigateToVest() : t.id === 'dress' ? navigateToDress() : navigateToTab(t.id, t.id === 'tool' ? activeToolTab : null)} className={`px-2.5 py-2 md:px-2.5 lg:px-3 text-[10px] md:text-[11px] lg:text-xs font-semibold uppercase tracking-[0.1em] lg:tracking-[0.12em] whitespace-nowrap border-b-2 transition-colors ${(t.id === 'vest' ? activeTab === 'collection' && createSlug(activeCategory) === 'vest' : t.id === 'dress' ? activeTab === 'collection' && createSlug(activeCategory) === 'vay-cuoi' : activeTab === t.id && !(t.id === 'collection' && ['vest', 'vay-cuoi'].includes(createSlug(activeCategory)))) ? 'text-slate-900 border-slate-800' : 'text-slate-500 border-transparent hover:text-slate-800'}`}>
                                         {t.label}
                                     </button>
                                 ))}
@@ -5781,7 +5794,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         {albumCategoryFilters.map(cat => (
                                             <button
                                                 key={cat}
-                                                onClick={() => { setActiveCategory(cat); setVestSizeFilter(''); setAlbumHashtagQuery(''); if (createSlug(cat) === 'vest') window.history.pushState({}, '', '/vest'); else if (cat === 'Tất cả') window.history.pushState({}, '', '/bo-su-tap'); else window.history.pushState({}, '', `/bo-su-tap${getCategoryHash(cat)}`); }}
+                                                 onClick={() => { setActiveCategory(cat); setVestSizeFilter(''); setAlbumHashtagQuery(''); if (createSlug(cat) === 'vest') window.history.pushState({}, '', '/vest'); else if (createSlug(cat) === 'vay-cuoi') window.history.pushState({}, '', '/vay-cuoi'); else if (cat === 'Tất cả') window.history.pushState({}, '', '/bo-su-tap'); else window.history.pushState({}, '', `/bo-su-tap${getCategoryHash(cat)}`); }}
                                                 className={`shrink-0 px-4 md:px-5 py-1.5 md:py-2 rounded-full text-xs md:text-sm font-semibold whitespace-nowrap transition-all duration-300 ${createSlug(activeCategory) === createSlug(cat) ? 'bg-slate-900 text-white shadow-md' : 'bg-white text-slate-500 border border-slate-200 hover:bg-slate-50 hover:text-slate-800'}`}
                                             >
                                                 {cat}
@@ -5971,7 +5984,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                                             <button onClick={() => {
                                                 setActiveAlbumId(null);
-                                                window.history.pushState({}, document.title, createSlug(activeCategory) === 'vest' ? '/vest' : `/bo-su-tap${getCategoryHash(activeCategory)}`);
+                                                 window.history.pushState({}, document.title, createSlug(activeCategory) === 'vest' ? '/vest' : createSlug(activeCategory) === 'vay-cuoi' ? '/vay-cuoi' : `/bo-su-tap${getCategoryHash(activeCategory)}`);
                                             }} className="flex items-center justify-center gap-2 text-slate-500 bg-white hover:bg-slate-50 px-4 py-2 md:py-2.5 rounded-xl md:rounded-2xl border shadow-sm transition-all active:scale-95 text-sm md:text-base flex-1 md:flex-none">
                                                 <ArrowLeft size={18} /> Quay lại
                                             </button>
