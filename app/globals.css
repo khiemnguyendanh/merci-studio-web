@@ -419,6 +419,91 @@ button, [role="button"], a {
 }
 
 /* ============================================================
+   quick-chat — bong bóng liên hệ nhanh (Messenger / Zalo)
+   ============================================================ */
+
+.quick-chat-bubble {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 999px;
+  color: #fff;
+  text-decoration: none;
+  box-shadow: 0 10px 24px -8px rgb(32 26 21 / 0.45);
+  transition:
+    transform 0.35s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quick-chat-bubble::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: inherit;
+  animation: quick-chat-pulse 2.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}
+
+.quick-chat-bubble:nth-child(2)::before {
+  animation-delay: 1.4s;
+}
+
+@keyframes quick-chat-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 0.4;
+  }
+  70%,
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quick-chat-bubble:hover {
+    transform: translateY(-3px) scale(1.06);
+    box-shadow: 0 16px 32px -10px rgb(32 26 21 / 0.5);
+  }
+}
+
+.quick-chat-bubble:active {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+
+.quick-chat-label {
+  position: absolute;
+  left: calc(100% + 12px);
+  top: 50%;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: #2b241e;
+  color: #faf7f1;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translate(-6px, -50%);
+  pointer-events: none;
+  transition:
+    opacity 0.3s ease,
+    transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .quick-chat-bubble:hover .quick-chat-label {
+    opacity: 1;
+    transform: translate(0, -50%);
+  }
+}
+
+/* ============================================================
    5) reveal-3d — nội dung trồi lên có chiều sâu khi cuộn tới
       (điều khiển bởi component Reveal; chỉ gắn class sau khi
       hydrate nên SSR/no-JS vẫn thấy đủ nội dung)

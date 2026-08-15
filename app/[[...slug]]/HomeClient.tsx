@@ -13,6 +13,7 @@ import {
 import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
 import { TiltCard } from '@/components/Motion';
+import QuickChat from '@/components/QuickChat';
 import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
@@ -6889,6 +6890,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
             <VideoLightbox videoModal={videoModal} setVideoModal={setVideoModal} />
+            <QuickChat />
             <div className="fixed right-4 bottom-5 z-50 flex flex-col gap-2">
                 <button
                     type="button"
