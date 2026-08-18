@@ -85,8 +85,8 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
 
     // Số liệu giới thiệu — chỉnh trực tiếp tại đây khi cần cập nhật
     const stats = [
-        { value: '500+', label: 'Bộ ảnh đã thực hiện' },
-        { value: '300+', label: 'Cặp đôi đồng hành' },
+        { value: '10+', label: 'Năm kinh nghiệm của Owner' },
+        { value: '1000+', label: 'Cặp đôi đồng hành' },
         { value: '2', label: 'Cơ sở Hà Nội · Bắc Ninh' },
         { value: '5/5', label: 'Đánh giá từ các cặp đôi' }
     ];
@@ -124,6 +124,15 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
         { tool: 'create', label: 'TẠO TRANG' },
         { tool: 'gallery', label: 'CHỌN ẢNH' },
         { tool: 'filter', label: 'LỌC ẢNH' }
+    ];
+
+    const socials = [
+        { label: 'Facebook · Merci Bridal', href: 'https://www.facebook.com/mercibridalvn' },
+        { label: 'Facebook · Merci Wedding', href: 'https://www.facebook.com/merciwedding.vn' },
+        { label: 'Facebook · Merci Bắc Ninh', href: 'https://www.facebook.com/MerciStudioBN' },
+        { label: 'TikTok · @mercibridal', href: 'https://www.tiktok.com/@mercibridal' },
+        { label: 'TikTok · @mercistudiovn', href: 'https://www.tiktok.com/@mercistudiovn' },
+        { label: 'Instagram · merciwedding.vn', href: 'https://www.instagram.com/merciwedding.vn/' }
     ];
 
     return (
@@ -382,14 +391,18 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>LIÊN HỆ</div>
-                    <div>0888.999.545 — 0877.999.545</div>
-                    <div>vaycuoidouyin@gmail.com</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 18, marginTop: 8, fontSize: 13, letterSpacing: 1 }}>
-                        <a href="https://www.facebook.com/merciwedding.vn" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Facebook</a>
-                        <a href="https://www.instagram.com/merciwedding.vn/" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Instagram</a>
-                        <a href="https://www.tiktok.com/@mercistudiovn" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>TikTok</a>
-                        <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Zalo</a>
-                    </div>
+                    <div><a className="footer-link" href="tel:0888999545" style={{ color: SUB, textDecoration: 'none' }}>0888.999.545</a> — <a className="footer-link" href="tel:0877999545" style={{ color: SUB, textDecoration: 'none' }}>0877.999.545</a></div>
+                    <div><a className="footer-link" href="mailto:vaycuoidouyin@gmail.com" style={{ color: SUB, textDecoration: 'none' }}>vaycuoidouyin@gmail.com</a></div>
+                    <div><a className="footer-link" href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Zalo · 0888.999.545</a></div>
+                    <div><a className="footer-link" href="https://m.me/mercibridalvn" target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>Messenger · Merci Bridal</a></div>
+                </div>
+                <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
+                    <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>KẾT NỐI VỚI MERCI</div>
+                    {socials.map(s => (
+                        <div key={s.href}>
+                            <a className="footer-link" href={s.href} target="_blank" rel="noreferrer" style={{ color: BROWN, textDecoration: 'none' }}>{s.label}</a>
+                        </div>
+                    ))}
                 </div>
             </Reveal>
 

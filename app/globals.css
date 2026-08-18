@@ -419,6 +419,23 @@ button, [role="button"], a {
 }
 
 /* ============================================================
+   footer-link — link footer: đổi màu + gạch chân mềm khi hover
+   ============================================================ */
+
+.footer-link {
+  transition: color 0.25s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .footer-link:hover {
+    color: #5f4735 !important;
+    text-decoration: underline !important;
+    text-underline-offset: 3px;
+    text-decoration-thickness: 1px;
+  }
+}
+
+/* ============================================================
    service-row — ô dịch vụ trên landing: nổi nhẹ, mũi tên trượt
    ============================================================ */
 
