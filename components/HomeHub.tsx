@@ -9,7 +9,7 @@ import cardAlbum from '@/public/home/card-album.png';
 import cardFilm from '@/public/home/card-film.png';
 import cardBlog from '@/public/home/card-blog.png';
 
-// Merci Studio — trang chủ redesign (editorial, tông kem/nâu ấm)
+// Merci Studio — trang chủ dạng landing page (editorial, tông kem/nâu ấm)
 // Fluid responsive: không cần media query, dùng clamp() + auto-fit grid.
 const serif = "'Cormorant Garamond', Georgia, serif";
 const INK = '#2b241e', SUB = '#5c5044', LINE = '#d9d0c3', TAN = '#a08d76', BROWN = '#7a5c44', DARK = '#3d2f26', CREAM = '#faf7f1', BAND = '#f1ebe0';
@@ -30,10 +30,15 @@ const capsBtn = (filled: boolean): CSSProperties => ({
     border: filled ? 'none' : `1px solid #b7a992`, cursor: 'pointer', fontFamily: 'inherit'
 });
 
+const kickerStyle = (color = TAN): CSSProperties => ({ fontSize: 11, letterSpacing: 3.5, color, marginBottom: 14 });
+const h2Style: CSSProperties = { fontFamily: serif, fontSize: 'clamp(30px, 4.5vw, 52px)', lineHeight: 1.08, fontWeight: 500, margin: 0 };
+
 type HomeHubProps = {
     user: { email?: string | null } | null;
     isAdmin: boolean;
     navigateToTab: (tab: string, tool?: string) => void;
+    navigateToVest?: () => void;
+    navigateToDress?: () => void;
     openClientAuth: (mode: 'login' | 'register') => void;
     handleClientLogout: () => void;
     setShowClientProfileModal: (show: boolean) => void;
@@ -54,7 +59,7 @@ const feedbackImages = Array.from({ length: 17 }, (_, index) => ({
     alt: `Phản hồi thực tế từ khách hàng Merci Studio ${index + 1}`
 }));
 
-export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, handleClientLogout, setShowClientProfileModal }: HomeHubProps) {
+export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, navigateToDress, openClientAuth, handleClientLogout, setShowClientProfileModal }: HomeHubProps) {
     const [activeFeedback, setActiveFeedback] = useState<(typeof feedbackImages)[number] | null>(null);
 
     useEffect(() => {
@@ -77,6 +82,38 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
         event.preventDefault();
         navigateToTab(tab);
     };
+
+    // Số liệu giới thiệu — chỉnh trực tiếp tại đây khi cần cập nhật
+    const stats = [
+        { value: '500+', label: 'Bộ ảnh đã thực hiện' },
+        { value: '300+', label: 'Cặp đôi đồng hành' },
+        { value: '2', label: 'Cơ sở Hà Nội · Bắc Ninh' },
+        { value: '5/5', label: 'Đánh giá từ các cặp đôi' }
+    ];
+
+    const services = [
+        { num: '01', title: 'Chụp ảnh cưới & Pre-wedding', desc: 'Concept nghệ thuật trong studio và ngoại cảnh, tone màu duy mỹ thiết kế riêng cho từng cặp đôi.', cta: 'XEM BỘ SƯU TẬP', action: () => navigateToTab('collection') },
+        { num: '02', title: 'Phóng sự cưới & Cinematic film', desc: 'Ghi lại trọn vẹn cảm xúc ngày cưới bằng những thước phim chân thực, sống động và lãng mạn.', cta: 'XEM PHIM', action: () => navigateToTab('videos') },
+        { num: '03', title: 'Váy cưới Douyin', desc: 'Bộ sưu tập váy cưới phong cách Douyin thời thượng, đa dạng thiết kế cho cô dâu lựa chọn.', cta: 'XEM VÁY CƯỚI', action: () => (navigateToDress ? navigateToDress() : navigateToTab('collection')) },
+        { num: '04', title: 'Vest chú rể', desc: 'Các mẫu vest lịch lãm, đầy đủ kích cỡ — sẵn sàng cho ngày trọng đại của chú rể.', cta: 'XEM VEST', action: () => (navigateToVest ? navigateToVest() : navigateToTab('collection')) },
+        { num: '05', title: 'Makeup & làm tóc cô dâu', desc: 'Đội ngũ makeup chuyên nghiệp đồng hành cùng cô dâu từ buổi chụp đến lễ cưới.', cta: 'ĐẶT LỊCH', action: () => navigateToTab('booking') },
+        { num: '06', title: 'Kỷ yếu · Gia đình · Sự kiện', desc: 'Lưu giữ kỷ niệm cùng bạn bè và gia đình với ekip giàu kinh nghiệm sự kiện lớn nhỏ.', cta: 'NHẬN TƯ VẤN', action: () => navigateToTab('booking') }
+    ];
+
+    const steps = [
+        { num: '01', title: 'Tư vấn & giữ lịch', desc: 'Liên hệ hotline, Messenger hoặc Zalo để nhận báo giá chi tiết và giữ lịch chụp.' },
+        { num: '02', title: 'Chọn concept & trang phục', desc: 'Thử váy cưới, vest tại cơ sở; chốt concept, địa điểm và timeline cùng ekip.' },
+        { num: '03', title: 'Ngày chụp & ngày cưới', desc: 'Makeup, chụp ảnh và quay phim theo kịch bản đã thống nhất — bạn chỉ cần tận hưởng.' },
+        { num: '04', title: 'Chọn ảnh online', desc: 'Nhận gallery riêng tư có mã bảo mật, thả tim chọn ảnh yêu thích mọi lúc mọi nơi.' },
+        { num: '05', title: 'Nhận album & phim', desc: 'Ảnh phóng, album thiết kế và phim hoàn thiện được trao tận tay cô dâu chú rể.' }
+    ];
+
+    const reasons = [
+        { title: 'Ekip tận tâm', desc: 'Dày dặn kinh nghiệm qua các sự kiện lớn nhỏ, chăm chút chu đáo từng chi tiết.' },
+        { title: 'Màu ảnh độc bản', desc: 'Tone màu sang trọng, tự nhiên được thiết kế riêng cho mỗi concept chụp.' },
+        { title: 'Bảo mật & tiện lợi', desc: 'Nhận ảnh, chọn ảnh online tiện lợi với mã bảo mật an toàn cho riêng bạn.' },
+        { title: 'Trọn gói một địa chỉ', desc: 'Photo, makeup, váy cưới, vest — chuẩn bị đầy đủ cho ngày cưới tại một nơi.' }
+    ];
 
     const cards: DestinationCard[] = [
         { tab: 'collection', tag: 'STUDIO GALLERY', title: 'Bộ sưu tập ảnh', desc: 'Album Pre-wedding nghệ thuật và phóng sự ngày cưới cảm xúc của các cặp đôi.', cta: 'XEM ALBUM →', dark: false, img: IMG.cardAlbum },
@@ -104,6 +141,13 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                     <button className="btn-3d" onClick={() => navigateToTab('collection')} style={capsBtn(true)}>XEM BỘ SƯU TẬP</button>
                     <button className="btn-3d" onClick={() => navigateToTab('booking')} style={capsBtn(false)}>ĐẶT LỊCH TƯ VẤN</button>
                 </div>
+                <div className="animate-in fade-in" style={{ animationDelay: '380ms', marginTop: 'clamp(22px, 3vw, 30px)', display: 'flex', flexWrap: 'wrap', gap: '8px 22px', justifyContent: 'center', alignItems: 'center', fontSize: 10.5, letterSpacing: 2.2, color: TAN }}>
+                    <span style={{ color: BROWN }}>★★★★★ 5/5</span>
+                    <span aria-hidden="true" style={{ width: 22, height: 1, background: LINE }} />
+                    <span>VÁY CƯỚI DOUYIN</span>
+                    <span aria-hidden="true" style={{ width: 22, height: 1, background: LINE }} />
+                    <span>HÀ NỘI · BẮC NINH</span>
+                </div>
             </div>
             {/* hero image strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, padding: '0 clamp(16px, 4vw, 64px)', alignItems: 'end', perspective: 1400 }}>
@@ -120,8 +164,51 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                         style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
                 </Reveal>
             </div>
+            {/* stats band */}
+            <Reveal style={{ margin: 'clamp(44px, 6vw, 72px) clamp(16px, 4vw, 64px) 0', borderTop: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}`, display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(200px, 100%), 1fr))' }}>
+                {stats.map((s, i) => (
+                    <div key={s.label} style={{ padding: 'clamp(22px, 3vw, 34px) 18px', textAlign: 'center', borderLeft: i > 0 ? `1px solid ${LINE}` : 'none' }}>
+                        <div style={{ fontFamily: serif, fontSize: 'clamp(30px, 3.6vw, 44px)', fontWeight: 500, color: DARK, lineHeight: 1 }}>{s.value}</div>
+                        <div style={{ marginTop: 10, fontSize: 10.5, letterSpacing: 2.2, color: TAN, textTransform: 'uppercase' }}>{s.label}</div>
+                    </div>
+                ))}
+            </Reveal>
+            {/* services */}
+            <div style={{ padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
+                <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(26px, 4vw, 40px)' }}>
+                    <div>
+                        <div style={kickerStyle()}>DỊCH VỤ TẠI MERCI</div>
+                        <h2 style={h2Style}>Trọn vẹn cho<br /><em style={{ fontWeight: 400 }}>ngày trọng đại</em></h2>
+                    </div>
+                    <div style={{ maxWidth: 440, fontSize: 'clamp(13.5px, 1.4vw, 15px)', lineHeight: 1.8, fontWeight: 300, color: SUB }}>
+                        Từ bộ ảnh Pre-wedding, phóng sự ngày cưới đến váy cưới, vest và makeup — mọi khâu chuẩn bị được Merci chăm chút tại một địa chỉ.
+                    </div>
+                </Reveal>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', borderTop: `1px solid ${LINE}`, borderLeft: `1px solid ${LINE}` }}>
+                    {services.map((sv, i) => (
+                        <Reveal key={sv.num} delay={(i % 3) * 90}>
+                            <div
+                                className="service-row"
+                                role="button"
+                                tabIndex={0}
+                                onClick={sv.action}
+                                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); sv.action(); } }}
+                                aria-label={`${sv.title}: ${sv.cta.toLocaleLowerCase('vi')}`}
+                                style={{ height: '100%', padding: 'clamp(24px, 3vw, 34px) clamp(20px, 2.6vw, 30px)', borderRight: `1px solid ${LINE}`, borderBottom: `1px solid ${LINE}`, display: 'flex', flexDirection: 'column', gap: 12 }}
+                            >
+                                <div style={{ fontFamily: serif, fontSize: 30, color: TAN, lineHeight: 1 }}>{sv.num}</div>
+                                <div style={{ fontFamily: serif, fontSize: 'clamp(21px, 2.2vw, 26px)', fontWeight: 500, lineHeight: 1.2 }}>{sv.title}</div>
+                                <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 1.75, color: SUB }}>{sv.desc}</div>
+                                <div style={{ marginTop: 'auto', paddingTop: 10, fontSize: 12, letterSpacing: 2, color: BROWN, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    {sv.cta} <span className="service-arrow" aria-hidden="true" style={{ display: 'inline-block', transition: 'transform 0.35s cubic-bezier(0.16, 1, 0.3, 1)' }}>→</span>
+                                </div>
+                            </div>
+                        </Reveal>
+                    ))}
+                </div>
+            </div>
             {/* destination cards */}
-            <div style={{ background: BAND, marginTop: 'clamp(48px, 7vw, 88px)', padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
+            <div style={{ background: BAND, padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
                 <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(28px, 4vw, 44px)' }}>
                     <h2 style={{ fontFamily: serif, fontSize: 'clamp(30px, 4vw, 44px)', fontWeight: 500, margin: 0 }}>Khám phá Merci</h2>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN }}>ALBUM · PHIM · CẨM NANG</div>
@@ -151,6 +238,44 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                                     <div style={{ marginTop: 'auto', paddingTop: 14, fontSize: 13, letterSpacing: 2, color: c.dark ? '#d9b998' : BROWN }}>{c.cta}</div>
                                 </div>
                             </TiltCard>
+                        </Reveal>
+                    ))}
+                </div>
+            </div>
+            {/* process */}
+            <div style={{ padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
+                <Reveal style={{ textAlign: 'center', marginBottom: 'clamp(30px, 4.5vw, 48px)' }}>
+                    <div style={kickerStyle()}>QUY TRÌNH LÀM VIỆC</div>
+                    <h2 style={{ ...h2Style, textWrap: 'balance' }}>Hành trình cùng Merci,<br /><em style={{ fontWeight: 400 }}>nhẹ nhàng từng bước</em></h2>
+                </Reveal>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(210px, 100%), 1fr))', gap: 'clamp(18px, 2.5vw, 28px)' }}>
+                    {steps.map((st, i) => (
+                        <Reveal key={st.num} delay={i * 90}>
+                            <div style={{ borderTop: `2px solid ${i === steps.length - 1 ? BROWN : LINE}`, paddingTop: 18, height: '100%' }}>
+                                <div style={{ fontFamily: serif, fontSize: 34, color: i === steps.length - 1 ? BROWN : TAN, lineHeight: 1 }}>{st.num}</div>
+                                <div style={{ marginTop: 10, fontSize: 15.5, fontWeight: 600, letterSpacing: 0.2 }}>{st.title}</div>
+                                <div style={{ marginTop: 8, fontSize: 13.5, fontWeight: 300, lineHeight: 1.75, color: SUB }}>{st.desc}</div>
+                            </div>
+                        </Reveal>
+                    ))}
+                </div>
+            </div>
+            {/* why merci */}
+            <div style={{ background: BAND, padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
+                <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(26px, 4vw, 40px)' }}>
+                    <div>
+                        <div style={kickerStyle()}>VÌ SAO CHỌN MERCI</div>
+                        <h2 style={h2Style}>Được tin tưởng<br /><em style={{ fontWeight: 400 }}>bởi các cặp đôi</em></h2>
+                    </div>
+                    <div style={{ fontSize: 12, letterSpacing: 3, color: TAN }}>TẬN TÂM · DUY MỸ · TIỆN LỢI</div>
+                </Reveal>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(240px, 100%), 1fr))', gap: 'clamp(14px, 2vw, 20px)' }}>
+                    {reasons.map((r, i) => (
+                        <Reveal key={r.title} delay={i * 90}>
+                            <div className="card-3d" style={{ background: CREAM, border: `1px solid ${LINE}`, padding: 'clamp(22px, 2.8vw, 30px)', height: '100%' }}>
+                                <div style={{ fontFamily: serif, fontSize: 'clamp(20px, 2vw, 24px)', fontWeight: 500 }}>{r.title}</div>
+                                <div style={{ marginTop: 10, fontSize: 13.5, fontWeight: 300, lineHeight: 1.75, color: SUB }}>{r.desc}</div>
+                            </div>
                         </Reveal>
                     ))}
                 </div>
@@ -208,6 +333,23 @@ export default function HomeHub({ user, isAdmin, navigateToTab, openClientAuth, 
                     <span>MERCI COUPLES</span>
                 </div>
             </section>
+            {/* CTA band */}
+            <div style={{ background: DARK, color: '#ede5d8', padding: 'clamp(52px, 8vw, 92px) clamp(20px, 5vw, 72px)', textAlign: 'center' }}>
+                <Reveal>
+                    <div style={{ fontSize: 11, letterSpacing: 3.5, color: '#b99f80', marginBottom: 16 }}>MERCI STUDIO</div>
+                    <h2 style={{ fontFamily: serif, fontSize: 'clamp(32px, 5vw, 58px)', lineHeight: 1.1, fontWeight: 500, margin: 0, textWrap: 'balance' }}>
+                        Sẵn sàng cho<br /><em style={{ fontWeight: 400 }}>ngày trọng đại của bạn?</em>
+                    </h2>
+                    <p style={{ maxWidth: 520, margin: '18px auto 0', fontSize: 'clamp(13.5px, 1.5vw, 15.5px)', lineHeight: 1.8, fontWeight: 300, color: '#c9bda9' }}>
+                        Nhắn cho Merci qua Messenger, Zalo hoặc để lại thông tin — chúng tôi sẽ tư vấn concept và báo giá chi tiết dành riêng cho bạn.
+                    </p>
+                    <div style={{ marginTop: 'clamp(26px, 4vw, 36px)', display: 'flex', flexWrap: 'wrap', gap: 14, justifyContent: 'center' }}>
+                        <button className="btn-3d" onClick={() => navigateToTab('booking')} style={{ ...capsBtn(true), background: '#f5f0e8', color: DARK }}>ĐẶT LỊCH TƯ VẤN</button>
+                        <a className="btn-3d" href="tel:0888999545" style={{ ...capsBtn(false), color: '#ede5d8', border: '1px solid #6b5a49', textDecoration: 'none' }}>GỌI 0888.999.545</a>
+                    </div>
+                    <div style={{ marginTop: 22, fontSize: 10.5, letterSpacing: 2.2, color: '#a08d76' }}>HOTLINE 0888.999.545 · 0877.999.545 — PHẢN HỒI NHANH QUA MESSENGER & ZALO</div>
+                </Reveal>
+            </div>
             {/* utilities */}
             <div style={{ padding: 'clamp(40px, 6vw, 64px) clamp(20px, 5vw, 64px)', display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '20px 40px', borderBottom: `1px solid ${LINE}` }}>
                 <div>

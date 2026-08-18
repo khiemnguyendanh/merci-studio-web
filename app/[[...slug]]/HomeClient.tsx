@@ -5402,6 +5402,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             user={user}
                             isAdmin={isAdmin}
                             navigateToTab={navigateToTab}
+                            navigateToVest={navigateToVest}
+                            navigateToDress={navigateToDress}
                             openClientAuth={openClientAuth}
                             handleClientLogout={handleClientLogout}
                             setShowClientProfileModal={setShowClientProfileModal}
