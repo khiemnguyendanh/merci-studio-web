@@ -1,6 +1,7 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Cormorant_Garamond } from 'next/font/google';
 import AnalyticsConsent from '@/components/AnalyticsConsent';
+import PwaRegister from '@/components/PwaRegister';
 import './globals.css';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
@@ -46,6 +47,14 @@ const serifFont = Cormorant_Garamond({
   display: 'swap'
 });
 
+// Viewport kiểu app: tràn vùng tai thỏ, màu thanh trạng thái đồng bộ nền kem.
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
+  themeColor: '#faf7f1'
+};
+
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
@@ -54,6 +63,8 @@ export const metadata: Metadata = {
   },
   description: siteDescription,
   applicationName: 'Merci Wedding Studio',
+  appleWebApp: { capable: true, statusBarStyle: 'default', title: 'Merci Studio' },
+  formatDetection: { telephone: true },
   category: 'Wedding photography',
   keywords: seoKeywords,
   alternates: { canonical: siteUrl },
@@ -135,6 +146,7 @@ export default function RootLayout({
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
         <AnalyticsConsent gtmId={process.env.NEXT_PUBLIC_GTM_ID} gaId={process.env.NEXT_PUBLIC_GA_ID} facebookPixelId={facebookPixelId} />
         {children}
+        <PwaRegister />
       </body>
     </html>
   );

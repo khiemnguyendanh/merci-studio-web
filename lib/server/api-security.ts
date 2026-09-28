@@ -7,10 +7,21 @@ export { cleanString, hashValue, normalizePhone } from './validation';
 type RateEntry = { count: number; resetAt: number };
 const rateStore = new Map<string, RateEntry>();
 
+function pruneRateStore(now: number) {
+  if (rateStore.size <= 5000) return;
+  for (const [key, entry] of rateStore) {
+    if (entry.resetAt <= now) rateStore.delete(key);
+  }
+  if (rateStore.size > 5000) rateStore.clear();
+}
+
+// Email admin chỉ đọc từ biến môi trường server (ADMIN_EMAILS).
+// KHÔNG dùng NEXT_PUBLIC_* ở server: mọi thứ tiền tố NEXT_PUBLIC_ đều bị nhét vào
+// bundle phía client, lộ danh sách admin + có thể bị lợi dụng cho fallback.
 const configuredAdminEmails = new Set(
   [
     'khiemnguyendanh@gmail.com',
-    ...(process.env.ADMIN_EMAILS || process.env.NEXT_PUBLIC_ADMIN_EMAILS || '').split(',')
+    ...(process.env.ADMIN_EMAILS || '').split(',')
   ]
     .map((email) => email.trim().toLowerCase())
     .filter(Boolean)
@@ -35,12 +46,25 @@ export function errorResponse(error: unknown) {
 }
 
 export function getClientIp(request: Request) {
-  const forwarded = request.headers.get('x-forwarded-for');
-  return forwarded?.split(',')[0]?.trim() || request.headers.get('x-real-ip') || 'unknown';
+  return getClientIpFromHeaders(request.headers);
+}
+
+// Trên Cloudflare Workers chỉ `cf-connecting-ip` là giá trị hạ tầng ghi, không giả
+// mạo được. `x-forwarded-for` do client tự gửi nên chỉ dùng làm fallback cuối.
+export function getClientIpFromHeaders(headers: Headers) {
+  const direct = headers.get('cf-connecting-ip') || headers.get('x-real-ip');
+  if (direct) return direct.trim();
+  const forwarded = headers.get('x-forwarded-for');
+  if (forwarded) {
+    const parts = forwarded.split(',').map((part) => part.trim()).filter(Boolean);
+    if (parts.length) return parts[parts.length - 1];
+  }
+  return 'unknown';
 }
 
 export function enforceRateLimit(key: string, limit: number, windowMs: number) {
   const now = Date.now();
+  pruneRateStore(now);
   const entry = rateStore.get(key);
   if (!entry || entry.resetAt <= now) {
     rateStore.set(key, { count: 1, resetAt: now + windowMs });
@@ -67,13 +91,21 @@ export async function requireUser(request: Request): Promise<DecodedIdToken> {
 
 export async function requireAdmin(request: Request) {
   const token = await requireUser(request);
+  // Đường chính: custom claim admin=true (set bằng `npm run admin:set-claim`).
+  if (token.admin === true) return token;
+
+  // Fallback theo email CHỈ khi email đã được xác minh trong Firebase Auth.
+  // Nếu không, kẻ tấn công có thể tự đăng ký trước một địa chỉ trong ADMIN_EMAILS
+  // (email chưa verify) và chiếm quyền admin.
   const email = String(token.email || '').toLowerCase();
-  if (token.admin !== true && !configuredAdminEmails.has(email)) {
-    throw new ApiError(403, 'Tài khoản không có quyền quản trị.');
+  const emailVerified = (token as { email_verified?: boolean }).email_verified === true;
+  if (email && emailVerified && configuredAdminEmails.has(email)) {
+    return token;
   }
-  return token;
+  throw new ApiError(403, 'Tài khoản không có quyền quản trị.');
 }
 
 export function escapeTelegram(value: string) {
-  return value.replace(/[_*\[\]()~`>#+\-=|{}.!]/g, '\\$&');
+  // MarkdownV2: phải escape cả backslash (nếu không, tên có '\' sẽ làm hỏng parse → mất thông báo)
+  return value.replace(/[_*[\]()~`>#+\-=|{}.!\\]/g, '\\$&');
 }

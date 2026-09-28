@@ -89,3 +89,11 @@ Never commit `.env.local` or service-account credentials. Rotate Gemini and Tele
 - CMS, booking management, winner logs and customer lists require an admin token.
 - Analytics and advertising scripts load only after consent.
 - Client-selection pages remain shareable; owners control page updates and admin controls aggregate selection access.
+
+## Cập nhật ảnh website (1 lần bấm)
+
+Bỏ ảnh mới vào `E:\Mẫu\ANH WEB\<Danh mục>\<Tên album>\` rồi **double-click**
+`CAP-NHAT-ANH-WEB.bat` (hoặc shortcut **"Cap nhat anh Merci"** trên Desktop).
+Nó tự nén ảnh mới (bỏ qua ảnh đã có) và đưa lên Cloudflare. Chạy lại bất cứ lúc nào.
+
+Tương đương lệnh: `npm run update-photos`

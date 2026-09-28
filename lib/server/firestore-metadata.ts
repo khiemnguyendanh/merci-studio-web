@@ -1,4 +1,5 @@
 import 'server-only';
+import { cachedJson } from './edge-cache';
 
 type FirestoreValue = { stringValue?: string; integerValue?: string; doubleValue?: number };
 type FirestoreDocument = { name: string; fields?: Record<string, FirestoreValue> };
@@ -11,26 +12,37 @@ export type PublicContentMetadata = {
   coverUrl: string;
 };
 
+// Metadata/sitemap được gọi ở MỌI lượt render trang album/blog (kể cả bot) —
+// phải cache ở biên, nếu không mỗi lượt xem = ~150 lượt đọc Firestore.
+const METADATA_CACHE_SECONDS = 3600;
+
 function field(document: FirestoreDocument, name: string) {
   return document.fields?.[name]?.stringValue || '';
 }
 
 function createSlug(value: string) {
-  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
+  return value.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
     .replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-').replace(/^-|-$/g, '');
 }
 
-async function fetchCollection(collection: string, masks: string[]) {
+async function fetchCollection(collection: string, masks: string[]): Promise<FirestoreDocument[]> {
   const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID;
   const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
   if (!projectId || !apiKey) return [];
-  const params = new URLSearchParams({ key: apiKey, pageSize: '300' });
-  masks.forEach((mask) => params.append('mask.fieldPaths', mask));
-  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}?${params}`;
-  const response = await fetch(url, { next: { revalidate: 300 } });
-  if (!response.ok) return [];
-  const data = await response.json() as { documents?: FirestoreDocument[] };
-  return Array.isArray(data.documents) ? data.documents as FirestoreDocument[] : [];
+  const { data } = await cachedJson<FirestoreDocument[]>(
+    `metadata/${collection}/${masks.join(',')}`,
+    METADATA_CACHE_SECONDS,
+    async () => {
+      const params = new URLSearchParams({ key: apiKey, pageSize: '300' });
+      masks.forEach((mask) => params.append('mask.fieldPaths', mask));
+      const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}?${params}`;
+      const response = await fetch(url, { cache: 'no-store' });
+      if (!response.ok) return null;
+      const json = await response.json() as { documents?: FirestoreDocument[] };
+      return Array.isArray(json.documents) ? json.documents : [];
+    }
+  );
+  return data ?? [];
 }
 
 export async function findPublicContent(slug: string): Promise<PublicContentMetadata | null> {

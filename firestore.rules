@@ -26,6 +26,14 @@ service cloud.firestore {
       request.resource.data.imageNotes is map;
     }
 
+    // Chủ sở hữu bản ghi chọn ảnh: khách ẩn danh (key ngẫu nhiên trong máy khách)
+    // hoặc user Firebase đăng nhập đúng email — chặn ghi đè chéo giữa các khách.
+    function selectionOwnerAllowed() {
+      return request.resource.data.userType == 'guest' ||
+        (signedIn() && request.resource.data.userType == 'gmail' &&
+          request.resource.data.userEmail == request.auth.token.email);
+    }
+
     match /client_pages/{pageId} {
       allow get: if true;
       allow list: if isAdmin() || (signedIn() && resource.data.ownerUid == request.auth.uid);
@@ -36,7 +44,16 @@ service cloud.firestore {
     match /client_selections/{selectionId} {
       allow get: if true;
       allow list: if isAdmin();
-      allow create, update: if validSelection();
+      // Doc id luôn là `${folderId}_${userKey}`; update không được đổi chủ sở hữu.
+      allow create: if validSelection() &&
+        selectionOwnerAllowed() &&
+        selectionId == request.resource.data.folderId + '_' + request.resource.data.userKey;
+      allow update: if validSelection() &&
+        resource.data.userKey == request.resource.data.userKey &&
+        resource.data.folderId == request.resource.data.folderId &&
+        resource.data.userType == request.resource.data.userType &&
+        selectionOwnerAllowed() &&
+        selectionId == request.resource.data.folderId + '_' + request.resource.data.userKey;
       allow delete: if isAdmin();
     }
 
@@ -68,7 +85,12 @@ service cloud.firestore {
           'albumViews', 'timeSpent', 'updatedAt'
         ]);
       allow update: if request.resource.data.id == resource.data.id &&
-        request.resource.data.createdAt == resource.data.createdAt;
+        request.resource.data.createdAt == resource.data.createdAt &&
+        request.resource.data.keys().hasOnly([
+          'id', 'createdAt', 'dateStr', 'visitedHome', 'visitedCollection',
+          'visitedVideos', 'visitedBlog', 'visitedBooking', 'completedBooking',
+          'albumViews', 'timeSpent', 'updatedAt'
+        ]);
     }
 
     match /merci_users/{userId} {

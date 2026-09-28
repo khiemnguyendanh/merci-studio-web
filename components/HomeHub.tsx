@@ -12,7 +12,7 @@ import cardBlog from '@/public/home/card-blog.png';
 // Merci Studio — trang chủ dạng landing page (editorial, tông kem/nâu ấm)
 // Fluid responsive: không cần media query, dùng clamp() + auto-fit grid.
 const serif = "'Cormorant Garamond', Georgia, serif";
-const INK = '#2b241e', SUB = '#5c5044', LINE = '#d9d0c3', TAN = '#a08d76', BROWN = '#7a5c44', DARK = '#3d2f26', CREAM = '#faf7f1', BAND = '#f1ebe0';
+const INK = '#2b241e', SUB = '#5c5044', LINE = '#d9d0c3', TAN = '#7d6a52', BROWN = '#7a5c44', DARK = '#3d2f26', CREAM = '#faf7f1', BAND = '#f1ebe0';
 
 // Ảnh trang chủ — đặt trong /public/home/ của repo
 const IMG = {

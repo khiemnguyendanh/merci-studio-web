@@ -7,7 +7,7 @@
  */
 export default function QuickChat() {
     return (
-        <div className="fixed left-4 bottom-5 z-50 flex flex-col gap-2.5" aria-label="Liên hệ nhanh Merci Studio">
+        <div className="fixed left-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-5 z-50 flex flex-col gap-2.5" aria-label="Liên hệ nhanh Merci Studio">
             <a
                 href="https://m.me/mercibridalvn"
                 target="_blank"

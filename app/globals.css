@@ -27,7 +27,7 @@
   --color-slate-150: #e9e1d2;
   --color-slate-200: #d9d0c3;  /* LINE */
   --color-slate-300: #c6bba9;
-  --color-slate-400: #a08d76;  /* TAN */
+  --color-slate-400: #7d6a52;  /* TAN (đậm hơn để đạt tương phản ≥4.5:1 trên nền kem) */
   --color-slate-500: #5c5044;  /* SUB */
   --color-slate-600: #52463b;
   --color-slate-700: #463a2f;
@@ -571,6 +571,16 @@ button, [role="button"], a {
   transform: perspective(900px) translateY(0) rotateX(0deg);
 }
 
+/* Thiết bị cảm ứng (điện thoại/tablet): không giấu nội dung chờ cuộn tới —
+   chữ hiện đủ ngay, tránh cảnh nửa mờ trùng màu nền khi khách lướt nhanh. */
+@media (hover: none), (pointer: coarse) {
+  .reveal-3d {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 .feedback-page {
   min-height: 70vh;
   padding: clamp(34px, 6vw, 76px) clamp(16px, 4vw, 56px) clamp(64px, 8vw, 104px);
@@ -590,7 +600,7 @@ button, [role="button"], a {
 
 .feedback-page-kicker {
   margin: 0 0 14px;
-  color: #a08d76;
+  color: #7d6a52;
   font-size: 11px;
   letter-spacing: 3.5px;
 }
@@ -671,3 +681,48 @@ button, [role="button"], a {
     justify-self: start;
   }
 }
+
+/* ===== Trải nghiệm kiểu app trên điện thoại ===== */
+html {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-text-size-adjust: 100%;
+}
+button, a, [role="button"] {
+  touch-action: manipulation; /* bỏ độ trễ chạm 300ms */
+}
+@media (display-mode: standalone) {
+  body {
+    overscroll-behavior-y: none; /* không "nảy" trang khi mở như app */
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  input, textarea, [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+}
+/* Thanh điều hướng đáy kiểu app (chỉ mobile) */
+.app-tabbar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 55;
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  padding-bottom: env(safe-area-inset-bottom);
+  background: rgba(250, 247, 241, 0.94);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  border-top: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 -8px 24px rgba(15, 23, 42, 0.06);
+}
+.app-tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 3px; height: 60px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.02em;
+  color: #6b7280; transition: color .2s, transform .15s;
+}
+.app-tab:active { transform: scale(0.92); }
+.app-tab.is-active { color: #0f172a; }
+.app-tab.is-active svg { stroke-width: 2.2; }
+.app-tab-dot { width: 4px; height: 4px; border-radius: 999px; background: #a08d76; opacity: 0; transition: opacity .2s; }
+.app-tab.is-active .app-tab-dot { opacity: 1; }
+@media (min-width: 768px) { .app-tabbar { display: none; } }

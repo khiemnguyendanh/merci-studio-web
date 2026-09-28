@@ -1,14 +1,15 @@
 // @ts-nocheck
 /* eslint-disable */
 'use client';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
     Camera, Wand2, Copy, ArrowRight, Heart,
     Download, Image as ImageIcon, RefreshCcw, Zap, ArrowLeft,
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail, Eye,
-    BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare
+    BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare, LogOut,
+    Home as HomeIcon, Images, Shirt, CalendarDays, Menu
 } from 'lucide-react';
 import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
@@ -18,7 +19,7 @@ import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
-import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, sendPasswordResetEmail } from 'firebase/auth';
 import { getFirestore, collection, doc, setDoc, getDoc, onSnapshot, updateDoc, deleteDoc, query, where, getDocs, increment } from 'firebase/firestore';
 
 // Cấu hình Firebase
@@ -817,18 +818,21 @@ export default function Home() {
     const [analyticsConsent, setAnalyticsConsent] = useState(false);
     const [user, setUser] = useState(null);
     const [activeTab, setActiveTab] = useState('home');
+    const [showMobileMore, setShowMobileMore] = useState(false); // menu "Thêm" của thanh tab đáy (mobile)
     const [isLoading, setIsLoading] = useState(false);
     const [loadingMessage, setLoadingMessage] = useState('');
     const [isAdmin, setIsAdmin] = useState(false);
     const [showLoginModal, setShowLoginModal] = useState(false);
     const [loginData, setLoginData] = useState({ email: '', password: '' });
     const [loginError, setLoginError] = useState('');
+    const [loginNotice, setLoginNotice] = useState('');
 
     // Đăng nhập / đăng ký khách hàng
     const [showClientLoginModal, setShowClientLoginModal] = useState(false);
     const [clientAuthMode, setClientAuthMode] = useState('login'); // login | register
     const [clientAuthData, setClientAuthData] = useState({ email: '', password: '' });
     const [clientAuthError, setClientAuthError] = useState('');
+    const [clientAuthNotice, setClientAuthNotice] = useState('');
 
     // Tích điểm & Mã giới thiệu
     const [userProfile, setUserProfile] = useState(null);
@@ -934,6 +938,8 @@ export default function Home() {
     const [galleryPage, setGalleryPage] = useState(1);
     const [activeToolTab, setActiveToolTab] = useState('create');
     const [draggingAlbumId, setDraggingAlbumId] = useState(null);
+    // Ảnh bìa + thứ tự do admin chỉnh online cho album tĩnh (lưu merci_albums/_album_layout)
+    const [albumLayout, setAlbumLayout] = useState({ order: {}, cover: {} });
     const [dragOverAlbumId, setDragOverAlbumId] = useState(null);
     const [draggingVideoId, setDraggingVideoId] = useState(null);
     const [dragOverVideoId, setDragOverVideoId] = useState(null);
@@ -1156,6 +1162,17 @@ export default function Home() {
             setIsAdmin(isFirebaseAdmin);
         });
 
+        getRedirectResult(auth).then((result) => {
+            if (!result) return;
+            setShowClientLoginModal(false);
+            setClientAuthError('');
+            setClientAuthNotice('Đăng nhập Google thành công.');
+        }).catch((error) => {
+            console.error('Google redirect login error:', error);
+            setClientAuthError(formatGoogleAuthError(error));
+            setShowClientLoginModal(true);
+        });
+
 
         return () => unsubAuth();
     }, [mounted]);
@@ -1325,24 +1342,61 @@ export default function Home() {
         return () => window.removeEventListener('hashchange', handleHashChange);
     }, [mounted]);
 
-    // Albums - Cần load ngay vì xuất hiện ở Home và cần cho pendingSlug
+    // Albums - Cần load ngay vì xuất hiện ở Home và cần cho pendingSlug.
+    // KHÁCH đọc qua /api/public-content (cache 30 phút, cả hệ thống chỉ tốn
+    // ~1 lần đọc Firestore mỗi nửa giờ thay vì ~124 reads cho MỖI lượt truy cập);
+    // ADMIN giữ onSnapshot realtime để quản trị thấy thay đổi tức thì.
     useEffect(() => {
-        if (!mounted || !db) return;
-        const unsubAlbums = onSnapshot(collection(db, 'merci_albums'), (snapshot) => {
-            const fetched = snapshot.docs.map(d => {
-                const data = d.data();
-                return { id: d.id, ...data, order: data.order !== undefined ? data.order : parseInt(d.id.split('_')[1] || 0) };
-            });
-            fetched.sort((a, b) => (b.order || 0) - (a.order || 0));
-            setAlbums(fetched);
+        if (!mounted) return;
+        // Cả KHÁCH lẫn ADMIN đều xem cùng nguồn ảnh tĩnh Cloudflare (manifest) để
+        // hiển thị thống nhất; album không còn quản lý qua Firestore trên web nữa.
+        // Đọc bố cục (ảnh bìa + thứ tự) admin đã chỉnh — 1 lượt đọc nhỏ, có cache.
+        if (db) {
+            getDoc(doc(db, 'merci_albums', '_album_layout'))
+                .then(s => { if (s.exists()) { const d = s.data() || {}; setAlbumLayout({ order: d.order || {}, cover: d.cover || {} }); } })
+                .catch(() => {});
+        }
+        let cancelled = false;
+        const withOrder = (item: any) => ({
+            ...item,
+            order: item.order !== undefined ? item.order : parseInt(String(item.id).split('_')[1] || '0', 10) || 0
         });
-        return () => unsubAlbums();
-    }, [mounted]);
+        // Ưu tiên ảnh tĩnh trên Cloudflare (public/photos/manifest.json — sinh bởi
+        // scripts/build-photos.mjs): không Firestore, không Drive, không quota.
+        // Không có manifest thì dùng /api/public-content như cũ.
+        fetch('/photos/manifest.json')
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null)
+            .then(manifest => {
+                if (cancelled) return null;
+                const staticAlbums = manifest && Array.isArray(manifest.albums) ? manifest.albums : [];
+                if (staticAlbums.length) {
+                    const sorted = staticAlbums.map(withOrder);
+                    sorted.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                    setAlbums(sorted);
+                }
+                return fetch('/api/public-content')
+                    .then(res => res.json())
+                    .then(data => {
+                        if (cancelled) return;
+                        if (!staticAlbums.length) {
+                            const fetchedAlbums = ((data && data.albums) || []).map(withOrder);
+                            fetchedAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                            if (fetchedAlbums.length) setAlbums(fetchedAlbums);
+                        }
+                        const fetchedVideos = ((data && data.videos) || []).map(withOrder);
+                        fetchedVideos.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                        if (fetchedVideos.length) setVideos(fetchedVideos);
+                    });
+            })
+            .catch(() => {});
+        return () => { cancelled = true; };
+    }, [mounted, isAdmin]);
 
-    // Videos - Chỉ load khi vào tab Video hoặc là Admin
+    // Videos - Khách đã nhận video từ /api/public-content ở effect trên;
+    // chỉ admin cần realtime để quản lý danh sách video.
     useEffect(() => {
-        if (!mounted || !db) return;
-        if (activeTab !== 'videos' && !isAdmin) return;
+        if (!mounted || !db || !isAdmin) return;
 
         const unsubVideos = onSnapshot(collection(db, 'merci_videos'), (snapshot) => {
             const fetched = snapshot.docs.map(d => {
@@ -1353,7 +1407,7 @@ export default function Home() {
             setVideos(fetched);
         });
         return () => unsubVideos();
-    }, [mounted, activeTab, isAdmin]);
+    }, [mounted, isAdmin]);
 
     // Blogs - Load khi vào tab Blog, có pendingSlug hoặc là Admin
     useEffect(() => {
@@ -1736,7 +1790,15 @@ export default function Home() {
 
     const handleSetCover = async (e, imageUrl) => {
         e.stopPropagation();
-        if (!activeAlbumId) return;
+        if (!activeAlbumId || !db) return;
+        // Album tĩnh: lưu ảnh bìa vào merci_albums/_album_layout (áp cho cả web).
+        if (String(activeAlbumId).startsWith('static_')) {
+            setAlbumLayout(prev => ({ ...prev, cover: { ...prev.cover, [activeAlbumId]: imageUrl } }));
+            try {
+                await setDoc(doc(db, 'merci_albums', '_album_layout'), { cover: { [activeAlbumId]: imageUrl } }, { merge: true });
+            } catch (error) { alert("Lỗi khi cập nhật ảnh bìa."); }
+            return;
+        }
         setIsLoading(true);
         try {
             await updateDoc(doc(db, 'merci_albums', activeAlbumId), { coverUrl: imageUrl, coverId: activeAlbumId ? (albumImages.find(img => img.url === imageUrl)?.id || '') : '' });
@@ -1778,9 +1840,12 @@ export default function Home() {
             return;
         }
 
+        const orderedAlbums = [...albums]
+            .map(a => ({ ...a, order: albumLayout.order?.[a.id] ?? a.order }))
+            .sort((x, y) => (y.order || 0) - (x.order || 0));
         const visibleAlbums = activeCategory === 'Tất cả'
-            ? albums
-            : albums.filter(a => albumMatchesCategory(a, activeCategory));
+            ? orderedAlbums
+            : orderedAlbums.filter(a => albumMatchesCategory(a, activeCategory));
 
         const fromIndex = visibleAlbums.findIndex(item => item.id === draggingAlbumId);
         const toIndex = visibleAlbums.findIndex(item => item.id === targetAlbumId);
@@ -1794,10 +1859,23 @@ export default function Home() {
         const [moved] = reordered.splice(fromIndex, 1);
         reordered.splice(toIndex, 0, moved);
 
+        const baseOrder = Date.now();
+        // Album tĩnh: lưu thứ tự vào merci_albums/_album_layout.
+        if (albumsAreStatic) {
+            const orderMap = {};
+            reordered.forEach((item, index) => { orderMap[item.id] = baseOrder + (reordered.length - index) * 1000; });
+            setAlbumLayout(prev => ({ ...prev, order: { ...prev.order, ...orderMap } }));
+            try {
+                if (db) await setDoc(doc(db, 'merci_albums', '_album_layout'), { order: orderMap }, { merge: true });
+            } catch (error) { console.error('Album order save error:', error); }
+            setDraggingAlbumId(null);
+            setDragOverAlbumId(null);
+            return;
+        }
+
         setIsLoading(true);
         setLoadingMessage('Đang lưu thứ tự album...');
         try {
-            const baseOrder = Date.now();
             await Promise.all(reordered.map((item, index) =>
                 updateDoc(doc(db, 'merci_albums', item.id), {
                     order: baseOrder + (reordered.length - index) * 1000,
@@ -3158,22 +3236,62 @@ export default function Home() {
         }
     };
 
+    const formatGoogleAuthError = (error) => {
+        const code = error?.code || 'unknown';
+        const serverResponse = error?.customData?.serverResponse || error?.serverResponse || '';
+        const details = [
+            `Mã: ${code}`,
+            error?.message ? `Chi tiết: ${error.message}` : '',
+            serverResponse ? `Server: ${String(serverResponse).slice(0, 300)}` : '',
+            typeof window !== 'undefined' ? `Host: ${window.location.host}` : '',
+            `authDomain: ${firebaseConfig.authDomain || '(trống)'}`
+        ].filter(Boolean).join(' | ');
+        const messages = {
+            'auth/unauthorized-domain': 'Tên miền hiện tại chưa được thêm vào Firebase Authorized domains. Hãy thử lại sau khi cấu hình được cập nhật.',
+            'auth/popup-blocked': 'Trình duyệt đã chặn cửa sổ Google. Đang chuyển sang đăng nhập toàn trang...',
+            'auth/popup-closed-by-user': 'Cửa sổ Google đã bị đóng trước khi đăng nhập hoàn tất.',
+            'auth/cancelled-popup-request': 'Một yêu cầu đăng nhập Google khác đang được xử lý.',
+            'auth/account-exists-with-different-credential': 'Email này đã đăng ký bằng phương thức khác. Hãy đăng nhập bằng Email hoặc phương thức ban đầu.',
+            'auth/operation-not-allowed': 'Phương thức đăng nhập Google chưa được bật trong Firebase Authentication.',
+            'auth/network-request-failed': 'Kết nối mạng tới Google/Firebase thất bại. Hãy thử lại.',
+            'auth/invalid-api-key': 'Firebase API key không hợp lệ hoặc không thuộc project merci-studio-web.',
+            'auth/internal-error': 'Firebase trả về lỗi nội bộ khi đăng nhập Google. Hãy thử lại bằng nút đăng nhập toàn trang.'
+        };
+        return `${messages[code] || 'Đăng nhập Google thất bại.'} ${details}`;
+    };
+
     const handleGoogleLogin = async () => {
         if (!auth) return alert('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
+        setClientAuthError('');
+        setClientAuthNotice('');
         try {
             const provider = new GoogleAuthProvider();
+            provider.setCustomParameters({ prompt: 'select_account' });
             await signInWithPopup(auth, provider);
             setShowClientLoginModal(false);
-            setClientAuthError('');
         } catch (error) {
             console.error('Google login error:', error);
-            alert('Không đăng nhập được Google. Hãy kiểm tra Firebase Authentication đã bật Google provider chưa.');
+            const code = error?.code || '';
+            if (code === 'auth/popup-blocked' || code === 'auth/operation-not-supported' || code === 'auth/internal-error') {
+                setClientAuthNotice('Cửa sổ Google bị chặn. Đang chuyển sang đăng nhập toàn trang...');
+                try {
+                    await signInWithRedirect(auth, new GoogleAuthProvider());
+                    return;
+                } catch (redirectError) {
+                    console.error('Google redirect fallback error:', redirectError);
+                    setClientAuthError(formatGoogleAuthError(redirectError));
+                }
+            } else {
+                setClientAuthError(formatGoogleAuthError(error));
+            }
+            setClientAuthNotice('');
         }
     };
 
     const handleClientEmailAuth = async (e) => {
         e.preventDefault();
         setClientAuthError('');
+        setClientAuthNotice('');
 
         if (!auth) {
             setClientAuthError('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
@@ -3183,7 +3301,24 @@ export default function Home() {
         const email = clientAuthData.email.trim().toLowerCase();
         const password = clientAuthData.password;
 
-        if (!email || !password) {
+        if (!email) {
+            setClientAuthError(clientAuthMode === 'forgot' ? 'Vui lòng nhập email.' : 'Vui lòng nhập email và mật khẩu.');
+            return;
+        }
+
+        if (clientAuthMode === 'forgot') {
+            try {
+                await sendPasswordResetEmail(auth, email);
+                setClientAuthNotice('Nếu email này có tài khoản, hướng dẫn đặt lại mật khẩu đã được gửi. Hãy kiểm tra cả thư mục Spam.');
+                setClientAuthMode('login');
+            } catch (error) {
+                console.error('Client password reset error:', error);
+                setClientAuthError('Không thể gửi email đặt lại mật khẩu lúc này. Vui lòng kiểm tra email và thử lại.');
+            }
+            return;
+        }
+
+        if (!password) {
             setClientAuthError('Vui lòng nhập email và mật khẩu.');
             return;
         }
@@ -3214,6 +3349,7 @@ export default function Home() {
     const openClientAuth = (mode = 'login') => {
         setClientAuthMode(mode);
         setClientAuthError('');
+        setClientAuthNotice('');
         setShowClientLoginModal(true);
     };
 
@@ -3298,6 +3434,7 @@ export default function Home() {
     const handleLogin = async (e) => {
         e.preventDefault();
         setLoginError('');
+        setLoginNotice('');
 
         if (!auth) {
             setLoginError('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
@@ -3315,8 +3452,10 @@ export default function Home() {
         try {
             const credential = await signInWithEmailAndPassword(auth, email, password);
             const loggedInEmail = credential.user?.email?.toLowerCase() || '';
+            const tokenResult = await credential.user.getIdTokenResult(true);
+            const hasAdminAccess = tokenResult.claims?.admin === true || ADMIN_EMAILS.includes(loggedInEmail);
 
-            if (!ADMIN_EMAILS.includes(loggedInEmail)) {
+            if (!hasAdminAccess) {
                 await signOut(auth);
                 setIsAdmin(false);
                 setLoginError('Email này không có quyền Admin.');
@@ -3329,6 +3468,30 @@ export default function Home() {
         } catch (error) {
             console.error('Admin login error:', error);
             setLoginError('Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được bật trong Firebase Auth.');
+        }
+    };
+
+    const handleAdminPasswordReset = async () => {
+        setLoginError('');
+        setLoginNotice('');
+
+        if (!auth) {
+            setLoginError('Firebase Auth chưa sẵn sàng. Vui lòng thử lại.');
+            return;
+        }
+
+        const email = loginData.email.trim().toLowerCase();
+        if (!email) {
+            setLoginError('Vui lòng nhập email Admin trước.');
+            return;
+        }
+
+        try {
+            await sendPasswordResetEmail(auth, email);
+            setLoginNotice('Nếu email này có tài khoản, hướng dẫn đặt lại mật khẩu đã được gửi. Hãy kiểm tra cả thư mục Spam.');
+        } catch (error) {
+            console.error('Admin password reset error:', error);
+            setLoginError('Không thể gửi email đặt lại mật khẩu lúc này. Vui lòng kiểm tra email và thử lại.');
         }
     };
 
@@ -3347,6 +3510,7 @@ export default function Home() {
 
     const handleClientLogout = async () => {
         setShowClientLoginModal(false);
+        setShowClientProfileModal(false);
         setSavedClientPages([]);
         if (auth) {
             try {
@@ -3383,6 +3547,86 @@ export default function Home() {
         }
     };
 
+    // Debounce phần ghi Firestore: khách bấm chọn/bỏ chọn liên tục nhiều ảnh
+    // chỉ tốn ~1 lượt ghi mỗi 1,2 giây thay vì mỗi click một lượt
+    // (tiết kiệm quota ghi 20K/ngày). localStorage vẫn được ghi tức thì.
+    const pendingSelectionSave = useRef(null);
+    const selectionSaveTimer = useRef(null);
+    const flushSelectionSaveRef = useRef(async () => {});
+
+    flushSelectionSaveRef.current = async () => {
+        const pending = pendingSelectionSave.current;
+        if (!pending) return;
+        pendingSelectionSave.current = null;
+        if (selectionSaveTimer.current) {
+            clearTimeout(selectionSaveTimer.current);
+            selectionSaveTimer.current = null;
+        }
+        if (!db) {
+            setTimeout(() => setIsSaving(false), 500);
+            return;
+        }
+        try {
+            let userKey = '';
+            let userEmail = '';
+            let userName = '';
+            let userType = 'guest';
+
+            if (user) {
+                userEmail = user.email || '';
+                userKey = user.email || '';
+                userName = userProfile?.displayName || userProfile?.name || user.displayName || user.email || '';
+                userType = 'gmail';
+
+                // Xóa dữ liệu khách vãng lai cũ nếu có để tránh trùng lặp
+                const guestId = typeof window !== 'undefined' ? localStorage.getItem('merci_guest_id') : null;
+                if (guestId) {
+                    deleteDoc(doc(db, 'client_selections', `${pending.folderId}_${guestId}`)).catch(() => {});
+                }
+            } else {
+                const guestId = getOrInitGuestId();
+                userKey = guestId;
+                const shortId = guestId.substring(guestId.length - 4);
+                userName = `Khách vãng lai (${shortId})`;
+                userType = 'guest';
+            }
+
+            const docId = `${pending.folderId}_${userKey}`;
+
+            await setDoc(doc(db, 'client_selections', docId), {
+                folderId: pending.folderId,
+                userKey: userKey,
+                userEmail: userEmail,
+                userName: userName,
+                userType: userType,
+                selectedIds: pending.selectedIds,
+                imageNotes: pending.notes,
+                updatedAt: new Date().toISOString()
+            }, { merge: true });
+
+            // Refresh the allSelections list to immediately reflect current user's selections
+            fetchAllSelectionsForFolder(pending.folderId);
+        } catch (e) {
+            console.error('Error saving client selection:', e);
+            setSaveError(e.message || 'Lỗi phân quyền Firestore');
+        }
+        setTimeout(() => setIsSaving(false), 500);
+    };
+
+    // Rời trang / chuyển app: đẩy ngay lượt ghi đang chờ để không mất lựa chọn cuối.
+    useEffect(() => {
+        const flushNow = () => { flushSelectionSaveRef.current(); };
+        const onVisibility = () => {
+            if (document.visibilityState === 'hidden') flushNow();
+        };
+        document.addEventListener('visibilitychange', onVisibility);
+        window.addEventListener('pagehide', flushNow);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisibility);
+            window.removeEventListener('pagehide', flushNow);
+        };
+    }, []);
+
     const saveClientSelectionToDB = async (folderId, newSelectedSet, currentNotes = imageNotes) => {
         if (!folderId) return;
         setIsSaving(true);
@@ -3400,54 +3644,18 @@ export default function Home() {
             console.error('Error saving to localStorage:', localErr);
         }
 
-        if (db) {
-            try {
-                let userKey = '';
-                let userEmail = '';
-                let userName = '';
-                let userType = 'guest';
-
-                if (user) {
-                    userEmail = user.email || '';
-                    userKey = user.email || '';
-                    userName = userProfile?.displayName || userProfile?.name || user.displayName || user.email || '';
-                    userType = 'gmail';
-
-                    // Xóa dữ liệu khách vãng lai cũ nếu có để tránh trùng lặp
-                    const guestId = typeof window !== 'undefined' ? localStorage.getItem('merci_guest_id') : null;
-                    if (guestId) {
-                        deleteDoc(doc(db, 'client_selections', `${folderId}_${guestId}`)).catch(() => {});
-                    }
-                } else {
-                    const guestId = getOrInitGuestId();
-                    userKey = guestId;
-                    const shortId = guestId.substring(guestId.length - 4);
-                    userName = `Khách vãng lai (${shortId})`;
-                    userType = 'guest';
-                }
-
-                const docId = `${folderId}_${userKey}`;
-
-                await setDoc(doc(db, 'client_selections', docId), {
-                    folderId: folderId,
-                    userKey: userKey,
-                    userEmail: userEmail,
-                    userName: userName,
-                    userType: userType,
-                    selectedIds: Array.from(newSelectedSet),
-                    imageNotes: currentNotes,
-                    updatedAt: new Date().toISOString()
-                }, { merge: true });
-
-                // Refresh the allSelections list to immediately reflect current user's selections
-                fetchAllSelectionsForFolder(folderId);
-            } catch (e) {
-                console.error('Error saving client selection:', e);
-                setSaveError(e.message || 'Lỗi phân quyền Firestore');
-            }
-        }
-        setTimeout(() => setIsSaving(false), 500);
+        pendingSelectionSave.current = {
+            folderId,
+            selectedIds: Array.from(newSelectedSet),
+            notes: currentNotes
+        };
+        if (selectionSaveTimer.current) clearTimeout(selectionSaveTimer.current);
+        selectionSaveTimer.current = setTimeout(() => {
+            selectionSaveTimer.current = null;
+            flushSelectionSaveRef.current();
+        }, 1200);
     };
+
 
     // Tự động đồng bộ lựa chọn của Khách vãng lai sang Tài khoản khi đăng nhập thành công
     // VÀ tải lại danh sách thả tim từ DB (khi Firebase Auth khôi phục phiên trên thiết bị khác)
@@ -3459,6 +3667,8 @@ export default function Home() {
                 // 1. Nếu có thả tim local chưa lưu (ví dụ vừa chọn xong rồi mới bấm đăng nhập)
                 if (selectedImages.size > 0 || Object.keys(imageNotes).length > 0) {
                     await saveClientSelectionToDB(folderId, selectedImages, imageNotes);
+                    // Đăng nhập là thời điểm quan trọng: đẩy lượt ghi ngay, không chờ debounce
+                    await flushSelectionSaveRef.current();
                 }
                 
                 // 2. Tải lại toàn bộ thả tim của tài khoản này từ DB (hỗ trợ đồng bộ chéo thiết bị)
@@ -4201,7 +4411,26 @@ export default function Home() {
         }
     };
 
-    const currentViewAlbum = albums.find(a => a.id === activeAlbumId);
+    // Áp bố cục admin (ảnh bìa + thứ tự) lên album tĩnh để hiển thị.
+    const applyAlbumLayout = (a) => {
+        const cov = albumLayout.cover?.[a.id];
+        const ord = albumLayout.order?.[a.id];
+        if (cov === undefined && ord === undefined) return a;
+        const next = { ...a };
+        if (ord !== undefined) next.order = ord;
+        if (cov) {
+            const full = typeof cov === 'string' ? cov : cov.url;
+            if (full) {
+                next.coverImageUrl = full;
+                next.coverUrl = full.replace(/\.webp$/, '_t.webp');
+                next.coverId = '';
+            }
+        }
+        return next;
+    };
+    const displayAlbums = albums.map(applyAlbumLayout).sort((x, y) => (y.order || 0) - (x.order || 0));
+
+    const currentViewAlbum = displayAlbums.find(a => a.id === activeAlbumId);
     const albumCategoryFilters = ['Tất cả', ...Array.from(new Map([
         ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
         ...albums.map(a => getAlbumMainCategory(a, '')).filter(Boolean)
@@ -4219,7 +4448,12 @@ export default function Home() {
             .flatMap(a => getVestSizes(a))
             .filter(Boolean)
     )).sort((a, b) => a.localeCompare(b, 'vi', { numeric: true }));
-    const filteredAlbums = albums.filter(a =>
+    // Album lấy từ ảnh tĩnh Cloudflare (id "static_...") — quản lý bằng thư mục ảnh
+    // + nút "Cập nhật ảnh", nên các công cụ sửa album/đồng bộ Drive trên web được ẩn.
+    const albumsAreStatic = albums.length > 0 && albums.every(a => String(a.id || '').startsWith('static_'));
+    const albumAdminTools = isAdmin && !albumsAreStatic;
+
+    const filteredAlbums = displayAlbums.filter(a =>
         albumMatchesCategory(a, activeCategory) &&
         albumMatchesHashtagQuery(a, albumHashtagQuery) &&
         (createSlug(activeCategory) !== 'vest' || albumMatchesVestSize(a, vestSizeFilter))
@@ -4404,7 +4638,7 @@ export default function Home() {
     if (!mounted) return <div className="min-h-screen bg-slate-50" />;
 
     return (
-        <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font">
+        <div lang="vi" className="min-h-screen bg-slate-50 flex flex-col font-sans text-slate-900 transition-opacity duration-500 vi-safe-font pb-[calc(60px+env(safe-area-inset-bottom))] md:pb-0">
             <style dangerouslySetInnerHTML={{
                 __html: `
                 .no-scrollbar::-webkit-scrollbar { display: none; }
@@ -4460,24 +4694,29 @@ export default function Home() {
                                     onChange={e => setClientAuthData({ ...clientAuthData, email: e.target.value })}
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-semibold text-slate-300 mb-2">Mật khẩu</label>
-                                <input
-                                    type="password"
-                                    placeholder="••••••••"
-                                    className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
-                                    value={clientAuthData.password}
-                                    onChange={e => setClientAuthData({ ...clientAuthData, password: e.target.value })}
-                                />
-                                {clientAuthMode === 'login' && <button type="button" className="block ml-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Quên mật khẩu?</button>}
-                            </div>
+                            {clientAuthMode !== 'forgot' && (
+                                <div>
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Mật khẩu</label>
+                                    <input
+                                        type="password"
+                                        placeholder="••••••••"
+                                        className="w-full bg-transparent border border-white/15 p-3.5 rounded-xl outline-none focus:border-blue-500 transition-colors text-white placeholder:text-slate-500"
+                                        value={clientAuthData.password}
+                                        onChange={e => setClientAuthData({ ...clientAuthData, password: e.target.value })}
+                                    />
+                                    {clientAuthMode === 'login' && <button type="button" onClick={() => { setClientAuthMode('forgot'); setClientAuthError(''); setClientAuthNotice(''); }} className="block ml-auto mt-2 text-sm text-blue-400 hover:text-blue-300">Quên mật khẩu?</button>}
+                                </div>
+                            )}
+                            {clientAuthNotice && <p className="text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-xl text-sm font-medium">{clientAuthNotice}</p>}
                             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-600/20 active:scale-95 transition-all">
-                                {clientAuthMode === 'register' ? 'Tạo tài khoản' : 'Đăng nhập'}
+                                {clientAuthMode === 'register' ? 'Tạo tài khoản' : clientAuthMode === 'forgot' ? 'Gửi email đặt lại mật khẩu' : 'Đăng nhập'}
                             </button>
                         </form>
 
                         <div className="text-center mt-6 text-slate-300">
-                            {clientAuthMode === 'register' ? (
+                            {clientAuthMode === 'forgot' ? (
+                                <span>Đã nhớ mật khẩu? <button onClick={() => { setClientAuthMode('login'); setClientAuthError(''); setClientAuthNotice(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Quay lại đăng nhập</button></span>
+                            ) : clientAuthMode === 'register' ? (
                                 <span>Đã có tài khoản? <button onClick={() => { setClientAuthMode('login'); setClientAuthError(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Đăng nhập</button></span>
                             ) : (
                                 <span>Chưa có tài khoản? <button onClick={() => { setClientAuthMode('register'); setClientAuthError(''); }} className="text-blue-400 font-semibold hover:text-blue-300">Tạo tài khoản</button></span>
@@ -4690,9 +4929,11 @@ export default function Home() {
                         </div>
                         <form onSubmit={handleLogin} className="space-y-4">
                             {loginError && <p className="text-red-500 text-sm font-medium">{loginError}</p>}
+                            {loginNotice && <p className="text-emerald-600 bg-emerald-50 border border-emerald-100 p-3 rounded-xl text-sm font-medium">{loginNotice}</p>}
                             <input type="email" placeholder="Email Admin" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.email} onChange={e => setLoginData({ ...loginData, email: e.target.value })} />
                             <input type="password" placeholder="Mật khẩu Firebase" className="w-full border-2 border-slate-100 p-3 rounded-xl outline-none focus:border-blue-500 transition-colors" value={loginData.password} onChange={e => setLoginData({ ...loginData, password: e.target.value })} />
                             <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-blue-500/20 active:scale-95 transition-all">Vào hệ thống</button>
+                            <button type="button" onClick={handleAdminPasswordReset} className="w-full text-sm text-blue-600 hover:text-blue-700 font-semibold">Quên mật khẩu Admin?</button>
                         </form>
                     </div>
                 </div>
@@ -5357,12 +5598,25 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 <Camera className="text-slate-800 group-hover:rotate-12 transition-transform" size={22} strokeWidth={1.5} />
                                 <h1 className="text-2xl font-semibold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
                             </div>
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className="btn-3d md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
-                                <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                                <button onClick={() => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login')} className="btn-3d md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
+                                    <User size={18} /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
+                                </button>
+                                {user && (
+                                    <button
+                                        type="button"
+                                        onClick={isAdmin ? handleLogout : handleClientLogout}
+                                        className="btn-3d md:hidden flex items-center gap-1.5 text-xs font-semibold text-red-600 px-3 py-2 rounded-none border border-red-200 hover:bg-red-50 transition-colors"
+                                        aria-label="Đăng xuất"
+                                    >
+                                        <LogOut size={16} />
+                                        <span className="hidden min-[390px]:inline">Thoát</span>
+                                    </button>
+                                )}
+                            </div>
                         </div>
 
-                        <div className="w-full min-w-0 md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                        <div className="hidden md:block w-full min-w-0 md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
                             <nav className="flex gap-0.5 md:gap-1 w-max md:w-full md:justify-center">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
@@ -5384,9 +5638,18 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
 
                         <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? (isAdmin ? handleClientLogout() : setShowClientProfileModal(true)) : openClientAuth('login')} className={`btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
+                            <button onClick={() => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login')} className={`btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
                                 <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
                             </button>
+                            {user && (
+                                <button
+                                    type="button"
+                                    onClick={isAdmin ? handleLogout : handleClientLogout}
+                                    className="btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-4 py-2.5 rounded-none border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                                >
+                                    <LogOut size={17} /> Đăng xuất
+                                </button>
+                            )}
                         </div>
                     </div>
                 </header>
@@ -5781,7 +6044,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">{createSlug(activeCategory) === 'vest' ? 'Bộ Sưu Tập Vest' : 'Bộ Sưu Tập'}</h2>
                                             {createSlug(activeCategory) === 'vest' && <p className="text-sm text-slate-500 mt-2">Chọn kích cỡ phù hợp để xem nhanh các mẫu Vest hiện có.</p>}
                                         </div>
-                                        {isAdmin && (
+                                        {albumAdminTools && (
                                             <div className="flex items-center gap-2">
                                                 <button onClick={handleAddViewsToAllAlbums} className="bg-amber-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-amber-700 text-sm md:text-base" title="Cộng thêm 1000 lượt xem cho toàn bộ album">
                                                     <Eye size={18} /> <span className="hidden sm:inline">+1000 Lượt xem</span>
@@ -5796,7 +6059,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         )}
                                     </div>
 
-                                    <div className="flex w-full min-w-0 overflow-x-auto gap-2 md:gap-3 mb-6 md:mb-8 no-scrollbar px-1 pt-1 pb-3 scroll-smooth">
+                                    <div className="flex w-full min-w-0 flex-wrap gap-2 md:gap-3 mb-6 md:mb-8 px-1 pt-1 pb-3">
                                         {albumCategoryFilters.map(cat => (
                                             <button
                                                 key={cat}
@@ -5806,7 +6069,6 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 {cat}
                                             </button>
                                         ))}
-                                        <span aria-hidden="true" className="w-4 shrink-0" />
                                     </div>
 
                                     {createSlug(activeCategory) === 'vest' && (
@@ -5895,7 +6157,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                     {isAdmin && filteredAlbums.length > 1 && (
                                         <div className="bg-blue-50 border border-blue-100 text-blue-700 rounded-2xl p-3 md:p-4 text-xs md:text-sm font-bold flex items-center gap-2">
-                                            <span className="text-lg leading-none">⋮⋮</span> Giữ chuột vào card album rồi kéo thả để đổi thứ tự. Thứ tự sẽ tự lưu vào Firestore.
+                                            <span className="text-lg leading-none">⋮⋮</span> Giữ chuột vào card album rồi kéo thả để đổi thứ tự — tự lưu ngay.
                                         </div>
                                     )}
 
@@ -5945,7 +6207,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     </div>
 
                                                     {/* Các nút thao tác Admin: kéo thả + sửa */}
-                                                    {isAdmin && (
+                                                    {albumAdminTools && (
                                                         <div className="absolute top-4 md:top-6 right-4 md:right-6 z-20 flex flex-col gap-2 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all">
                                                             <div className="bg-white/90 px-2.5 py-2 rounded-full text-slate-700 shadow-lg cursor-grab active:cursor-grabbing font-black text-xs tracking-widest" title="Giữ và kéo để sắp xếp">
                                                                 ⋮⋮
@@ -6013,7 +6275,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </button>
                                         </div>
 
-                                        {isAdmin && (
+                                        {albumAdminTools && (
                                             <div className="flex flex-wrap items-center gap-2 md:gap-3 bg-blue-50/50 p-2 rounded-xl md:rounded-2xl border border-blue-100 shadow-inner w-full md:w-auto">
                                                 <input
                                                     type="text"
@@ -6043,7 +6305,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                     <div className={paginatedAlbumImages.length <= 8 ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 max-w-7xl mx-auto" : "masonry-grid"}>
                                         {paginatedAlbumImages.map((img: any, i: number) => {
-                                            const isCover = currentViewAlbum?.coverId === img.id || currentViewAlbum?.coverUrl === img.url;
+                                            const isCover = currentViewAlbum?.coverImageUrl === img.url || currentViewAlbum?.coverId === img.id || currentViewAlbum?.coverUrl === img.url;
                                             const originalIndex = albumStartIndex + i;
                                             const isFewAlbumImages = paginatedAlbumImages.length <= 8;
 
@@ -6058,7 +6320,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         </button>
                                                     </div>
 
-                                                    {/* Nút Đặt làm Ảnh Bìa (Chỉ hiện với Admin) */}
+                                                    {/* Nút Đặt làm Ảnh Bìa (chỉ khi còn quản lý album qua Firestore) */}
                                                     {isAdmin && (
                                                         <div className={`absolute top-2 left-2 md:top-4 md:left-4 transition-all z-20 ${isCover ? 'opacity-100' : 'opacity-100 md:opacity-0 md:group-hover:opacity-100'}`}>
                                                             <button
@@ -6892,8 +7154,53 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
             {/* LIGHTBOX FOR YOUTUBE VIDEOS */}
             <VideoLightbox videoModal={videoModal} setVideoModal={setVideoModal} />
+            {/* Thanh điều hướng đáy kiểu app — chỉ hiện trên điện thoại */}
+            <nav className="app-tabbar" aria-label="Điều hướng nhanh">
+                {[
+                    { id: 'home', label: 'Trang chủ', Icon: HomeIcon, active: activeTab === 'home', go: () => navigateToTab('home') },
+                    { id: 'collection', label: 'Album', Icon: Images, active: activeTab === 'collection' && createSlug(activeCategory) !== 'vay-cuoi', go: () => navigateToTab('collection') },
+                    { id: 'dress', label: 'Váy cưới', Icon: Shirt, active: activeTab === 'collection' && createSlug(activeCategory) === 'vay-cuoi', go: navigateToDress },
+                    { id: 'booking', label: 'Đặt lịch', Icon: CalendarDays, active: activeTab === 'booking', go: () => navigateToTab('booking') },
+                    { id: 'more', label: 'Thêm', Icon: Menu, active: showMobileMore || ['videos', 'blog', 'feedback', 'tool', 'dashboard'].includes(activeTab), go: () => setShowMobileMore(v => !v) }
+                ].map(t => (
+                    <button key={t.id} type="button" onClick={() => { if (t.id !== 'more') setShowMobileMore(false); t.go(); window.scrollTo({ top: 0 }); }} className={`app-tab ${t.active ? 'is-active' : ''}`} aria-current={t.active ? 'page' : undefined}>
+                        <t.Icon size={22} strokeWidth={1.8} />
+                        <span>{t.label}</span>
+                        <span className="app-tab-dot" />
+                    </button>
+                ))}
+            </nav>
+            {showMobileMore && (
+                <div className="md:hidden fixed inset-0 z-[54]" onClick={() => setShowMobileMore(false)}>
+                    <div className="absolute inset-0 bg-slate-900/40 animate-in fade-in duration-200" />
+                    <div onClick={e => e.stopPropagation()} className="absolute left-0 right-0 bottom-[calc(60px+env(safe-area-inset-bottom))] bg-[#faf7f1] rounded-t-3xl shadow-2xl p-4 pb-5 animate-in slide-in-from-bottom-6 duration-300">
+                        <div className="w-10 h-1 rounded-full bg-slate-300 mx-auto mb-4" />
+                        <div className="grid grid-cols-3 gap-2.5">
+                            {[
+                                { label: 'Vest', Icon: Shirt, go: navigateToVest },
+                                { label: 'Video', Icon: PlayCircle, go: () => navigateToTab('videos') },
+                                { label: 'Blog', Icon: BookOpen, go: () => navigateToTab('blog') },
+                                { label: 'Feedback', Icon: MessageSquare, go: () => navigateToTab('feedback') },
+                                { label: 'Công cụ', Icon: Wand2, go: () => navigateToTab('tool', activeToolTab) },
+                                { label: user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập', Icon: User, go: () => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login') },
+                                ...(user ? [{ label: 'Đăng xuất', Icon: LogOut, go: isAdmin ? handleLogout : handleClientLogout }] : []),
+                                ...(isAdmin ? [{ label: 'Thống kê', Icon: Eye, go: () => navigateToTab('dashboard') }] : [])
+                            ].map(item => (
+                                <button key={item.label} type="button" onClick={() => { setShowMobileMore(false); item.go(); window.scrollTo({ top: 0 }); }} className="flex flex-col items-center justify-center gap-1.5 bg-white rounded-2xl border border-slate-200 py-3.5 text-[11px] font-semibold text-slate-700 active:scale-95 transition shadow-sm">
+                                    <item.Icon size={22} strokeWidth={1.7} className="text-slate-800" />
+                                    {item.label}
+                                </button>
+                            ))}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+                            <a href="tel:0888999545" className="flex items-center justify-center gap-2 bg-slate-900 text-white rounded-2xl py-3 text-sm font-semibold active:scale-95 transition"><Phone size={16} /> Gọi 0888.999.545</a>
+                            <a href="https://zalo.me/0888999545" target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 bg-[#0068ff] text-white rounded-2xl py-3 text-sm font-semibold active:scale-95 transition"><span className="font-extrabold italic">Zalo</span> Chat ngay</a>
+                        </div>
+                    </div>
+                </div>
+            )}
             <QuickChat />
-            <div className="fixed right-4 bottom-5 z-50 flex flex-col gap-2">
+            <div className="fixed right-4 bottom-[calc(4.75rem+env(safe-area-inset-bottom))] md:bottom-5 z-50 flex flex-col gap-2">
                 <button
                     type="button"
                     onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

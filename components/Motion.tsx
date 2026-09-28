@@ -139,6 +139,9 @@ export function Reveal({ as, delay = 0, className, style, children, ...rest }: R
         if (!el) return;
         if (typeof IntersectionObserver === 'undefined') return;
         if (window.matchMedia(REDUCED_MOTION).matches) return;
+        // Màn hình cảm ứng: bỏ hẳn bước giấu nội dung (đồng bộ với CSS
+        // @media (hover: none) trong globals.css) — điện thoại thấy chữ ngay.
+        if (!window.matchMedia(FINE_HOVER).matches) return;
         const rect = el.getBoundingClientRect();
         // Đang trong khung nhìn sẵn thì giữ nguyên, tránh chớp ẩn/hiện
         if (rect.top < window.innerHeight * 0.9 && rect.bottom > 0) return;
