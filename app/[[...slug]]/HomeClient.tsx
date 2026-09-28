@@ -3282,7 +3282,7 @@ export default function Home() {
                     setClientAuthError(formatGoogleAuthError(redirectError));
                 }
             } else {
-                setClientAuthError(formatGoogleAuthError(error));
+                setClientAuthError(`${formatGoogleAuthError(error)} (${code}: ${error?.message})`);
             }
             setClientAuthNotice('');
         }
@@ -3339,10 +3339,11 @@ export default function Home() {
         } catch (error) {
             console.error('Client auth error:', error);
             const code = error?.code || '';
+            const msg = error?.message || 'Lỗi không xác định';
             if (code.includes('email-already-in-use')) setClientAuthError('Email này đã có tài khoản. Hãy bấm Đăng nhập.');
             else if (code.includes('user-not-found') || code.includes('invalid-credential') || code.includes('wrong-password')) setClientAuthError('Email hoặc mật khẩu chưa đúng.');
             else if (code.includes('operation-not-allowed')) setClientAuthError('Firebase chưa bật phương thức Email/Password hoặc Google.');
-            else setClientAuthError('Không đăng nhập/đăng ký được. Vui lòng thử lại.');
+            else setClientAuthError(`Lỗi hệ thống: ${code} - ${msg}. Vui lòng chụp ảnh màn hình báo lại admin.`);
         }
     };
 
