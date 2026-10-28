@@ -94,6 +94,28 @@ Never commit `.env.local` or service-account credentials. Rotate Gemini and Tele
 
 Bỏ ảnh mới vào `E:\Mẫu\ANH WEB\<Danh mục>\<Tên album>\` rồi **double-click**
 `CAP-NHAT-ANH-WEB.bat` (hoặc shortcut **"Cap nhat anh Merci"** trên Desktop).
-Nó tự nén ảnh mới (bỏ qua ảnh đã có) và đưa lên Cloudflare. Chạy lại bất cứ lúc nào.
+Nó tự nén ảnh mới (bỏ qua ảnh đã có) và đẩy lên Cloudflare R2. **Không cần deploy
+lại web** — ảnh hiện trên site ngay. Chạy lại bất cứ lúc nào.
 
 Tương đương lệnh: `npm run update-photos`
+
+Luồng: `scripts/build-photos.mjs` nén vào `.cache/photos/` → `scripts/upload-r2.mjs`
+đẩy file mới lên bucket `merci-photos` (prefix `photos/`, so MD5 với
+`.cache/r2-state.json`) → phục vụ qua `https://img.mercistudio.net/photos/...`.
+Upload dùng token của `npx wrangler login`; token hết hạn thì login lại.
+Xoá `.cache/` thì lần sau nén lại toàn bộ (vài phút) nhưng chỉ upload file khác MD5.
+
+### Nạp ảnh từ Google Drive
+
+Double-click `CAP-NHAT-ANH-TU-DRIVE.bat` (shortcut **"Cap nhat anh tu Drive"**),
+dán link folder Drive (nhiều link thì mỗi dòng 1 link), chọn danh mục. Script tải
+ảnh về `E:\Mẫu\ANH WEB\<Danh mục>\<Tên folder Drive>\` (bỏ qua ảnh đã có), rồi
+nén và đưa lên Cloudflare như trên. Folder gốc có thư mục con thì mỗi thư mục con
+là 1 album. Folder Drive phải để quyền "Bất kỳ ai có liên kết đều có thể xem".
+
+Tương đương lệnh: `npm run update-photos-drive` (chỉ tải về: `npm run photos:drive`)
+
+Web chỉ đọc album từ `https://img.mercistudio.net/photos/manifest.json` (đổi bằng
+`NEXT_PUBLIC_PHOTOS_BASE`); album trong Firestore `merci_albums` không còn hiển thị
+để tránh lặp. Firestore vẫn dùng cho auth, blog, video, booking, chọn ảnh khách,
+tích điểm và bố cục album (`merci_albums/_album_layout`).

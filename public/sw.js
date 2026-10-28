@@ -1,5 +1,6 @@
 /* Service worker Merci Studio — mở nhanh như app, xem lại ảnh đã tải kể cả khi mạng yếu. */
-const VERSION = 'merci-pwa-v2';
+const VERSION = 'merci-pwa-v3';
+const PHOTOS_ORIGIN = 'https://img.mercistudio.net';
 const STATIC = VERSION + '-static';
 const PHOTOS = VERSION + '-photos';
 const PAGES = VERSION + '-pages';
@@ -57,18 +58,20 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
+
+  // Ảnh album trên R2 (img.mercistudio.net/photos/...)
+  if (url.origin === PHOTOS_ORIGIN && url.pathname.startsWith('/photos/')) {
+    if (url.pathname.endsWith('manifest.json')) {
+      event.respondWith(networkFirst(request, PAGES));
+    } else {
+      event.respondWith(cacheFirst(request, PHOTOS, PHOTO_LIMIT));
+    }
+    return;
+  }
   if (url.origin !== self.location.origin) return;
 
   if (url.pathname.startsWith('/_next/static/') || url.pathname.startsWith('/icons/')) {
     event.respondWith(cacheFirst(request, STATIC));
-    return;
-  }
-  if (url.pathname.startsWith('/photos/') && !url.pathname.endsWith('manifest.json')) {
-    event.respondWith(cacheFirst(request, PHOTOS, PHOTO_LIMIT));
-    return;
-  }
-  if (url.pathname.startsWith('/photos/manifest.json')) {
-    event.respondWith(networkFirst(request, PAGES));
     return;
   }
   // Không cache /api/* — tránh lưu response API (dữ liệu có thể nhạy cảm) vào CacheStorage.

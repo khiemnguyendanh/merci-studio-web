@@ -51,5 +51,6 @@ next-env.d.ts
 .vercel
 .env*
 
-# Ảnh tĩnh sinh ra từ scripts/build-photos.mjs (nguồn gốc ở E:\Mẫu\ANH WEB) — không đưa vào git
-/public/photos/
+
+# Ảnh nén + trạng thái upload R2 (scripts/build-photos.mjs, scripts/upload-r2.mjs)
+/.cache/

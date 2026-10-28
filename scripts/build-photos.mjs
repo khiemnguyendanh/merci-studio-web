@@ -1,8 +1,10 @@
-// Pipeline ảnh tĩnh cho Cloudflare:
+// Pipeline ảnh tĩnh cho Cloudflare R2:
 //   E:\Mẫu\ANH WEB\<Danh mục>\<Album>\*.jpg|png|webp|heic
-//   -> public/photos/<cat-slug>/<album-slug>/NNN.webp   (web, tối đa 1920px, q80)
-//   -> public/photos/<cat-slug>/<album-slug>/NNN_t.webp (thumbnail 640px, q75)
-//   -> public/photos/manifest.json                      (danh sách album cho website + app TV)
+//   -> .cache/photos/<cat-slug>/<album-slug>/NNN.webp   (web, tối đa 1920px, q80)
+//   -> .cache/photos/<cat-slug>/<album-slug>/NNN_t.webp (thumbnail 640px, q75)
+//   -> .cache/photos/manifest.json                      (danh sách album cho website + app TV)
+// Sau đó scripts/upload-r2.mjs đẩy thư mục này lên bucket R2 (prefix photos/),
+// phục vụ qua https://img.mercistudio.net/photos/... — web không cần deploy lại.
 // Chạy: node scripts/build-photos.mjs ["đường dẫn thư mục nguồn"]
 // Chạy lại nhiều lần an toàn: file đã xử lý (mới hơn file gốc) được bỏ qua.
 
@@ -42,7 +44,8 @@ function resolveSource(requested) {
   return current;
 }
 const SOURCE = resolveSource(process.argv[2] || 'E:\\Mẫu\\ANH WEB');
-const OUT_ROOT = path.join(process.cwd(), 'public', 'photos');
+const OUT_ROOT = path.join(process.cwd(), '.cache', 'photos');
+const PUBLIC_BASE = (process.env.PHOTOS_PUBLIC_BASE || 'https://img.mercistudio.net/photos').replace(/\/+$/, '');
 const WEB_MAX = 1920;
 const THUMB_MAX = 640;
 const CONCURRENCY = 6;
@@ -190,8 +193,8 @@ async function main() {
           return {
             id: `${catSlug}/${albumSlug}/${base}`,
             name: file,
-            url: `/photos/${catSlug}/${albumSlug}/${base}.webp`,
-            thumbnailUrl: `/photos/${catSlug}/${albumSlug}/${base}_t.webp`,
+            url: `${PUBLIC_BASE}/${catSlug}/${albumSlug}/${base}.webp`,
+            thumbnailUrl: `${PUBLIC_BASE}/${catSlug}/${albumSlug}/${base}_t.webp`,
             width: result.width,
             height: result.height
           };
@@ -229,6 +232,7 @@ async function main() {
   const manifest = {
     generatedAt: new Date().toISOString(),
     baseUrl: 'https://mercistudio.net',
+    photosBase: PUBLIC_BASE,
     categories: [...new Set(albums.map((a) => a.category))],
     albums
   };

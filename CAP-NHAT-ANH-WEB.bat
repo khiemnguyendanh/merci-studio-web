@@ -19,15 +19,15 @@ if errorlevel 1 goto loi
 
 echo(
 echo ------------------------------------------------------------
-echo  [2/2] Dang dua len Cloudflare (vui long doi vai phut)...
+echo  [2/2] Dang dua anh len Cloudflare R2 (chi file moi)...
 echo ------------------------------------------------------------
-call npm run deploy
+call node scripts\upload-r2.mjs
 if errorlevel 1 goto loi
 
 echo(
 echo ============================================================
 echo    HOAN TAT! Website da cap nhat anh moi.
-echo    Mo mercistudio.net de kiem tra.
+echo    Mo mercistudio.net de kiem tra (nhan Ctrl+F5 neu chua thay).
 echo ============================================================
 echo(
 pause
@@ -37,6 +37,8 @@ exit /b 0
 echo(
 echo ############################################################
 echo    CO LOI XAY RA - anh CHUA duoc cap nhat.
+echo    Neu bao "Token Cloudflare het han": mo cmd tai thu muc nay,
+echo    chay  npx wrangler login  roi chay lai file nay.
 echo    Chup lai man hinh nay va gui cho ky thuat.
 echo ############################################################
 echo(

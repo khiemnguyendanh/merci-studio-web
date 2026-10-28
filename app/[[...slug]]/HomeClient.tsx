@@ -338,6 +338,8 @@ const ImageLightbox = SmoothImageLightbox;
 const VideoLightbox = dynamic(() => import('@/components/VideoLightbox'), { ssr: false });
 
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
+const PHOTOS_BASE = (process.env.NEXT_PUBLIC_PHOTOS_BASE || 'https://img.mercistudio.net/photos').replace(/\/+$/, '');
+const PHOTOS_MANIFEST_URL = `${PHOTOS_BASE}/manifest.json`;
 
 // Danh sách email được phép vào Admin.
 // Thêm biến môi trường NEXT_PUBLIC_ADMIN_EMAILS trên Vercel.
@@ -1343,53 +1345,59 @@ export default function Home() {
     }, [mounted]);
 
     // Albums - Cần load ngay vì xuất hiện ở Home và cần cho pendingSlug.
-    // KHÁCH đọc qua /api/public-content (cache 30 phút, cả hệ thống chỉ tốn
-    // ~1 lần đọc Firestore mỗi nửa giờ thay vì ~124 reads cho MỖI lượt truy cập);
-    // ADMIN giữ onSnapshot realtime để quản trị thấy thay đổi tức thì.
+    // Cả KHÁCH lẫn ADMIN xem cùng nguồn ảnh tĩnh Cloudflare (manifest) để hiển thị
+    // thống nhất. Video đọc qua /api/public-content (cache 30 phút).
     useEffect(() => {
         if (!mounted) return;
-        // Cả KHÁCH lẫn ADMIN đều xem cùng nguồn ảnh tĩnh Cloudflare (manifest) để
-        // hiển thị thống nhất; album không còn quản lý qua Firestore trên web nữa.
-        // Đọc bố cục (ảnh bìa + thứ tự) admin đã chỉnh — 1 lượt đọc nhỏ, có cache.
+
+        let cancelled = false;
+
+        const withOrder = (item: any) => ({
+            ...item,
+            order: item.order !== undefined ? item.order : parseInt(String(item.id).split('_')[1] || '0', 10) || 0
+        });
+
+        // Cả Khách và Admin đều cần đọc bố cục (cover, order) từ _album_layout
         if (db) {
             getDoc(doc(db, 'merci_albums', '_album_layout'))
                 .then(s => { if (s.exists()) { const d = s.data() || {}; setAlbumLayout({ order: d.order || {}, cover: d.cover || {} }); } })
                 .catch(() => {});
         }
-        let cancelled = false;
-        const withOrder = (item: any) => ({
-            ...item,
-            order: item.order !== undefined ? item.order : parseInt(String(item.id).split('_')[1] || '0', 10) || 0
-        });
-        // Ưu tiên ảnh tĩnh trên Cloudflare (public/photos/manifest.json — sinh bởi
-        // scripts/build-photos.mjs): không Firestore, không Drive, không quota.
-        // Không có manifest thì dùng /api/public-content như cũ.
-        fetch('/photos/manifest.json')
+
+        // Nguồn album DUY NHẤT là ảnh tĩnh trên R2 (img.mercistudio.net/photos/manifest.json,
+        // sinh bởi scripts/build-photos.mjs + upload-r2.mjs từ E:\Mẫu\ANH WEB). Không trộn
+        // với Firestore vì trong đó còn album cũ đồng bộ từ Drive -> bị lặp trên web.
+        // Firestore chỉ dùng cho video và bố cục (_album_layout). Chỉ khi không có
+        // manifest mới fallback sang album Firestore.
+        fetch(`${PHOTOS_MANIFEST_URL}?t=${Date.now()}`)
             .then(res => (res.ok ? res.json() : null))
             .catch(() => null)
             .then(manifest => {
-                if (cancelled) return null;
-                const staticAlbums = manifest && Array.isArray(manifest.albums) ? manifest.albums : [];
+                if (cancelled) return;
+                const staticAlbums = manifest && Array.isArray(manifest.albums) ? manifest.albums.map(withOrder) : [];
                 if (staticAlbums.length) {
-                    const sorted = staticAlbums.map(withOrder);
-                    sorted.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
-                    setAlbums(sorted);
+                    staticAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                    setAlbums(staticAlbums);
                 }
-                return fetch('/api/public-content')
+
+                fetch('/api/public-content')
                     .then(res => res.json())
                     .then(data => {
                         if (cancelled) return;
                         if (!staticAlbums.length) {
-                            const fetchedAlbums = ((data && data.albums) || []).map(withOrder);
+                            const fetchedAlbums = ((data && data.albums) || [])
+                                .filter((a: any) => a && a.id !== '_album_layout')
+                                .map(withOrder);
                             fetchedAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
                             if (fetchedAlbums.length) setAlbums(fetchedAlbums);
                         }
                         const fetchedVideos = ((data && data.videos) || []).map(withOrder);
                         fetchedVideos.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
                         if (fetchedVideos.length) setVideos(fetchedVideos);
-                    });
-            })
-            .catch(() => {});
+                    })
+                    .catch(() => {});
+            });
+
         return () => { cancelled = true; };
     }, [mounted, isAdmin]);
 
@@ -3266,7 +3274,6 @@ export default function Home() {
         setClientAuthNotice('');
         try {
             const provider = new GoogleAuthProvider();
-            provider.setCustomParameters({ prompt: 'select_account' });
             await signInWithPopup(auth, provider);
             setShowClientLoginModal(false);
         } catch (error) {

@@ -15,7 +15,7 @@ const CSP = [
   "font-src 'self' data: https://fonts.gstatic.com",
   "img-src 'self' data: blob: https:",
   "media-src 'self' data: blob: https:",
-  "connect-src 'self' https://*.googleapis.com https://*.google-analytics.com https://*.firebaseapp.com https://*.firebaseapp.net https://accounts.google.com https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
+  "connect-src 'self' https://img.mercistudio.net https://*.googleapis.com https://*.google-analytics.com https://*.firebaseapp.com https://*.firebaseapp.net https://accounts.google.com https://www.googletagmanager.com https://connect.facebook.net https://www.facebook.com https://cloudflareinsights.com https://static.cloudflareinsights.com",
   "frame-src 'self' https://*.firebaseapp.com https://*.firebaseapp.net https://accounts.google.com https://www.googletagmanager.com https://td.doubleclick.net https://www.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://docs.google.com https://drive.google.com",
   "object-src 'none'",
   "base-uri 'self'",
@@ -25,6 +25,14 @@ const CSP = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async rewrites() {
+    return [
+      {
+        source: '/__/auth/:path*',
+        destination: 'https://merci-studio-web.firebaseapp.com/__/auth/:path*'
+      }
+    ];
+  },
   async headers() {
     return [
       {
