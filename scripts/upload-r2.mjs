@@ -1,7 +1,11 @@
 // Đẩy ảnh đã nén (.cache/photos) lên Cloudflare R2 bucket `merci-photos`, prefix `photos/`.
 // Chỉ upload file mới hoặc đã thay đổi (so bằng MD5 với .cache/r2-state.json);
 // manifest.json luôn upload cuối cùng. Xác thực bằng token của `wrangler login`
-// (hoặc đặt CLOUDFLARE_API_TOKEN). Chạy: node scripts/upload-r2.mjs [--all]
+// (hoặc đặt CLOUDFLARE_API_TOKEN).
+// Mỗi lần chạy đều liệt kê bucket trước để so với state: file có trong state mà
+// không có trên R2 (API từng trả OK nhưng không ghi) sẽ được đẩy lại. Sau upload
+// còn kiểm tra lại etag từng file.
+// Chạy: node scripts/upload-r2.mjs [--all]
 
 import fs from 'node:fs';
 import os from 'node:os';
@@ -13,8 +17,9 @@ const BUCKET = process.env.R2_BUCKET || 'merci-photos';
 const PREFIX = 'photos/';
 const SRC = path.join(process.cwd(), '.cache', 'photos');
 const STATE_FILE = path.join(process.cwd(), '.cache', 'r2-state.json');
-const CONCURRENCY = 8;
+const CONCURRENCY = 4;
 const FORCE_ALL = process.argv.includes('--all');
+const API = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/r2/buckets/${BUCKET}`;
 
 function loadToken() {
   if (process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN;
@@ -36,9 +41,27 @@ function walk(dir, out = []) {
 const md5 = (buf) => crypto.createHash('md5').update(buf).digest('hex');
 const contentType = (file) => file.endsWith('.webp') ? 'image/webp' : file.endsWith('.json') ? 'application/json; charset=utf-8' : 'application/octet-stream';
 
-async function putObject(key, body, type, cacheControl) {
-  const url = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/r2/buckets/${BUCKET}/objects/${encodeURIComponent(key)}`;
-  for (let attempt = 1; attempt <= 4; attempt++) {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Liệt kê toàn bộ key + etag đang có trên bucket dưới prefix.
+async function listRemote() {
+  const remote = new Map();
+  let cursor = '';
+  do {
+    const url = `${API}/objects?prefix=${encodeURIComponent(PREFIX)}&per_page=1000${cursor ? `&cursor=${cursor}` : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    if (res.status === 401 || res.status === 403) throw Object.assign(new Error('Token Cloudflare hết hạn / thiếu quyền R2. Chạy: npx wrangler login'), { fatal: true });
+    if (!res.ok) throw new Error(`Không liệt kê được bucket: HTTP ${res.status}`);
+    const data = await res.json();
+    for (const o of data.result || []) remote.set(o.key, String(o.etag || '').replace(/"/g, ''));
+    cursor = data.result_info?.is_truncated ? data.result_info.cursor : '';
+  } while (cursor);
+  return remote;
+}
+
+async function putObject(key, body, type, cacheControl, expectedMd5) {
+  const url = `${API}/objects/${encodeURIComponent(key)}`;
+  for (let attempt = 1; attempt <= 5; attempt++) {
     try {
       const res = await fetch(url, {
         method: 'PUT',
@@ -46,12 +69,18 @@ async function putObject(key, body, type, cacheControl) {
         body
       });
       if (res.status === 401 || res.status === 403) throw Object.assign(new Error('Token Cloudflare hết hạn / thiếu quyền R2. Chạy: npx wrangler login'), { fatal: true });
-      if (res.ok) return;
+      if (res.ok) {
+        // API có lúc trả OK mà không ghi: đối chiếu etag trong response (= MD5 với upload 1 phần).
+        const data = await res.json().catch(() => null);
+        const etag = String(data?.result?.etag || '').replace(/"/g, '');
+        if (!expectedMd5 || etag === expectedMd5) return;
+        throw new Error(`etag không khớp (${etag || 'trống'})`);
+      }
       if (res.status < 500 && res.status !== 429) throw Object.assign(new Error(`HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`), { fatal: true });
     } catch (e) {
-      if (e.fatal || attempt === 4) throw e;
+      if (e.fatal || attempt === 5) throw e;
     }
-    await new Promise((r) => setTimeout(r, 500 * attempt));
+    await sleep(800 * attempt);
   }
 }
 
@@ -71,14 +100,18 @@ async function main() {
   const failures = [];
   let fatal = null;
 
+  console.log('Đang liệt kê file trên R2...');
+  const remote = await listRemote();
+  console.log(`R2 đang có ${remote.size} file dưới ${PREFIX}`);
+
   const tasks = files.map((file) => async () => {
     if (fatal) return;
     const key = PREFIX + path.relative(SRC, file).split(path.sep).join('/');
     const buf = fs.readFileSync(file);
     const hash = md5(buf);
-    if (state[key] === hash) { stats.skipped++; return; }
+    if (state[key] === hash && remote.get(key) === hash) { stats.skipped++; return; }
     try {
-      await putObject(key, buf, contentType(file), 'public, max-age=31536000, immutable');
+      await putObject(key, buf, contentType(file), 'public, max-age=31536000, immutable', hash);
       state[key] = hash;
       stats.uploaded++;
       if (stats.uploaded % 100 === 0) {
@@ -102,7 +135,20 @@ async function main() {
     throw new Error(`${stats.failed} file chưa đẩy được — chạy lại để thử tiếp. manifest.json CHƯA được cập nhật.`);
   }
 
-  await putObject(PREFIX + 'manifest.json', fs.readFileSync(path.join(SRC, 'manifest.json')), contentType('manifest.json'), 'public, max-age=60');
+  // Kiểm tra lại lần cuối: mọi file local phải có trên R2 với đúng MD5.
+  const after = await listRemote();
+  const missing = files
+    .map((f) => PREFIX + path.relative(SRC, f).split(path.sep).join('/'))
+    .filter((key) => after.get(key) !== state[key]);
+  if (missing.length) {
+    missing.forEach((k) => delete state[k]);
+    fs.writeFileSync(STATE_FILE, JSON.stringify(state));
+    console.log('\nFile chưa có trên R2 sau khi upload:\n' + missing.slice(0, 20).join('\n') + (missing.length > 20 ? `\n... và ${missing.length - 20} file nữa` : ''));
+    throw new Error(`${missing.length} file chưa lên R2 — chạy lại để đẩy tiếp. manifest.json CHƯA được cập nhật.`);
+  }
+
+  const manifestBuf = fs.readFileSync(path.join(SRC, 'manifest.json'));
+  await putObject(PREFIX + 'manifest.json', manifestBuf, contentType('manifest.json'), 'public, max-age=60', md5(manifestBuf));
   console.log('\nXONG:', stats, `\nmanifest: https://img.mercistudio.net/${PREFIX}manifest.json`);
 }
 
