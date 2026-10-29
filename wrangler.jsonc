@@ -11,6 +11,13 @@
     "directory": ".open-next/assets",
     "binding": "ASSETS"
   },
+  // Kho ảnh album (img.mercistudio.net). Nút admin "Đồng bộ Drive → R2" ghi vào photos/.
+  "r2_buckets": [
+    {
+      "binding": "PHOTOS",
+      "bucket_name": "merci-photos"
+    }
+  ],
   "observability": {
     "enabled": true
   }

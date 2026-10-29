@@ -15,6 +15,7 @@ import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
 import { TiltCard } from '@/components/Motion';
 import QuickChat from '@/components/QuickChat';
+import DriveR2Sync from '@/components/DriveR2Sync';
 import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
@@ -878,6 +879,8 @@ export default function Home() {
 
     // Sync Albums state
     const [showSyncModal, setShowSyncModal] = useState(false);
+    const [showDriveR2Sync, setShowDriveR2Sync] = useState(false);
+    const [photosVersion, setPhotosVersion] = useState(0);
     const [syncDriveLink, setSyncDriveLink] = useState('');
     const [syncCategory, setSyncCategory] = useState('Wedding');
     const [syncSizes, setSyncSizes] = useState('');
@@ -1415,7 +1418,7 @@ export default function Home() {
             });
 
         return () => { cancelled = true; };
-    }, [mounted, isAdmin]);
+    }, [mounted, isAdmin, photosVersion]);
 
     // Videos - Khách đã nhận video từ /api/public-content ở effect trên;
     // chỉ admin cần realtime để quản lý danh sách video.
@@ -4975,6 +4978,16 @@ export default function Home() {
             )}
 
             {/* Sync Drive Albums Modal */}
+            {isAdmin && (
+                <DriveR2Sync
+                    open={showDriveR2Sync}
+                    onClose={() => setShowDriveR2Sync(false)}
+                    categories={albumCategoryFilters.filter(c => c !== 'Tất cả')}
+                    defaultCategory={activeCategory === 'Tất cả' ? 'Wedding' : activeCategory}
+                    onSynced={() => setPhotosVersion(v => v + 1)}
+                />
+            )}
+
             {showSyncModal && (
                 <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4">
                     <div className="bg-white p-8 rounded-3xl w-full max-w-md space-y-6 shadow-2xl animate-in zoom-in-95">
@@ -6085,6 +6098,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             <h2 className="text-3xl md:text-4xl font-bold font-serif text-slate-900">{createSlug(activeCategory) === 'vest' ? 'Bộ Sưu Tập Vest' : 'Bộ Sưu Tập'}</h2>
                                             {createSlug(activeCategory) === 'vest' && <p className="text-sm text-slate-500 mt-2">Chọn kích cỡ phù hợp để xem nhanh các mẫu Vest hiện có.</p>}
                                         </div>
+                                        {isAdmin && albumsAreStatic && (
+                                            <button onClick={() => setShowDriveR2Sync(true)} className="bg-emerald-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-emerald-700 text-sm md:text-base">
+                                                <FolderDown size={18} /> <span className="hidden sm:inline">Đồng bộ Drive → R2</span>
+                                            </button>
+                                        )}
                                         {albumAdminTools && (
                                             <div className="flex items-center gap-2">
                                                 <button onClick={handleAddViewsToAllAlbums} className="bg-amber-600 text-white px-4 md:px-5 py-2 md:py-3 rounded-xl md:rounded-2xl font-bold flex items-center gap-2 shadow-lg active:scale-95 transition-all hover:bg-amber-700 text-sm md:text-base" title="Cộng thêm 1000 lượt xem cho toàn bộ album">

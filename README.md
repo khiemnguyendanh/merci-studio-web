@@ -119,3 +119,13 @@ Web chỉ đọc album từ `https://img.mercistudio.net/photos/manifest.json` (
 `NEXT_PUBLIC_PHOTOS_BASE`); album trong Firestore `merci_albums` không còn hiển thị
 để tránh lặp. Firestore vẫn dùng cho auth, blog, video, booking, chọn ảnh khách,
 tích điểm và bố cục album (`merci_albums/_album_layout`).
+
+### Đồng bộ Drive → R2 ngay trên web (admin)
+
+Ở tab Bộ sưu tập, admin bấm **"Đồng bộ Drive → R2"**, dán link folder Drive và chọn danh mục. Bấm **Quét ảnh mới** rồi **Đưa ảnh lên web**.
+Chỉ ảnh mới được thêm. Web lấy bản WebP 1920px và thumbnail 640px mà Google tạo sẵn, ghi lên R2 dưới tên photos/<danh-mục>/<album>/d_<driveId>.webp, rồi gộp vào manifest.json. Không cần bật máy tính và không cần deploy lại.
+
+Worker không giải mã được ảnh, nên ảnh **HEIC** hoặc ảnh Google chưa tạo bản xem trước sẽ vào hàng chờ photos/drive-pending.json. Lúc bật máy, double-click DONG-BO-ANH-CHO.bat (lệnh tương đương: 
+pm run photos:pending). Script tải ảnh gốc, nén bằng sharp + ffmpeg rồi đưa lên web.
+
+upload-r2.mjs giữ lại các ảnh web đã đồng bộ (có driveId) khi đẩy manifest build từ máy, nên hai cách cập nhật không xoá ảnh của nhau.

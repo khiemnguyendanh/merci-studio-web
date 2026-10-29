@@ -84,6 +84,47 @@ async function putObject(key, body, type, cacheControl, expectedMd5) {
   }
 }
 
+// Ảnh do nút "Đồng bộ Drive → R2" trên web thêm vào (có driveId) không nằm trong
+// thư mục máy, nên manifest build từ máy không có. Gộp lại từ manifest đang chạy
+// trên R2 để lần cập nhật từ máy không xoá mất chúng. Trùng tên file gốc thì bỏ
+// (ảnh đó đã được tải về máy và build lại).
+async function keepWebSyncedImages(local) {
+  const res = await fetch(`${API}/objects/${encodeURIComponent(PREFIX + 'manifest.json')}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  if (res.status === 404) return 0;
+  if (!res.ok) throw new Error(`Không đọc được manifest trên R2: HTTP ${res.status} - manifest.json CHƯA được cập nhật.`);
+  const remote = JSON.parse(await res.text());
+  const nameKey = (n) => String(n || '').normalize('NFC').trim().toLowerCase();
+  let kept = 0;
+  for (const ra of remote.albums || []) {
+    const synced = (ra.images || []).filter((img) => img.driveId);
+    let la = local.albums.find((a) => a.id === ra.id);
+    if (!synced.length) {
+      if (la && ra.driveFolderId) la.driveFolderId = ra.driveFolderId;
+      continue;
+    }
+    if (!la) {
+      la = { ...ra, images: [] };
+      local.albums.push(la);
+    }
+    const names = new Set(la.images.map((img) => nameKey(img.name)));
+    const ids = new Set(la.images.map((img) => img.id));
+    for (const img of synced) {
+      if (names.has(nameKey(img.name)) || ids.has(img.id)) continue;
+      la.images.push(img);
+      kept++;
+    }
+    if (ra.driveFolderId) la.driveFolderId = ra.driveFolderId;
+    la.imageCount = la.images.length;
+    if (!la.coverUrl && la.images[0]) {
+      la.coverUrl = la.images[0].thumbnailUrl;
+      la.coverImageUrl = la.images[0].url;
+    }
+  }
+  local.albums.sort((a, b) => (b.order || 0) - (a.order || 0));
+  local.categories = [...new Set(local.albums.map((a) => a.category))];
+  return kept;
+}
+
 async function runPool(tasks, limit) {
   let next = 0;
   async function worker() {
@@ -147,7 +188,10 @@ async function main() {
     throw new Error(`${missing.length} file chưa lên R2 — chạy lại để đẩy tiếp. manifest.json CHƯA được cập nhật.`);
   }
 
-  const manifestBuf = fs.readFileSync(path.join(SRC, 'manifest.json'));
+  const local = JSON.parse(fs.readFileSync(path.join(SRC, 'manifest.json'), 'utf8'));
+  const kept = await keepWebSyncedImages(local);
+  if (kept) console.log(`Giữ ${kept} ảnh do web đồng bộ từ Drive (không có trong E:\\Mẫu\\ANH WEB).`);
+  const manifestBuf = Buffer.from(JSON.stringify(local));
   await putObject(PREFIX + 'manifest.json', manifestBuf, contentType('manifest.json'), 'public, max-age=60', md5(manifestBuf));
   console.log('\nXONG:', stats, `\nmanifest: https://img.mercistudio.net/${PREFIX}manifest.json`);
 }
