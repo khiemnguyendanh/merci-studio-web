@@ -340,6 +340,7 @@ const VideoLightbox = dynamic(() => import('@/components/VideoLightbox'), { ssr:
 const GOOGLE_API_KEY = process.env.NEXT_PUBLIC_GOOGLE_API_KEY;
 const PHOTOS_BASE = (process.env.NEXT_PUBLIC_PHOTOS_BASE || 'https://img.mercistudio.net/photos').replace(/\/+$/, '');
 const PHOTOS_MANIFEST_URL = `${PHOTOS_BASE}/manifest.json`;
+const MANIFEST_CACHE_KEY = 'merci_photos_manifest';
 
 // Danh sách email được phép vào Admin.
 // Thêm biến môi trường NEXT_PUBLIC_ADMIN_EMAILS trên Vercel.
@@ -872,6 +873,8 @@ export default function Home() {
     const [newAlbum, setNewAlbum] = useState({ title: '', sub: '', category: 'Wedding', sizes: '', hashtags: '', driveLink: '' });
     const [albumDriveLink, setAlbumDriveLink] = useState('');
     const [pendingSlug, setPendingSlug] = useState(null);
+    const [albumsReady, setAlbumsReady] = useState(false);
+    const [blogsReady, setBlogsReady] = useState(false);
 
     // Sync Albums state
     const [showSyncModal, setShowSyncModal] = useState(false);
@@ -1369,6 +1372,17 @@ export default function Home() {
         // với Firestore vì trong đó còn album cũ đồng bộ từ Drive -> bị lặp trên web.
         // Firestore chỉ dùng cho video và bố cục (_album_layout). Chỉ khi không có
         // manifest mới fallback sang album Firestore.
+        // Bản manifest lần trước lưu trong trình duyệt: F5 ở trang album mở được ngay,
+        // không phải chờ tải lại ~800 KB (mạng chậm có lúc tới 10 giây).
+        try {
+            const cached = JSON.parse(localStorage.getItem(MANIFEST_CACHE_KEY) || 'null');
+            if (cached && Array.isArray(cached.albums) && cached.albums.length) {
+                const cachedAlbums = cached.albums.map(withOrder);
+                cachedAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                setAlbums(cachedAlbums);
+            }
+        } catch { /* cache hỏng thì bỏ qua */ }
+
         fetch(`${PHOTOS_MANIFEST_URL}?t=${Date.now()}`)
             .then(res => (res.ok ? res.json() : null))
             .catch(() => null)
@@ -1378,7 +1392,9 @@ export default function Home() {
                 if (staticAlbums.length) {
                     staticAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
                     setAlbums(staticAlbums);
+                    try { localStorage.setItem(MANIFEST_CACHE_KEY, JSON.stringify({ albums: manifest.albums })); } catch { /* đầy bộ nhớ */ }
                 }
+                setAlbumsReady(true);
 
                 fetch('/api/public-content')
                     .then(res => res.json())
@@ -1426,7 +1442,8 @@ export default function Home() {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             fetched.sort((a, b) => b.createdAt - a.createdAt);
             setBlogs(fetched);
-        });
+            setBlogsReady(true);
+        }, () => setBlogsReady(true));
         return () => unsubBlogs();
     }, [mounted, activeTab, pendingSlug, isAdmin]);
 
@@ -1481,9 +1498,19 @@ export default function Home() {
                 setActiveTab('blog');
                 setActiveBlogId(foundBlog.id);
                 setPendingSlug(null);
+            } else if (albumsReady && blogsReady) {
+                // Đã tải xong mà không có album/bài viết nào khớp link -> về trang chủ.
+                setPendingSlug(null);
             }
         }
-    }, [albums, blogs, pendingSlug]);
+    }, [albums, blogs, pendingSlug, albumsReady, blogsReady]);
+
+    // Phòng mạng lỗi: không để màn hình "Đang mở album..." treo mãi.
+    useEffect(() => {
+        if (!pendingSlug) return;
+        const timer = setTimeout(() => setPendingSlug(null), 20000);
+        return () => clearTimeout(timer);
+    }, [pendingSlug]);
 
     // Cập nhật Title + Meta SEO khi xem Blog/Album
     useEffect(() => {
@@ -5668,7 +5695,13 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                 <div key={`${activeTab}-${activeToolTab}`} className="max-w-7xl mx-auto p-4 md:p-12 animate-in fade-in slide-in-from-bottom-4 duration-700 ease-out">
 
                     {/* --- TAB: BIO HOME TỐI GIẢN --- */}
-                    {activeTab === 'home' && (
+                    {activeTab === 'home' && pendingSlug && (
+                        <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-slate-500">
+                            <RefreshCcw size={28} className="animate-spin text-slate-400" />
+                            <p className="text-sm font-semibold">Đang mở album...</p>
+                        </div>
+                    )}
+                    {activeTab === 'home' && !pendingSlug && (
                         <HomeHub
                             user={user}
                             isAdmin={isAdmin}
