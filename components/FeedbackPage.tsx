@@ -3,14 +3,10 @@
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Reveal, TiltCard } from '@/components/Motion';
-
-const feedbackImages = Array.from({ length: 17 }, (_, index) => ({
-    src: `/home/feedback/${index + 1}.webp`,
-    alt: `Phản hồi thực tế từ khách hàng Merci Studio ${index + 1}`
-}));
+import { feedbackImages, type FeedbackImage } from '@/lib/feedback';
 
 export default function FeedbackPage() {
-    const [activeFeedback, setActiveFeedback] = useState<(typeof feedbackImages)[number] | null>(null);
+    const [activeFeedback, setActiveFeedback] = useState<FeedbackImage | null>(null);
 
     useEffect(() => {
         if (!activeFeedback) return;
@@ -44,8 +40,8 @@ export default function FeedbackPage() {
                     <Reveal key={feedback.src} delay={(index % 3) * 90}>
                         <TiltCard as="button" type="button" onClick={() => setActiveFeedback(feedback)} className="feedback-card" style={{ width: '100%' }} aria-label={`Xem phản hồi khách hàng ${index + 1}`} maxTilt={5} lift={8}>
                             <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
-                            <Image src={feedback.src} alt={feedback.alt} width={1080} height={1350} sizes="(max-width: 640px) 92vw, (max-width: 1100px) 45vw, 30vw" className="feedback-card-image" />
-                            <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
+                            <Image src={feedback.thumb} alt={feedback.alt} width={680} height={850} unoptimized loading="lazy" className="feedback-card-image" />
+                            <span className="feedback-card-caption">Tin nhắn của cô dâu chú rể</span>
                         </TiltCard>
                     </Reveal>
                 ))}
@@ -55,7 +51,7 @@ export default function FeedbackPage() {
                 <div role="dialog" aria-modal="true" aria-label="Phản hồi của khách hàng Merci Studio" className="feedback-modal" onClick={() => setActiveFeedback(null)}>
                     <button type="button" className="feedback-modal-close" onClick={() => setActiveFeedback(null)} aria-label="Đóng ảnh phản hồi"><span aria-hidden="true">×</span></button>
                     <div className="feedback-modal-frame" onClick={(event) => event.stopPropagation()}>
-                        <Image src={activeFeedback.src} alt={activeFeedback.alt} width={1080} height={1350} sizes="(max-width: 720px) 94vw, 70vh" className="feedback-modal-image" priority />
+                        <Image src={activeFeedback.src} alt={activeFeedback.alt} width={1080} height={1350} unoptimized className="feedback-modal-image" priority />
                     </div>
                 </div>
             )}

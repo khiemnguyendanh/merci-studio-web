@@ -1,15 +1,10 @@
 import { ApiError, cleanString, enforceRateLimit, errorResponse, escapeTelegram, getClientIp, normalizePhone, requireUser } from '@/lib/server/api-security';
 import { adminDb, FieldValue } from '@/lib/server/firebase-admin';
+import { ALLOWED_BOOKING_SERVICES } from '@/lib/booking-services';
 
 export const runtime = 'nodejs';
 
-const SERVICES = new Set([
-  'Chụp ảnh cưới (Wedding)',
-  'Chụp ảnh ngoại cảnh / couple',
-  'Phóng sự cưới (Pre-wedding)',
-  'Kỷ yếu / Sự kiện / Graduation',
-  'Dịch vụ khác / Cần tư vấn thêm'
-]);
+const SERVICES = ALLOWED_BOOKING_SERVICES;
 
 async function getOptionalUser(request: Request) {
   const authorization = request.headers.get('authorization');

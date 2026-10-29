@@ -1,0 +1,915 @@
+{
+  "source": "E:\\Mẫu\\Bao Gia 2026 (file JSON gốc)",
+  "updated": "2026",
+  "groups": [
+    {
+      "id": "prewedding",
+      "title": "Chụp ảnh cưới (Pre-wedding)",
+      "packages": [
+        {
+          "name": "STUDIO 1",
+          "price": "3.500.000",
+          "note": "Merci House",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90",
+                "02 ảnh để bàn ép gỗ 13 × 18",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 2A",
+          "price": "5.250.000",
+          "note": "Merci House",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90 cao cấp",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 2B",
+          "price": "6.000.000",
+          "note": "Merci House",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 3",
+          "price": "6.900.000",
+          "note": "Merci House",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "10 ảnh khung Hàn Quốc",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 4",
+          "price": "8.000.000",
+          "note": "Merci House + Ngoại cảnh",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "25 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 5",
+          "price": "11.000.000",
+          "note": "Merci House + Ngoại cảnh",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 kèm khung cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "30 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Luxury",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 6",
+          "price": "12.000.000",
+          "note": "Hà Nội / Ninh Bình / Quảng Ninh / Hải Phòng / Vĩnh Phúc",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp + 01 thợ phụ",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "35 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Luxury",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Giá trên chưa bao gồm chi phí đi lại cho ekip, vé vào cửa và các chi phí phát sinh tại điểm chụp.",
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "phong-su",
+      "title": "Chụp phóng sự cưới",
+      "packages": [
+        {
+          "name": "GÓI C1",
+          "price": "2.900.000",
+          "note": "Phù hợp cho lễ ăn hỏi hoặc tiệc cưới trong 1 buổi",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp — ăn hỏi / cưới / tiệc",
+                "Thời gian làm việc: 01 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Chụp không giới hạn số lượng file ảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "Lọc ảnh, chỉnh màu và retouch da (Hoàn thiện sau 5 – 7 ngày kể từ ngày chụp)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ chụp 2.000.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI C2",
+          "price": "4.500.000",
+          "note": "Chụp song song hai đầu nhà trai và nhà gái trong cùng 1 buổi",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp nhà trai + 01 thợ chụp nhà gái",
+                "Thời gian làm việc: 01 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Chụp không giới hạn số lượng file ảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "Lọc ảnh, chỉnh màu và retouch da (Hoàn thiện sau 5 – 7 ngày kể từ ngày chụp)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ chụp 2.000.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI C3",
+          "price": "5.000.000",
+          "note": "Trọn vẹn cả lễ ăn hỏi và ngày cưới",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp ăn hỏi + 01 thợ chụp ngày cưới",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Chụp không giới hạn số lượng file ảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "Lọc ảnh, chỉnh màu và retouch da (Hoàn thiện sau 5 – 7 ngày kể từ ngày chụp)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ chụp 2.000.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI C4",
+          "price": "6.700.000",
+          "note": "Hai thợ trong ngày cưới, kèm ảnh phóng ép gỗ cao cấp",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp ăn hỏi + 02 thợ chụp ngày cưới",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Chụp không giới hạn số lượng file ảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "Lọc ảnh, chỉnh màu và retouch da (Hoàn thiện sau 5 – 7 ngày kể từ ngày chụp)",
+                "01 ảnh phóng ép gỗ cao cấp khổ 60 × 90"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ chụp 2.000.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI C5",
+          "price": "8.200.000",
+          "note": "Ekip đầy đủ nhất — hai thợ cho cả ăn hỏi và ngày cưới",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "02 thợ chụp ăn hỏi + 02 thợ chụp ngày cưới",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Chụp không giới hạn số lượng file ảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "Lọc ảnh, chỉnh màu và retouch da (Hoàn thiện sau 5 – 7 ngày kể từ ngày chụp)",
+                "01 ảnh phóng ép gỗ cao cấp khổ 60 × 90"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ chụp 2.000.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "film",
+      "title": "Quay phim cưới (Wedding Film)",
+      "packages": [
+        {
+          "name": "GÓI BASIC",
+          "price": "4.500.000",
+          "note": "Clip phóng sự cưới cho một buổi quay duy nhất",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ quay",
+                "Thời gian làm việc: 01 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Nội dung triển khai theo kịch bản thỏa thuận"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip phóng sự cưới (Chuẩn Full HD, độ dài 4 – 6 phút)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ quay 3.000.000 VNĐ",
+                "Thêm 01 giờ quay 500.000 VNĐ",
+                "Thêm flycam 1.500.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI F1",
+          "price": "7.000.000",
+          "note": "Quay trọn cả lễ ăn hỏi và ngày cưới",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ quay ăn hỏi + 01 thợ quay ngày cưới",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Nội dung triển khai theo kịch bản thỏa thuận"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip phóng sự cưới (Chuẩn Full HD, độ dài 4 – 6 phút)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ quay 3.000.000 VNĐ",
+                "Thêm 01 giờ quay 500.000 VNĐ",
+                "Thêm flycam 1.500.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI F2",
+          "price": "11.000.000",
+          "note": "Hai thợ quay ngày cưới, kèm clip truyền thống đầy đủ",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ quay ăn hỏi + 02 thợ quay ngày cưới",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Nội dung triển khai theo kịch bản thỏa thuận"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip phóng sự cưới (Chuẩn Full HD, độ dài 4 – 6 phút)",
+                "01 clip truyền thống (Độ dài 15 – 20 phút)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ quay 3.000.000 VNĐ",
+                "Thêm 01 giờ quay 500.000 VNĐ",
+                "Thêm flycam 1.500.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI F3",
+          "price": "14.000.000",
+          "note": "Ekip cao cấp nhất, có nhân sự take care riêng cho cô dâu chú rể",
+          "sections": [
+            {
+              "title": "Ekip",
+              "items": [
+                "02 thợ quay ăn hỏi + 02 thợ quay ngày cưới",
+                "01 nhân sự take care đồng hành cùng cô dâu chú rể",
+                "Thời gian làm việc: 02 buổi (Mỗi buổi tối đa 5 giờ liên tục)",
+                "Nội dung triển khai theo kịch bản thỏa thuận"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip phóng sự cưới (Chuẩn Full HD, độ dài 4 – 6 phút)",
+                "01 clip truyền thống (Độ dài 15 – 20 phút)"
+              ]
+            },
+            {
+              "title": "Chi phí phát sinh",
+              "items": [
+                "Thêm 01 thợ quay 3.000.000 VNĐ",
+                "Thêm 01 giờ quay 500.000 VNĐ",
+                "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "concept",
+      "title": "Concept · Beauty · Couple · Baby",
+      "packages": [
+        {
+          "name": "CHỤP BEAUTY",
+          "price": "1.500.000",
+          "note": "Báo giá áp dụng cho 1 người",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "01 trang phục theo concept hoặc khách tự chuẩn bị",
+                "Miễn phí studio của Merci",
+                "05 ảnh Photoshop",
+                "Trả toàn bộ ảnh gốc",
+                "Hướng dẫn tạo dáng theo concept"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Ưu đãi book thêm chụp bé chỉ với 300k",
+                "Đi cùng bạn giảm thêm 100k / người",
+                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHỤP CONCEPT CÁ NHÂN",
+          "price": "2.200.000",
+          "note": "Báo giá áp dụng cho 1 người",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "01 trang phục theo concept hoặc khách tự chuẩn bị",
+                "Miễn phí studio của Merci",
+                "10 ảnh Photoshop",
+                "Trả toàn bộ ảnh gốc",
+                "Hướng dẫn tạo dáng theo concept",
+                "Tặng ảnh phóng cao cấp hoặc ảnh để bàn nếu up ảnh tag Merci Studio ở chế độ công khai"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Ưu đãi book thêm concept thứ 2 chỉ với 500k",
+                "Đi cùng bạn giảm thêm 100k / người",
+                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHỤP COUPLE",
+          "price": "2.500.000",
+          "note": "Báo giá áp dụng cho 1 cặp đôi",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "01 trang phục theo concept hoặc khách tự chuẩn bị",
+                "Miễn phí studio của Merci",
+                "10 ảnh Photoshop",
+                "Trả toàn bộ ảnh gốc",
+                "Hướng dẫn tạo dáng theo concept",
+                "Tặng ảnh phóng cao cấp hoặc ảnh để bàn nếu up ảnh tag Merci Studio ở chế độ công khai"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Ưu đãi book thêm concept thứ 2 chỉ với 500k",
+                "Tặng thêm chụp beauty cho 1 bạn nữ",
+                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHỤP BABY",
+          "price": "500.000",
+          "note": "Báo giá áp dụng cho 1 concept / buổi",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "01 bé",
+                "Makeup nhẹ cho bé",
+                "05 ảnh Photoshop",
+                "Trả toàn bộ ảnh gốc",
+                "Hướng dẫn tạo dáng theo concept",
+                "02 ảnh bản 15 × 21"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "Ưu đãi book thêm concept thứ 2 chỉ với 400k",
+                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)",
+                "Ưu đãi in ảnh sau khi chụp"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": []
+    },
+    {
+      "id": "gia-dinh-su-kien",
+      "title": "Gia đình · Sự kiện",
+      "packages": [
+        {
+          "name": "GIA ĐÌNH — STUDIO",
+          "price": "2.500.000",
+          "note": "Chụp trọn buổi tại studio, có sẵn trang phục và makeup",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "Trang phục cho bố (vest), mẹ (váy) và bé",
+                "01 lần makeup và làm tóc (Áp dụng cho một người trong gia đình)",
+                "Địa điểm chụp: tại studio"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 ảnh ép gỗ cao cấp 50 × 75",
+                "02 ảnh để bàn 15 × 21",
+                "05 ảnh ép lụa 15 × 21"
+              ]
+            },
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp + 01 makeup"
+              ]
+            },
+            {
+              "title": "Ghi chú",
+              "items": [
+                "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GIA ĐÌNH — NGOẠI CẢNH",
+          "price": "3.500.000",
+          "note": "Chụp ngoài trời, sản phẩm nâng cấp ảnh tráng gương khổ lớn",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "Trang phục cho bố (vest), mẹ (váy) và bé",
+                "01 lần makeup và làm tóc (Áp dụng cho một người trong gia đình)",
+                "Địa điểm chụp: ngoại cảnh"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 ảnh tráng gương cao cấp 60 × 90",
+                "02 ảnh để bàn 15 × 21",
+                "05 ảnh ép lụa 15 × 21"
+              ]
+            },
+            {
+              "title": "Ekip",
+              "items": [
+                "01 thợ chụp + 01 makeup"
+              ]
+            },
+            {
+              "title": "Ghi chú",
+              "items": [
+                "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHỤP SỰ KIỆN 2",
+          "price": "4.000.000",
+          "note": "Hai máy chụp, phù hợp sự kiện cần nhiều góc máy",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "Thời gian làm việc: 2 – 4 giờ",
+                "Địa điểm: nội thành Hà Nội",
+                "02 máy chụp",
+                "Chụp không giới hạn số lượng file"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ ảnh gốc",
+                "Blend màu và retouch ảnh"
+              ]
+            },
+            {
+              "title": "Lưu ý",
+              "items": [
+                "Báo giá áp dụng cho 01 sự kiện",
+                "Vui lòng liên hệ để được tư vấn chi tiết hơn"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "QUAY PHIM SỰ KIỆN 1",
+          "price": "4.500.000",
+          "note": "Một máy quay, clip highlight chuẩn 4K",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "Thời gian làm việc: 2 – 4 giờ",
+                "Địa điểm: nội thành Hà Nội",
+                "01 máy quay"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip highlight (Chuẩn 4K, độ dài 5 – 10 phút)"
+              ]
+            },
+            {
+              "title": "Lưu ý",
+              "items": [
+                "Báo giá áp dụng cho 01 sự kiện",
+                "Vui lòng liên hệ để được tư vấn chi tiết hơn"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "QUAY PHIM SỰ KIỆN 2",
+          "price": "8.000.000",
+          "note": "Hai máy quay, bao quát nhiều góc trong cùng sự kiện",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "Thời gian làm việc: 2 – 4 giờ",
+                "Địa điểm: nội thành Hà Nội",
+                "02 máy quay"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip highlight (Chuẩn 4K, độ dài 5 – 10 phút)"
+              ]
+            },
+            {
+              "title": "Lưu ý",
+              "items": [
+                "Báo giá áp dụng cho 01 sự kiện",
+                "Vui lòng liên hệ để được tư vấn chi tiết hơn"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "QUAY PHIM TRUYỀN THỐNG",
+          "price": "6.500.000",
+          "note": "Ghi hình trọn vẹn diễn biến sự kiện theo dòng thời gian",
+          "sections": [
+            {
+              "title": "Dịch vụ bao gồm",
+              "items": [
+                "Thời gian làm việc: 2 – 4 giờ",
+                "Địa điểm: nội thành Hà Nội",
+                "01 máy quay FULL"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "01 clip Full HD (Độ dài 1 – 2 tiếng)"
+              ]
+            },
+            {
+              "title": "Lưu ý",
+              "items": [
+                "Báo giá áp dụng cho 01 sự kiện",
+                "Vui lòng liên hệ để được tư vấn chi tiết hơn"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    }
+  ]
+}

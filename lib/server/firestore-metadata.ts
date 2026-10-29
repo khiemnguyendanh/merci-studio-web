@@ -1,5 +1,6 @@
 import 'server-only';
 import { cachedJson } from './edge-cache';
+import { albumIntro } from '@/lib/album-copy';
 
 type FirestoreValue = { stringValue?: string; integerValue?: string; doubleValue?: number };
 type FirestoreDocument = { name: string; fields?: Record<string, FirestoreValue> };
@@ -10,11 +11,29 @@ export type PublicContentMetadata = {
   slug: string;
   description: string;
   coverUrl: string;
+  imageCount?: number;
+  category?: string;
+};
+
+type ManifestAlbum = {
+  id: string;
+  slug?: string;
+  title?: string;
+  sub?: string;
+  category?: string;
+  coverUrl?: string;
+  coverImageUrl?: string;
+  shareUrl?: string;
+  imageCount?: number;
+  images?: { url?: string }[];
 };
 
 // Metadata/sitemap được gọi ở MỌI lượt render trang album/blog (kể cả bot) —
 // phải cache ở biên, nếu không mỗi lượt xem = ~150 lượt đọc Firestore.
 const METADATA_CACHE_SECONDS = 3600;
+// Album hiển thị trên web lấy từ manifest R2 (không còn từ Firestore merci_albums).
+const MANIFEST_CACHE_SECONDS = 600;
+const PHOTOS_BASE = (process.env.NEXT_PUBLIC_PHOTOS_BASE || 'https://img.mercistudio.net/photos').replace(/\/+$/, '');
 
 function field(document: FirestoreDocument, name: string) {
   return document.fields?.[name]?.stringValue || '';
@@ -45,43 +64,78 @@ async function fetchCollection(collection: string, masks: string[]): Promise<Fir
   return data ?? [];
 }
 
-export async function findPublicContent(slug: string): Promise<PublicContentMetadata | null> {
-  const [albums, blogs] = await fetchPublicDocuments();
-  const matches = (document: FirestoreDocument) => {
-    const id = document.name.split('/').pop() || '';
-    const title = field(document, 'title');
-    return field(document, 'slug') === slug || createSlug(title) === slug || id === slug;
+// Chỉ giữ trường cần cho SEO để bản cache nhỏ (manifest gốc ~800 KB vì có danh sách ảnh).
+async function fetchManifestAlbums(): Promise<ManifestAlbum[]> {
+  const { data } = await cachedJson<ManifestAlbum[]>('metadata/photos-manifest-v2', MANIFEST_CACHE_SECONDS, async () => {
+    const response = await fetch(`${PHOTOS_BASE}/manifest.json`, { cache: 'no-store' });
+    if (!response.ok) return null;
+    const json = await response.json() as { albums?: ManifestAlbum[] };
+    if (!Array.isArray(json.albums)) return null;
+    return json.albums.map((a) => ({
+      id: a.id,
+      slug: a.slug,
+      title: a.title,
+      sub: a.sub,
+      category: a.category,
+      coverUrl: a.coverUrl,
+      coverImageUrl: a.coverImageUrl,
+      shareUrl: a.shareUrl,
+      imageCount: a.imageCount || a.images?.length || 0
+    }));
+  });
+  return data ?? [];
+}
+
+function albumToContent(album: ManifestAlbum): PublicContentMetadata {
+  const title = String(album.title || '').trim();
+  const count = album.imageCount || 0;
+  return {
+    type: 'album',
+    title,
+    slug: album.slug || createSlug(title) || album.id,
+    description: `${title}${count ? ` - ${count} ảnh` : ''}. ${albumIntro(album)}`,
+    // Ưu tiên share-*.jpg 1200x630 (Facebook không đọc ổn định WebP), rồi mới tới ảnh bìa 1920px.
+    coverUrl: album.shareUrl || album.coverImageUrl || album.coverUrl || '',
+    imageCount: count,
+    category: album.category || album.sub || ''
   };
-  const album = albums.find(matches);
-  if (album) return toPublicContent(album, 'album', slug);
-  const blog = blogs.find(matches);
-  return blog ? toPublicContent(blog, 'blog', slug) : null;
 }
 
-function fetchPublicDocuments() {
-  return Promise.all([
-    fetchCollection('merci_albums', ['title', 'slug', 'sub', 'coverUrl']),
-    fetchCollection('merci_blogs', ['title', 'slug', 'metaDesc', 'coverUrl'])
-  ]);
-}
-
-function toPublicContent(document: FirestoreDocument, type: PublicContentMetadata['type'], slug?: string): PublicContentMetadata {
+function blogToContent(document: FirestoreDocument, slug?: string): PublicContentMetadata {
   const title = field(document, 'title');
   const canonicalSlug = slug || field(document, 'slug') || createSlug(title) || document.name.split('/').pop() || '';
   return {
-    type,
+    type: 'blog',
     title,
     slug: canonicalSlug,
-    description: type === 'album' ? field(document, 'sub') || `${title} - Bộ sưu tập ảnh Merci Studio` : field(document, 'metaDesc') || title,
+    description: field(document, 'metaDesc') || title,
     coverUrl: field(document, 'coverUrl')
   };
 }
 
+function fetchBlogs() {
+  return fetchCollection('merci_blogs', ['title', 'slug', 'metaDesc', 'coverUrl']);
+}
+
+export async function findPublicContent(slug: string): Promise<PublicContentMetadata | null> {
+  const [albums, blogs] = await Promise.all([fetchManifestAlbums(), fetchBlogs()]);
+  const album = albums.find((a) => a.slug === slug || createSlug(a.title || '') === slug || a.id === slug);
+  if (album) return albumToContent(album);
+  const blog = blogs.find((document) => {
+    const id = document.name.split('/').pop() || '';
+    const title = field(document, 'title');
+    return field(document, 'slug') === slug || createSlug(title) === slug || id === slug;
+  });
+  return blog ? blogToContent(blog, slug) : null;
+}
+
 export async function listPublicContent(): Promise<PublicContentMetadata[]> {
-  const [albums, blogs] = await fetchPublicDocuments();
-  const content = [
-    ...albums.map((album) => toPublicContent(album, 'album')),
-    ...blogs.map((blog) => toPublicContent(blog, 'blog'))
-  ];
-  return content.filter((item) => item.title && item.slug);
+  const [albums, blogs] = await Promise.all([fetchManifestAlbums(), fetchBlogs()]);
+  const seen = new Set<string>();
+  const content = [...albums.map(albumToContent), ...blogs.map((blog) => blogToContent(blog))];
+  return content.filter((item) => {
+    if (!item.title || !item.slug || seen.has(item.slug)) return false;
+    seen.add(item.slug);
+    return true;
+  });
 }

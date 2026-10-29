@@ -39,7 +39,7 @@ function walk(dir, out = []) {
   return out;
 }
 const md5 = (buf) => crypto.createHash('md5').update(buf).digest('hex');
-const contentType = (file) => file.endsWith('.webp') ? 'image/webp' : file.endsWith('.json') ? 'application/json; charset=utf-8' : 'application/octet-stream';
+const contentType = (file) => file.endsWith('.webp') ? 'image/webp' : file.endsWith('.jpg') ? 'image/jpeg' : file.endsWith('.json') ? 'application/json; charset=utf-8' : 'application/octet-stream';
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
@@ -98,6 +98,8 @@ async function keepWebSyncedImages(local) {
   for (const ra of remote.albums || []) {
     const synced = (ra.images || []).filter((img) => img.driveId);
     let la = local.albums.find((a) => a.id === ra.id);
+    // Ảnh chia sẻ do make-share-images.mjs tạo trên R2 cho album chưa build lại từ máy.
+    if (la && !la.shareUrl && ra.shareUrl) la.shareUrl = ra.shareUrl;
     if (!synced.length) {
       if (la && ra.driveFolderId) la.driveFolderId = ra.driveFolderId;
       continue;

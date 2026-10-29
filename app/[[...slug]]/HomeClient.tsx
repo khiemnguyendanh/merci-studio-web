@@ -16,6 +16,8 @@ import FeedbackPage from '@/components/FeedbackPage';
 import { TiltCard } from '@/components/Motion';
 import QuickChat from '@/components/QuickChat';
 import DriveR2Sync from '@/components/DriveR2Sync';
+import { albumIntro } from '@/lib/album-copy';
+import { BOOKING_SERVICES, DEFAULT_BOOKING_SERVICE } from '@/lib/booking-services';
 import { apiFetch } from '@/lib/client/api';
 
 // === FIREBASE IMPORTS ===
@@ -876,6 +878,7 @@ export default function Home() {
     const [pendingSlug, setPendingSlug] = useState(null);
     const [albumsReady, setAlbumsReady] = useState(false);
     const [blogsReady, setBlogsReady] = useState(false);
+    const [videosReady, setVideosReady] = useState(false);
 
     // Sync Albums state
     const [showSyncModal, setShowSyncModal] = useState(false);
@@ -953,7 +956,7 @@ export default function Home() {
     const [dragOverVideoId, setDragOverVideoId] = useState(null);
 
     // Booking states
-    const [bookingForm, setBookingForm] = useState({ name: '', phone: '', service: 'Chụp ảnh cưới (Wedding)', date: '', notes: '' });
+    const [bookingForm, setBookingForm] = useState({ name: '', phone: '', service: DEFAULT_BOOKING_SERVICE, date: '', notes: '' });
     const [bookings, setBookings] = useState([]);
     const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
 
@@ -1386,35 +1389,39 @@ export default function Home() {
             }
         } catch { /* cache hỏng thì bỏ qua */ }
 
+        // Video (và album Firestore dự phòng) tải SONG SONG với manifest: trước đây video
+        // chỉ được gọi sau khi manifest ~800 KB về xong, mạng chậm là trang Video trống.
+        const publicContent = fetch('/api/public-content')
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null);
+        publicContent.then(data => {
+            if (cancelled) return;
+            const fetchedVideos = ((data && data.videos) || []).map(withOrder);
+            fetchedVideos.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+            if (fetchedVideos.length) setVideos(fetchedVideos);
+            setVideosReady(true);
+        });
+
         fetch(`${PHOTOS_MANIFEST_URL}?t=${Date.now()}`)
             .then(res => (res.ok ? res.json() : null))
             .catch(() => null)
-            .then(manifest => {
+            .then(async manifest => {
                 if (cancelled) return;
                 const staticAlbums = manifest && Array.isArray(manifest.albums) ? manifest.albums.map(withOrder) : [];
                 if (staticAlbums.length) {
                     staticAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
                     setAlbums(staticAlbums);
                     try { localStorage.setItem(MANIFEST_CACHE_KEY, JSON.stringify({ albums: manifest.albums })); } catch { /* đầy bộ nhớ */ }
+                } else {
+                    const data = await publicContent;
+                    if (cancelled) return;
+                    const fetchedAlbums = ((data && data.albums) || [])
+                        .filter((a: any) => a && a.id !== '_album_layout')
+                        .map(withOrder);
+                    fetchedAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
+                    if (fetchedAlbums.length) setAlbums(fetchedAlbums);
                 }
                 setAlbumsReady(true);
-
-                fetch('/api/public-content')
-                    .then(res => res.json())
-                    .then(data => {
-                        if (cancelled) return;
-                        if (!staticAlbums.length) {
-                            const fetchedAlbums = ((data && data.albums) || [])
-                                .filter((a: any) => a && a.id !== '_album_layout')
-                                .map(withOrder);
-                            fetchedAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
-                            if (fetchedAlbums.length) setAlbums(fetchedAlbums);
-                        }
-                        const fetchedVideos = ((data && data.videos) || []).map(withOrder);
-                        fetchedVideos.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
-                        if (fetchedVideos.length) setVideos(fetchedVideos);
-                    })
-                    .catch(() => {});
             });
 
         return () => { cancelled = true; };
@@ -1432,6 +1439,7 @@ export default function Home() {
             });
             fetched.sort((a, b) => b.order - a.order);
             setVideos(fetched);
+            setVideosReady(true);
         });
         return () => unsubVideos();
     }, [mounted, isAdmin]);
@@ -1957,7 +1965,7 @@ export default function Home() {
             });
             
             alert("Đặt lịch thành công! Merci Studio sẽ liên hệ lại với bạn sớm nhất.");
-            setBookingForm({ name: '', phone: '', service: 'Chụp ảnh cưới (Wedding)', date: '', notes: '' });
+            setBookingForm({ name: '', phone: '', service: DEFAULT_BOOKING_SERVICE, date: '', notes: '' });
         } catch (error) {
             console.error("Booking submission error:", error);
             alert("Có lỗi xảy ra khi gửi yêu cầu. Vui lòng thử lại!");
@@ -4469,6 +4477,46 @@ export default function Home() {
     const displayAlbums = albums.map(applyAlbumLayout).sort((x, y) => (y.order || 0) - (x.order || 0));
 
     const currentViewAlbum = displayAlbums.find(a => a.id === activeAlbumId);
+
+    // Mở album theo cùng cách như bấm card ở Bộ sưu tập (dùng ở trang chủ + "Album tương tự").
+    const openAlbumView = (a) => {
+        setActiveTab('collection');
+        setActiveAlbumId(a.id);
+        setActiveBlogId(null);
+        setAlbumPage(1);
+        setAlbumDriveLink(a.driveLink || '');
+        setLightboxData(p => ({ ...p, images: a.images || [] }));
+        window.history.pushState({}, '', `/${a.slug || createSlug(a.title) || a.id}`);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    // Trang chủ: album mới nhất có ảnh thật, ưu tiên dịch vụ chính (ảnh cưới, phóng
+    // sự, váy cưới) rồi mới tới concept... Bỏ Vest theo size (là danh mục tra cứu).
+    const homeLatestAlbums = (() => {
+        const quota = { 'wedding': 2, 'phong-su-cuoi': 2, 'vay-cuoi': 2, 'concept': 1, 'make-up': 1 };
+        const eligible = displayAlbums.filter(a => {
+            const count = a.imageCount || (a.images || []).length;
+            return count >= 5 && (a.coverUrl || a.coverImageUrl) && createSlug(getAlbumMainCategory(a, '')) !== 'vest';
+        });
+        const picked = [];
+        for (const [cat, n] of Object.entries(quota)) {
+            picked.push(...eligible.filter(a => createSlug(getAlbumMainCategory(a, '')) === cat).slice(0, n));
+        }
+        for (const a of eligible) {
+            if (picked.length >= 8) break;
+            if (!picked.includes(a)) picked.push(a);
+        }
+        return picked.slice(0, 8).sort((x, y) => (y.order || 0) - (x.order || 0));
+    })();
+
+    // Trang album: gợi ý album cùng danh mục.
+    const relatedAlbums = currentViewAlbum
+        ? displayAlbums.filter(a =>
+            a.id !== currentViewAlbum.id &&
+            createSlug(getAlbumMainCategory(a, '')) === createSlug(getAlbumMainCategory(currentViewAlbum, '')) &&
+            (a.coverUrl || a.coverImageUrl)
+        ).slice(0, 4)
+        : [];
     const albumCategoryFilters = ['Tất cả', ...Array.from(new Map([
         ...ALBUM_CATEGORIES.filter(c => c !== 'Tất cả'),
         ...albums.map(a => getAlbumMainCategory(a, '')).filter(Boolean)
@@ -5644,7 +5692,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                 window.history.pushState({}, document.title, '/');
                             }}>
                                 <Camera className="text-slate-800 group-hover:rotate-12 transition-transform" size={22} strokeWidth={1.5} />
-                                <h1 className="text-2xl font-semibold font-serif text-slate-900 tracking-tight">Merci Studio</h1>
+                                <span className="text-2xl font-semibold font-serif text-slate-900 tracking-tight">Merci Studio</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <button onClick={() => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login')} className="btn-3d md:hidden flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.1em] text-slate-800 px-3 py-2 rounded-none border border-slate-300 hover:bg-slate-100 transition-colors">
@@ -5724,6 +5772,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             openClientAuth={openClientAuth}
                             handleClientLogout={handleClientLogout}
                             setShowClientProfileModal={setShowClientProfileModal}
+                            latestAlbums={homeLatestAlbums}
+                            openAlbum={openAlbumView}
+                            videos={videos}
+                            openVideo={(youtubeId) => setVideoModal({ isOpen: true, youtubeId })}
                         />
                     )}
 
@@ -5878,7 +5930,14 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             </div>
                                         )}
                                     </TiltCard>
-                                )) : (
+                                )) : !videosReady ? (
+                                    [0, 1, 2].map(i => (
+                                        <div key={i} className="animate-pulse" aria-hidden="true">
+                                            <div className="w-full aspect-video rounded-2xl bg-slate-200" />
+                                            <div className="h-5 w-2/3 mt-4 rounded bg-slate-200" />
+                                        </div>
+                                    ))
+                                ) : (
                                     <div className="col-span-full text-center py-20 text-slate-400">
                                         <PlayCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                         <p className="text-sm md:text-base">Chưa có video nào.</p>
@@ -5974,7 +6033,18 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     <span className="text-blue-600 font-semibold text-xs md:text-sm flex items-center gap-1 mt-auto">Đọc tiếp <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" /></span>
                                                 </div>
                                             </TiltCard>
-                                        )) : (
+                                        )) : !blogsReady ? (
+                                            [0, 1, 2, 3, 4, 5].map(i => (
+                                                <div key={i} className="animate-pulse bg-white rounded-2xl border border-slate-100 overflow-hidden" aria-hidden="true">
+                                                    <div className="aspect-[4/3] md:aspect-[16/10] bg-slate-200" />
+                                                    <div className="p-4 md:p-6 space-y-3">
+                                                        <div className="h-5 w-4/5 rounded bg-slate-200" />
+                                                        <div className="h-3 w-full rounded bg-slate-100" />
+                                                        <div className="h-3 w-2/3 rounded bg-slate-100" />
+                                                    </div>
+                                                </div>
+                                            ))
+                                        ) : (
                                             <div className="col-span-full text-center py-20 text-slate-400">
                                                 <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
                                                 <p className="text-sm md:text-base">Chưa có bài viết nào với hashtag này.</p>
@@ -6350,8 +6420,28 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         )}
                                     </div>
                                     <div className="text-center px-4 flex flex-col items-center gap-2">
-                                        <h2 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-2">{currentViewAlbum?.title}</h2>
-                                        {currentViewAlbum?.sub && <p className="text-slate-500 text-sm md:text-base">{currentViewAlbum?.sub}</p>}
+                                        {currentViewAlbum?.sub && <p className="text-[11px] md:text-xs font-semibold uppercase tracking-[0.3em] text-[#7d6a52]">{currentViewAlbum?.sub}</p>}
+                                        <h1 className="text-3xl md:text-5xl font-bold font-serif text-slate-900 mb-1">{currentViewAlbum?.title}</h1>
+                                        <p className="text-slate-500 text-sm md:text-base max-w-xl">
+                                            {albumImages.length} ảnh · {albumIntro(currentViewAlbum)}
+                                        </p>
+                                        <div className="flex flex-wrap justify-center gap-2 md:gap-3 mt-2">
+                                            <a
+                                                href={`https://zalo.me/0888999545?text=${encodeURIComponent(`Merci ơi, mình muốn tư vấn giống album "${currentViewAlbum?.title}": ${typeof window !== 'undefined' ? window.location.href : ''}`)}`}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                className="btn-3d inline-flex items-center gap-2 bg-[#3d2f26] text-[#f5f0e8] px-5 py-2.5 text-xs md:text-sm font-semibold tracking-[0.12em] uppercase"
+                                            >
+                                                <MessageSquare size={16} /> Hỏi giá concept này
+                                            </a>
+                                            <button
+                                                type="button"
+                                                onClick={() => navigateToTab('booking')}
+                                                className="btn-3d inline-flex items-center gap-2 border border-[#b7a992] text-[#3d2f26] px-5 py-2.5 text-xs md:text-sm font-semibold tracking-[0.12em] uppercase"
+                                            >
+                                                <CalendarDays size={16} /> Đặt lịch tư vấn
+                                            </button>
+                                        </div>
                                     </div>
 
                                     <PaginationControls
@@ -6370,7 +6460,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
 
                                             return (
                                                 <div key={img.id} className={`${isFewAlbumImages ? 'relative group rounded-2xl md:rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white aspect-[4/5] sm:aspect-[3/4] lg:aspect-[4/5]' : 'masonry-item mb-2.5 sm:mb-3 md:mb-4 relative group rounded-2xl md:rounded-xl overflow-hidden cursor-pointer shadow-sm hover:shadow-xl transition-all bg-white'}`} onClick={() => setLightboxData({ isOpen: true, index: originalIndex, images: albumImages })}>
-                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className={`${isFewAlbumImages ? 'w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105' : 'w-full h-auto block transition-transform duration-500 group-hover:scale-105'}`} loading="lazy" decoding="async" alt={img.name || "Album"} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
+                                                    <img src={img.url || getDriveThumbUrl(img.id, 'w1200')} className={`${isFewAlbumImages ? 'w-full h-full object-cover block transition-transform duration-500 group-hover:scale-105' : 'w-full h-auto block transition-transform duration-500 group-hover:scale-105'}`} loading="lazy" decoding="async" alt={`${currentViewAlbum?.title || 'Album'} - ảnh ${originalIndex + 1} | Merci Studio`} referrerPolicy="no-referrer" onError={(e) => handleImageError(e, img)} />
 
                                                     {/* Nút Tải xuống */}
                                                     <div className="absolute top-2 right-2 md:top-4 md:right-4 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-all transform md:translate-y-2 md:group-hover:translate-y-0 z-20">
@@ -6403,6 +6493,33 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         onPageChange={setAlbumPage}
                                         label="Bộ sưu tập"
                                     />
+
+                                    <div className="bg-[#3d2f26] text-[#ede5d8] px-6 py-10 md:px-12 md:py-14 text-center">
+                                        <p className="text-[11px] tracking-[0.3em] text-[#b99f80] uppercase mb-3">Merci Studio</p>
+                                        <h2 className="font-serif text-2xl md:text-4xl font-medium">Bạn thích phong cách của album này?</h2>
+                                        <p className="mt-3 text-sm md:text-base text-[#c9bda9] font-light max-w-xl mx-auto">Gửi album cho Merci qua Zalo, ekip sẽ tư vấn concept, trang phục và báo giá phù hợp với bạn.</p>
+                                        <div className="mt-6 flex flex-wrap justify-center gap-3">
+                                            <a href={`https://zalo.me/0888999545?text=${encodeURIComponent(`Merci ơi, mình muốn tư vấn giống album "${currentViewAlbum?.title}": ${typeof window !== 'undefined' ? window.location.href : ''}`)}`} target="_blank" rel="noreferrer" className="btn-3d bg-[#f5f0e8] text-[#3d2f26] px-6 py-3 text-xs md:text-sm font-semibold tracking-[0.14em] uppercase">Nhắn Zalo tư vấn</a>
+                                            <a href="tel:0888999545" className="btn-3d border border-[#6b5a49] text-[#ede5d8] px-6 py-3 text-xs md:text-sm font-semibold tracking-[0.14em] uppercase">Gọi 0888.999.545</a>
+                                        </div>
+                                    </div>
+
+                                    {relatedAlbums.length > 0 && (
+                                        <div>
+                                            <h2 className="font-serif text-2xl md:text-3xl font-medium text-slate-900 mb-4 md:mb-6">Album tương tự</h2>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-6">
+                                                {relatedAlbums.map(a => (
+                                                    <button key={a.id} type="button" onClick={() => openAlbumView(a)} className="home-album-card text-left">
+                                                        <div className="aspect-[4/5] overflow-hidden bg-slate-100">
+                                                            <img src={a.coverUrl || a.coverImageUrl} alt={`Album ${a.title} - Merci Studio`} loading="lazy" decoding="async" className="home-album-image w-full h-full object-cover" />
+                                                        </div>
+                                                        <p className="mt-2 font-serif text-base md:text-lg font-medium text-slate-900 leading-tight">{a.title}</p>
+                                                        <p className="text-xs text-slate-500">{a.imageCount || (a.images || []).length} ảnh</p>
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
@@ -7121,11 +7238,7 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                     className="w-full px-4 py-3.5 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500 transition-colors font-semibold text-slate-800 bg-slate-50/50 appearance-none cursor-pointer"
                                                     style={{ backgroundImage: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'><polyline points='6 9 12 15 18 9'></polyline></svg>")`, backgroundPosition: 'right 16px center', backgroundRepeat: 'no-repeat', backgroundSize: '16px' }}
                                                 >
-                                                    <option value="Chụp ảnh cưới (Wedding)">Chụp ảnh cưới (Wedding)</option>
-                                                    <option value="Chụp ảnh ngoại cảnh / couple">Chụp ngoại cảnh / couple</option>
-                                                    <option value="Phóng sự cưới (Pre-wedding)">Phóng sự cưới (Pre-wedding)</option>
-                                                    <option value="Kỷ yếu / Sự kiện / Graduation">Kỷ yếu / Sự kiện / Graduation</option>
-                                                    <option value="Dịch vụ khác / Cần tư vấn thêm">Dịch vụ khác / Cần tư vấn thêm</option>
+                                                    {BOOKING_SERVICES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
                                                 </select>
                                             </div>
 

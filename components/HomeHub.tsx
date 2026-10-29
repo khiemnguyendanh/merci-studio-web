@@ -2,12 +2,15 @@
 import Image, { type StaticImageData } from 'next/image';
 import { useEffect, useState, type CSSProperties, type KeyboardEvent } from 'react';
 import { Reveal, TiltCard } from '@/components/Motion';
-import strip1 from '@/public/home/strip-1.png';
-import strip2 from '@/public/home/strip-2.png';
-import strip3 from '@/public/home/strip-3.png';
-import cardAlbum from '@/public/home/card-album.png';
-import cardFilm from '@/public/home/card-film.png';
-import cardBlog from '@/public/home/card-blog.png';
+import PricingSection from '@/components/PricingSection';
+import { feedbackImages, type FeedbackImage } from '@/lib/feedback';
+import { faqs } from '@/lib/faq';
+import strip1 from '@/public/home/strip-1.webp';
+import strip2 from '@/public/home/strip-2.webp';
+import strip3 from '@/public/home/strip-3.webp';
+import cardAlbum from '@/public/home/card-album.webp';
+import cardFilm from '@/public/home/card-film.webp';
+import cardBlog from '@/public/home/card-blog.webp';
 
 // Merci Studio — trang chủ dạng landing page (editorial, tông kem/nâu ấm)
 // Fluid responsive: không cần media query, dùng clamp() + auto-fit grid.
@@ -33,6 +36,9 @@ const capsBtn = (filled: boolean): CSSProperties => ({
 const kickerStyle = (color = TAN): CSSProperties => ({ fontSize: 11, letterSpacing: 3.5, color, marginBottom: 14 });
 const h2Style: CSSProperties = { fontFamily: serif, fontSize: 'clamp(30px, 4.5vw, 52px)', lineHeight: 1.08, fontWeight: 500, margin: 0 };
 
+export type HomeAlbum = { id: string; slug?: string; title: string; category?: string; coverUrl?: string; coverImageUrl?: string; imageCount?: number; images?: unknown[] };
+export type HomeVideo = { id: string; title: string; youtubeId?: string };
+
 type HomeHubProps = {
     user: { email?: string | null } | null;
     isAdmin: boolean;
@@ -42,7 +48,14 @@ type HomeHubProps = {
     openClientAuth: (mode: 'login' | 'register') => void;
     handleClientLogout: () => void;
     setShowClientProfileModal: (show: boolean) => void;
+    latestAlbums?: HomeAlbum[];
+    openAlbum?: (album: HomeAlbum) => void;
+    videos?: HomeVideo[];
+    openVideo?: (youtubeId: string) => void;
 };
+
+// Ảnh tĩnh: next/image không resize trên Workers -> phục vụ thẳng file WebP đã nén sẵn.
+const imgProps = { unoptimized: true } as const;
 
 type DestinationCard = {
     tab: string;
@@ -54,13 +67,9 @@ type DestinationCard = {
     img: StaticImageData;
 };
 
-const feedbackImages = Array.from({ length: 17 }, (_, index) => ({
-    src: `/home/feedback/${index + 1}.webp`,
-    alt: `Phản hồi thực tế từ khách hàng Merci Studio ${index + 1}`
-}));
-
-export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, navigateToDress, openClientAuth, handleClientLogout, setShowClientProfileModal }: HomeHubProps) {
-    const [activeFeedback, setActiveFeedback] = useState<(typeof feedbackImages)[number] | null>(null);
+export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, navigateToDress, openClientAuth, handleClientLogout, setShowClientProfileModal, latestAlbums = [], openAlbum, videos = [], openVideo }: HomeHubProps) {
+    const [activeFeedback, setActiveFeedback] = useState<FeedbackImage | null>(null);
+    const [openFaq, setOpenFaq] = useState<number | null>(0);
 
     useEffect(() => {
         if (!activeFeedback) return;
@@ -161,15 +170,15 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
             {/* hero image strip */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 16, padding: '0 clamp(16px, 4vw, 64px)', alignItems: 'end', perspective: 1400 }}>
                 <Reveal delay={0}>
-                    <Image src={IMG.strip1} alt="Cô dâu tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
+                    <Image {...imgProps} src={IMG.strip1} alt="Cô dâu tại Merci Studio"
                         style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
                 </Reveal>
                 <Reveal delay={110}>
-                    <Image src={IMG.strip2} alt="Cặp đôi tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw" fetchPriority="high"
+                    <Image {...imgProps} src={IMG.strip2} alt="Cặp đôi tại Merci Studio" fetchPriority="high" priority
                         style={{ width: '100%', height: 'clamp(280px, 35vw, 420px)', objectFit: 'cover', display: 'block' }} />
                 </Reveal>
                 <Reveal delay={220}>
-                    <Image src={IMG.strip3} alt="Chi tiết váy cưới tại Merci Studio" sizes="(max-width: 720px) 100vw, 33vw"
+                    <Image {...imgProps} src={IMG.strip3} alt="Chi tiết váy cưới tại Merci Studio"
                         style={{ width: '100%', height: 'clamp(240px, 30vw, 360px)', objectFit: 'cover', display: 'block' }} />
                 </Reveal>
             </div>
@@ -216,6 +225,69 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                     ))}
                 </div>
             </div>
+            {/* latest albums - ảnh thật từ R2 */}
+            {latestAlbums.length > 0 && (
+                <section style={{ padding: '0 clamp(16px, 4vw, 64px) clamp(48px, 7vw, 88px)' }}>
+                    <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(22px, 3vw, 32px)' }}>
+                        <div>
+                            <div style={kickerStyle()}>ALBUM MỚI NHẤT</div>
+                            <h2 style={h2Style}>Những câu chuyện<br /><em style={{ fontWeight: 400 }}>vừa được kể</em></h2>
+                        </div>
+                        <button type="button" onClick={() => navigateToTab('collection')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, letterSpacing: 2, color: BROWN }}>
+                            XEM TẤT CẢ ALBUM →
+                        </button>
+                    </Reveal>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(220px, 46%), 1fr))', gap: 'clamp(10px, 1.6vw, 18px)' }}>
+                        {latestAlbums.map((a, i) => (
+                            <Reveal key={a.id} delay={(i % 4) * 80}>
+                                <button type="button" onClick={() => openAlbum?.(a)} className="home-album-card" aria-label={`Xem album ${a.title}`}
+                                    style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: INK }}>
+                                    <div style={{ aspectRatio: '4 / 5', overflow: 'hidden', background: BAND }}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={a.coverUrl || a.coverImageUrl} alt={`Album ${a.title} - Merci Studio`} loading="lazy" decoding="async"
+                                            className="home-album-image" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                    </div>
+                                    <div style={{ marginTop: 10, fontSize: 10.5, letterSpacing: 2, color: TAN, textTransform: 'uppercase' }}>{a.category}</div>
+                                    <div style={{ marginTop: 4, fontFamily: serif, fontSize: 'clamp(18px, 1.9vw, 22px)', fontWeight: 500, lineHeight: 1.2 }}>{a.title}</div>
+                                    <div style={{ marginTop: 2, fontSize: 12, color: SUB, fontWeight: 300 }}>{a.imageCount || a.images?.length || 0} ảnh</div>
+                                </button>
+                            </Reveal>
+                        ))}
+                    </div>
+                </section>
+            )}
+            {/* featured films */}
+            {videos.length > 0 && (
+                <section style={{ background: DARK, color: '#ede5d8', padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
+                    <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(22px, 3vw, 32px)' }}>
+                        <div>
+                            <div style={kickerStyle('#b99f80')}>CINEMATIC FILMS</div>
+                            <h2 style={h2Style}>Phim phóng sự<br /><em style={{ fontWeight: 400 }}>của các cặp đôi Merci</em></h2>
+                        </div>
+                        <button type="button" onClick={() => navigateToTab('videos')} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontFamily: 'inherit', fontSize: 12, letterSpacing: 2, color: '#d9b998' }}>
+                            XEM TẤT CẢ PHIM →
+                        </button>
+                    </Reveal>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', gap: 18 }}>
+                        {videos.filter(v => v.youtubeId).slice(0, 3).map((v, i) => (
+                            <Reveal key={v.id} delay={i * 100}>
+                                <button type="button" onClick={() => openVideo?.(v.youtubeId!)} aria-label={`Xem phim ${v.title}`} className="home-film-card"
+                                    style={{ display: 'block', width: '100%', padding: 0, border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', color: 'inherit', fontFamily: 'inherit' }}>
+                                    <div style={{ position: 'relative', aspectRatio: '16 / 9', overflow: 'hidden', background: '#1f1813' }}>
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={`https://i.ytimg.com/vi/${v.youtubeId}/hqdefault.jpg`} alt={v.title} loading="lazy" decoding="async" referrerPolicy="no-referrer"
+                                            className="home-album-image" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', opacity: 0.85 }} />
+                                        <span aria-hidden="true" style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                            <span style={{ width: 58, height: 58, borderRadius: '50%', background: 'rgba(245,240,232,0.92)', color: DARK, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, paddingLeft: 4 }}>▶</span>
+                                        </span>
+                                    </div>
+                                    <div style={{ marginTop: 12, fontFamily: serif, fontSize: 'clamp(19px, 2vw, 23px)', fontWeight: 500 }}>{v.title}</div>
+                                </button>
+                            </Reveal>
+                        ))}
+                    </div>
+                </section>
+            )}
             {/* destination cards */}
             <div style={{ background: BAND, padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
                 <Reveal style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: '8px 24px', marginBottom: 'clamp(28px, 4vw, 44px)' }}>
@@ -236,7 +308,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                                     border: `1px solid ${c.dark ? DARK : LINE}`
                                 }}>
                                 <div style={{ overflow: 'hidden' }}>
-                                    <Image src={c.img} alt={c.title} sizes="(max-width: 720px) 100vw, 33vw"
+                                    <Image {...imgProps} src={c.img} alt={c.title} loading="lazy"
                                         className="destination-card-image"
                                         style={{ width: '100%', height: 220, objectFit: 'cover', display: 'block' }} />
                                 </div>
@@ -251,6 +323,8 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                     ))}
                 </div>
             </div>
+            {/* pricing */}
+            <PricingSection onBook={() => navigateToTab('booking')} />
             {/* process */}
             <div style={{ padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)' }}>
                 <Reveal style={{ textAlign: 'center', marginBottom: 'clamp(30px, 4.5vw, 48px)' }}>
@@ -324,14 +398,15 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                         >
                             <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>
                             <Image
-                                src={feedback.src}
+                                src={feedback.thumb}
                                 alt={feedback.alt}
-                                width={1080}
-                                height={1350}
-                                sizes="(max-width: 640px) 78vw, 340px"
+                                width={680}
+                                height={850}
+                                unoptimized
+                                loading="lazy"
                                 className="feedback-card-image"
                             />
-                            <span className="feedback-card-caption">Lời nhắn từ khách hàng</span>
+                            <span className="feedback-card-caption">Tin nhắn của cô dâu chú rể</span>
                         </TiltCard>
                     ))}
                 </div>
@@ -340,6 +415,31 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                     <span>VUỐT ĐỂ XEM THÊM</span>
                     <span style={{ flex: 1, height: 1, background: LINE }} />
                     <span>MERCI COUPLES</span>
+                </div>
+            </section>
+            {/* FAQ */}
+            <section style={{ padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: '28px clamp(32px, 5vw, 72px)' }}>
+                <Reveal>
+                    <div style={kickerStyle()}>CÂU HỎI THƯỜNG GẶP</div>
+                    <h2 style={h2Style}>Điều các cặp đôi<br /><em style={{ fontWeight: 400 }}>hay hỏi Merci</em></h2>
+                    <p style={{ marginTop: 18, fontSize: 'clamp(13.5px, 1.4vw, 15px)', lineHeight: 1.8, fontWeight: 300, color: SUB, maxWidth: 420 }}>
+                        Chưa thấy câu trả lời bạn cần? Nhắn Merci qua <a href="https://zalo.me/0888999545" target="_blank" rel="noreferrer" style={{ color: BROWN }}>Zalo</a> hoặc gọi <a href="tel:0888999545" style={{ color: BROWN }}>0888.999.545</a>.
+                    </p>
+                </Reveal>
+                <div style={{ borderTop: `1px solid ${LINE}` }}>
+                    {faqs.map((f, i) => {
+                        const isOpen = openFaq === i;
+                        return (
+                            <div key={f.q} style={{ borderBottom: `1px solid ${LINE}` }}>
+                                <button type="button" onClick={() => setOpenFaq(isOpen ? null : i)} aria-expanded={isOpen}
+                                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 16, padding: '18px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit', color: INK }}>
+                                    <span style={{ fontSize: 'clamp(15px, 1.6vw, 17px)', fontWeight: 500 }}>{f.q}</span>
+                                    <span aria-hidden="true" style={{ fontFamily: serif, fontSize: 26, color: TAN, lineHeight: 1, transform: isOpen ? 'rotate(45deg)' : 'none', transition: 'transform 0.3s' }}>+</span>
+                                </button>
+                                {isOpen && <p style={{ margin: '0 0 18px', fontSize: 14, lineHeight: 1.8, fontWeight: 300, color: SUB }}>{f.a}</p>}
+                            </div>
+                        );
+                    })}
                 </div>
             </section>
             {/* CTA band */}
@@ -386,8 +486,8 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>ĐỊA CHỈ</div>
-                    <div>244 Đội Cấn, Ba Đình, Hà Nội</div>
-                    <div>650 Thân Nhân Trung, Việt Yên, Bắc Ninh</div>
+                    <div><a className="footer-link" href="https://www.google.com/maps/search/?api=1&query=244+%C4%90%E1%BB%99i+C%E1%BA%A5n%2C+Ba+%C4%90%C3%ACnh%2C+H%C3%A0+N%E1%BB%99i" target="_blank" rel="noreferrer" style={{ color: SUB, textDecoration: 'none' }}>244 Đội Cấn, Ba Đình, Hà Nội ↗</a></div>
+                    <div><a className="footer-link" href="https://www.google.com/maps/search/?api=1&query=650+Th%C3%A2n+Nh%C3%A2n+Trung%2C+Vi%E1%BB%87t+Y%C3%AAn%2C+B%E1%BA%AFc+Ninh" target="_blank" rel="noreferrer" style={{ color: SUB, textDecoration: 'none' }}>650 Thân Nhân Trung, Việt Yên, Bắc Ninh ↗</a></div>
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>LIÊN HỆ</div>
@@ -423,7 +523,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                             alt={activeFeedback.alt}
                             width={1080}
                             height={1350}
-                            sizes="(max-width: 720px) 94vw, 70vh"
+                            unoptimized
                             className="feedback-modal-image"
                             priority
                         />

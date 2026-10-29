@@ -324,6 +324,23 @@ button, [role="button"], a {
   transform: scale(1.05);
 }
 
+.home-album-image {
+  transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (hover: hover) {
+  .home-album-card:hover .home-album-image,
+  .home-film-card:hover .home-album-image {
+    transform: scale(1.04);
+  }
+}
+
+.home-album-card:focus-visible,
+.home-film-card:focus-visible {
+  outline: 2px solid #7a5c44;
+  outline-offset: 4px;
+}
+
 .tilt-glare {
   position: absolute;
   inset: 0;

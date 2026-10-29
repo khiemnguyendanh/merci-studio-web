@@ -207,6 +207,20 @@ async function main() {
       const images = (await runPool(tasks, CONCURRENCY)).filter(Boolean);
       if (!images.length) continue;
 
+      // Ảnh chia sẻ Facebook/Zalo: JPEG 1200x630 (Facebook không đọc ổn định WebP ở og:image).
+      // Tên có hash ảnh nguồn như scripts/make-share-images.mjs: đổi ảnh bìa -> URL mới.
+      const shareName = `share-${crypto.createHash('md5').update(images[0].url).digest('hex').slice(0, 8)}.jpg`;
+      const sharePath = path.join(outDir, shareName);
+      const firstWebp = path.join(outDir, `${images[0].id.split('/').pop()}.webp`);
+      try {
+        if (!isFresh(firstWebp, sharePath)) {
+          for (const old of fs.readdirSync(outDir)) if (/^share-[0-9a-f]{8}\.jpg$/.test(old)) fs.unlinkSync(path.join(outDir, old));
+          await sharp(firstWebp).resize({ width: 1200, height: 630, fit: 'cover', position: 'attention' }).jpeg({ quality: 82, mozjpeg: true }).toFile(sharePath);
+        }
+      } catch (error) {
+        failures.push(`${categoryFolder}/${albumFolder}/${shareName}: ${error.message}`);
+      }
+
       const folderTime = fs.statSync(albumDir).mtimeMs;
       albums.push({
         id: `static_${catSlug}_${albumSlug}`,
@@ -219,6 +233,7 @@ async function main() {
         hashtags: [],
         coverUrl: images[0].thumbnailUrl,
         coverImageUrl: images[0].url,
+        ...(fs.existsSync(sharePath) ? { shareUrl: `${PUBLIC_BASE}/${catSlug}/${albumSlug}/${shareName}` } : {}),
         order: Math.round(folderTime),
         imageCount: images.length,
         images
