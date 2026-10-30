@@ -56,14 +56,14 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
                 ))}
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(250px, 100%), 1fr))', gap: 14 }}>
+            <div className="pricing-grid" style={{ display: 'grid', gap: 14 }}>
                 {group.packages.map((p) => {
                     const key = `${group.id}:${p.name}`;
                     const isOpen = open === key;
                     return (
-                        <div key={key} className="card-3d" style={{ background: CREAM, border: `1px solid ${isOpen ? BROWN : LINE}`, padding: 'clamp(20px, 2.4vw, 26px)', display: 'flex', flexDirection: 'column', gap: 8 }}>
-                            <div style={{ fontSize: 11, letterSpacing: 2.4, color: TAN }}>{p.name}</div>
-                            <div style={{ fontFamily: serif, fontSize: 'clamp(28px, 3vw, 34px)', fontWeight: 600, color: DARK, lineHeight: 1 }}>
+                        <div key={key} className="card-3d" style={{ background: CREAM, border: `1px solid ${isOpen ? BROWN : LINE}`, padding: 'clamp(14px, 2.4vw, 26px)', display: 'flex', flexDirection: 'column', gap: 8, gridColumn: isOpen ? '1 / -1' : undefined, minWidth: 0 }}>
+                            <div style={{ fontSize: 11, letterSpacing: 2, color: TAN }}>{p.name}</div>
+                            <div style={{ fontFamily: serif, fontSize: 'clamp(23px, 3vw, 34px)', fontWeight: 600, color: DARK, lineHeight: 1 }}>
                                 {p.price}<span style={{ fontSize: 15, fontWeight: 500, marginLeft: 4 }}>đ</span>
                             </div>
                             {p.note && <div style={{ fontSize: 13, fontWeight: 300, lineHeight: 1.6, color: SUB }}>{p.note}</div>}
@@ -79,7 +79,7 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
                                     ))}
                                 </div>
                             )}
-                            <div style={{ marginTop: 'auto', paddingTop: 10, display: 'flex', flexWrap: 'wrap', gap: 14, fontSize: 12, letterSpacing: 1.6 }}>
+                            <div style={{ marginTop: 'auto', paddingTop: 10, display: 'flex', flexWrap: 'wrap', gap: '8px 14px', fontSize: 12, letterSpacing: 1.6 }}>
                                 <button type="button" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: BROWN, fontFamily: 'inherit', letterSpacing: 1.6, fontSize: 12 }}>
                                     {isOpen ? 'THU GỌN ↑' : 'XEM CHI TIẾT ↓'}
                                 </button>

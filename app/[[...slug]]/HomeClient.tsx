@@ -1018,13 +1018,12 @@ export default function Home() {
             localViews[albumId] = (localViews[albumId] || 0) + 1;
             sessionStorage.setItem('merci_album_views', JSON.stringify(localViews));
 
+            // Lượt xem album ghi vào session (thống kê admin đọc từ đây). Không ghi
+            // merci_albums/{id}.views: album giờ nằm trên R2 (id "static_..."), không có
+            // document Firestore và Rules chỉ cho admin ghi -> lỗi permission ở mọi lượt xem.
             await updateDoc(doc(db, 'merci_sessions', sessionId), {
                 [`albumViews.${albumId}`]: increment(1),
                 updatedAt: Date.now()
-            });
-
-            await updateDoc(doc(db, 'merci_albums', albumId), {
-                views: increment(1)
             });
         } catch (err) {
             console.error("Error recording album view:", err);

@@ -57,6 +57,14 @@ type HomeHubProps = {
 // Ảnh tĩnh: next/image không resize trên Workers -> phục vụ thẳng file WebP đã nén sẵn.
 const imgProps = { unoptimized: true } as const;
 
+// Mẫu thiệp giới thiệu trên trang chủ: ảnh cắt phần đầu từ thiepcuoi.mercistudio.net (public/home/thiep).
+const invitationSamples = [
+    { name: 'Minimalism', slug: 'minimalism-do-dam', img: 'minimalism_darkred' },
+    { name: 'Song Hỷ', slug: 'song-hy-do', img: 'song_hy_red' },
+    { name: 'Vườn Kính', slug: 'vuonkinh-hong', img: 'glass_garden_pink' },
+    { name: 'Hoa Mộc', slug: 'hoa-moc-xanh', img: 'boho_floral_green' }
+];
+
 type DestinationCard = {
     tab: string;
     tag: string;
@@ -106,7 +114,8 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
         { num: '03', title: 'Váy cưới Douyin', desc: 'Bộ sưu tập váy cưới phong cách Douyin thời thượng, đa dạng thiết kế cho cô dâu lựa chọn.', cta: 'XEM VÁY CƯỚI', action: () => (navigateToDress ? navigateToDress() : navigateToTab('collection')) },
         { num: '04', title: 'Vest chú rể', desc: 'Các mẫu vest lịch lãm, đầy đủ kích cỡ — sẵn sàng cho ngày trọng đại của chú rể.', cta: 'XEM VEST', action: () => (navigateToVest ? navigateToVest() : navigateToTab('collection')) },
         { num: '05', title: 'Makeup & làm tóc cô dâu', desc: 'Đội ngũ makeup chuyên nghiệp đồng hành cùng cô dâu từ buổi chụp đến lễ cưới.', cta: 'ĐẶT LỊCH', action: () => navigateToTab('booking') },
-        { num: '06', title: 'Kỷ yếu · Gia đình · Sự kiện', desc: 'Lưu giữ kỷ niệm cùng bạn bè và gia đình với ekip giàu kinh nghiệm sự kiện lớn nhỏ.', cta: 'NHẬN TƯ VẤN', action: () => navigateToTab('booking') }
+        { num: '06', title: 'Kỷ yếu · Gia đình · Sự kiện', desc: 'Lưu giữ kỷ niệm cùng bạn bè và gia đình với ekip giàu kinh nghiệm sự kiện lớn nhỏ.', cta: 'NHẬN TƯ VẤN', action: () => navigateToTab('booking') },
+        { num: '07', title: 'Thiệp cưới online', desc: 'Tự tạo thiệp cưới điện tử miễn phí, gửi khách mời qua Zalo, Facebook và quản lý danh sách khách mời.', cta: 'TẠO THIỆP', action: () => window.open('https://thiepcuoi.mercistudio.net/', '_blank', 'noopener') }
     ];
 
     const steps = [
@@ -136,6 +145,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
     ];
 
     const socials = [
+        { label: 'Thiệp cưới online · thiepcuoi.mercistudio.net', href: 'https://thiepcuoi.mercistudio.net/' },
         { label: 'Facebook · Merci Bridal', href: 'https://www.facebook.com/mercibridalvn' },
         { label: 'Facebook · Merci Wedding', href: 'https://www.facebook.com/merciwedding.vn' },
         { label: 'Facebook · Merci Bắc Ninh', href: 'https://www.facebook.com/MerciStudioBN' },
@@ -204,7 +214,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                 </Reveal>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(300px, 100%), 1fr))', borderTop: `1px solid ${LINE}`, borderLeft: `1px solid ${LINE}` }}>
                     {services.map((sv, i) => (
-                        <Reveal key={sv.num} delay={(i % 3) * 90}>
+                        <Reveal key={sv.num} delay={(i % 3) * 90} style={i === services.length - 1 && services.length % 3 === 1 ? { gridColumn: '1 / -1' } : undefined}>
                             <div
                                 className="service-row"
                                 role="button"
@@ -323,6 +333,40 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                     ))}
                 </div>
             </div>
+            {/* thiệp cưới online - trang phụ thiepcuoi.mercistudio.net */}
+            <section style={{ background: BAND, padding: 'clamp(48px, 7vw, 88px) clamp(16px, 4vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 'clamp(28px, 4vw, 56px)', alignItems: 'center' }}>
+                <Reveal>
+                    <div style={kickerStyle()}>THIỆP CƯỚI ONLINE · MIỄN PHÍ</div>
+                    <h2 style={h2Style}>Gửi lời mời cưới<br /><em style={{ fontWeight: 400 }}>chỉ trong vài phút</em></h2>
+                    <p style={{ marginTop: 18, fontSize: 'clamp(13.5px, 1.4vw, 15px)', lineHeight: 1.8, fontWeight: 300, color: SUB, maxWidth: 460 }}>
+                        Chọn mẫu thiệp, thêm ảnh cưới và thông tin lễ cưới, rồi gửi cho khách mời qua Zalo, Facebook. Tạo thiệp miễn phí, xem thử trước khi quyết định.
+                    </p>
+                    <ul style={{ margin: '16px 0 0', padding: 0, listStyle: 'none', fontSize: 14, lineHeight: 2, color: INK, fontWeight: 300 }}>
+                        <li>— Hàng chục mẫu thiệp truyền thống và hiện đại</li>
+                        <li>— Gửi thiệp qua Zalo, Facebook chỉ bằng một đường link</li>
+                        <li>— Quản lý danh sách khách mời ngay trên điện thoại</li>
+                    </ul>
+                    <div style={{ marginTop: 'clamp(22px, 3vw, 30px)', display: 'flex', flexWrap: 'wrap', gap: 12 }}>
+                        <a className="btn-3d" href="https://thiepcuoi.mercistudio.net/tao-thiep" target="_blank" rel="noopener" style={{ ...capsBtn(true), textDecoration: 'none' }}>TẠO THIỆP MIỄN PHÍ</a>
+                        <a className="btn-3d" href="https://thiepcuoi.mercistudio.net/mau-thiep" target="_blank" rel="noopener" style={{ ...capsBtn(false), textDecoration: 'none' }}>XEM MẪU THIỆP</a>
+                    </div>
+                </Reveal>
+                <div className="invitation-grid" style={{ display: 'grid', gap: 'clamp(10px, 1.2vw, 14px)' }}>
+                    {invitationSamples.map((t, i) => (
+                        <Reveal key={t.slug} delay={i * 80}>
+                            <a href={`https://thiepcuoi.mercistudio.net/mau-thiep/${t.slug}/demo`} target="_blank" rel="noopener" className="home-album-card" aria-label={`Xem thử mẫu thiệp ${t.name}`}
+                                style={{ display: 'block', textDecoration: 'none', color: INK, transform: i % 2 ? 'translateY(clamp(10px, 2vw, 24px))' : 'none' }}>
+                                <div style={{ aspectRatio: '3 / 4', overflow: 'hidden', border: `1px solid ${LINE}`, background: CREAM, boxShadow: '0 14px 30px -18px rgba(61,47,38,0.45)' }}>
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img src={`/home/thiep/${t.img}.webp`} alt={`Mẫu thiệp cưới online ${t.name}`} loading="lazy" decoding="async" width={384} height={512}
+                                        className="home-album-image" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+                                </div>
+                                <div style={{ marginTop: 8, fontSize: 'clamp(11px, 1.1vw, 13px)', textAlign: 'center', color: SUB }}>{t.name}</div>
+                            </a>
+                        </Reveal>
+                    ))}
+                </div>
+            </section>
             {/* pricing */}
             <PricingSection onBook={() => navigateToTab('booking')} />
             {/* process */}

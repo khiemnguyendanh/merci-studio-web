@@ -19,7 +19,9 @@ const CSP = [
   "frame-src 'self' https://*.firebaseapp.com https://*.firebaseapp.net https://accounts.google.com https://www.googletagmanager.com https://td.doubleclick.net https://www.facebook.com https://www.youtube.com https://www.youtube-nocookie.com https://docs.google.com https://drive.google.com",
   "object-src 'none'",
   "base-uri 'self'",
-  "form-action 'self'",
+  // Meta Pixel gửi sự kiện bằng form ẩn POST tới facebook.com/tr - thiếu dòng này
+  // trình duyệt chặn và một phần chuyển đổi quảng cáo bị mất.
+  "form-action 'self' https://www.facebook.com",
   "frame-ancestors 'self'",
 ].join('; ');
 
