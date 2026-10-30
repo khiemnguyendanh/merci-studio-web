@@ -5,7 +5,6 @@ import PwaRegister from '@/components/PwaRegister';
 import './globals.css';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
-const facebookPixelId = process.env.NEXT_PUBLIC_FB_PIXEL_ID;
 const siteDescription = 'Chụp ảnh cưới đẹp, phóng sự cưới và váy cưới Douyin tại Hà Nội, Bắc Ninh. Xem album thực tế, chọn váy cưới xinh và đặt lịch Merci Studio.';
 const seoKeywords = [
   'Merci Studio',
@@ -144,7 +143,7 @@ export default function RootLayout({
     <html lang="vi" className={`${sansFont.variable} ${serifFont.variable}`} suppressHydrationWarning>
       <body suppressHydrationWarning>
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData).replace(/</g, '\\u003c') }} />
-        <AnalyticsConsent gtmId={process.env.NEXT_PUBLIC_GTM_ID} gaId={process.env.NEXT_PUBLIC_GA_ID} facebookPixelId={facebookPixelId} />
+        <AnalyticsConsent gtmId={process.env.NEXT_PUBLIC_GTM_ID} gaId={process.env.NEXT_PUBLIC_GA_ID} />
         {children}
         <PwaRegister />
       </body>

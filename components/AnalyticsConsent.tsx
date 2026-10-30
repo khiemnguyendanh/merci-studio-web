@@ -11,7 +11,10 @@ declare global {
   }
 }
 
-export default function AnalyticsConsent({ gtmId, gaId, facebookPixelId }: { gtmId?: string; gaId?: string; facebookPixelId?: string }) {
+// Meta Pixel (195558005359348) được nạp bởi thẻ trong Google Tag Manager, không nạp
+// ở đây nữa: nạp cả hai làm Facebook báo "Duplicate Pixel ID" và đếm sự kiện 2 lần.
+// Các sự kiện Lead/ViewContent trong HomeClient vẫn gọi window.fbq do GTM tạo ra.
+export default function AnalyticsConsent({ gtmId, gaId }: { gtmId?: string; gaId?: string }) {
   const [consent, setConsent] = useState<'accepted' | 'declined' | null>(null);
 
   useEffect(() => {
@@ -20,21 +23,6 @@ export default function AnalyticsConsent({ gtmId, gaId, facebookPixelId }: { gtm
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setConsent(saved === 'accepted' || saved === 'declined' ? saved : null);
   }, []);
-
-  useEffect(() => {
-    if (consent !== 'accepted' || !facebookPixelId || window.fbq) return;
-    const script = document.createElement('script');
-    script.async = true;
-    script.src = 'https://connect.facebook.net/en_US/fbevents.js';
-    document.head.appendChild(script);
-    window.fbq = window.fbq || function (...args: unknown[]) {
-      const queue = window.fbq?.queue || [];
-      queue.push(args);
-      if (window.fbq) window.fbq.queue = queue;
-    };
-    window.fbq?.('init', facebookPixelId);
-    window.fbq?.('track', 'PageView');
-  }, [consent, facebookPixelId]);
 
   const choose = (value: 'accepted' | 'declined') => {
     localStorage.setItem(STORAGE_KEY, value);
