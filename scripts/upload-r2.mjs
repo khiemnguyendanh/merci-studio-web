@@ -11,6 +11,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { execSync } from 'node:child_process';
 
 const ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID || '29ca4c452d80113d4c92e1b7c31e820b';
 const BUCKET = process.env.R2_BUCKET || 'merci-photos';
@@ -21,15 +22,55 @@ const CONCURRENCY = 4;
 const FORCE_ALL = process.argv.includes('--all');
 const API = `https://api.cloudflare.com/client/v4/accounts/${ACCOUNT_ID}/r2/buckets/${BUCKET}`;
 
-function loadToken() {
-  if (process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN;
-  const cfg = path.join(os.homedir(), '.wrangler', 'config', 'default.toml');
-  if (!fs.existsSync(cfg)) throw new Error('Chưa đăng nhập Cloudflare. Chạy: npx wrangler login');
-  const m = fs.readFileSync(cfg, 'utf8').match(/oauth_token\s*=\s*"([^"]+)"/);
-  if (!m) throw new Error('Không đọc được token Cloudflare. Chạy: npx wrangler login');
-  return m[1];
+// Token OAuth của `wrangler login` chỉ sống ~1 giờ; wrangler tự gia hạn (bằng
+// refresh_token) mỗi khi chính nó chạy. Nên khi token sắp/đã hết hạn, gọi
+// `wrangler whoami` để nó gia hạn rồi đọc lại file cấu hình.
+const WRANGLER_CFG = path.join(os.homedir(), '.wrangler', 'config', 'default.toml');
+
+function readWranglerToken() {
+  if (!fs.existsSync(WRANGLER_CFG)) throw new Error('Chưa đăng nhập Cloudflare. Chạy: npx wrangler login');
+  const text = fs.readFileSync(WRANGLER_CFG, 'utf8');
+  const token = text.match(/oauth_token\s*=\s*"([^"]+)"/)?.[1];
+  const expires = Date.parse(text.match(/expiration_time\s*=\s*"([^"]+)"/)?.[1] || '') || 0;
+  if (!token) throw new Error('Không đọc được token Cloudflare. Chạy: npx wrangler login');
+  return { token, expires };
 }
-const TOKEN = loadToken();
+
+function refreshWranglerToken() {
+  console.log('Đang gia hạn token Cloudflare...');
+  try {
+    execSync('npx wrangler whoami', { cwd: process.cwd(), stdio: 'ignore', timeout: 120000 });
+  } catch {
+    // whoami lỗi thì kiểm tra token bên dưới sẽ báo
+  }
+}
+
+function loadToken({ forceRefresh = false } = {}) {
+  if (process.env.CLOUDFLARE_API_TOKEN) return process.env.CLOUDFLARE_API_TOKEN;
+  let { token, expires } = readWranglerToken();
+  if (forceRefresh || expires - Date.now() < 10 * 60 * 1000) {
+    refreshWranglerToken();
+    ({ token, expires } = readWranglerToken());
+    if (expires <= Date.now()) {
+      throw Object.assign(new Error('Không gia hạn được token Cloudflare. Chạy: npx wrangler login'), { fatal: true });
+    }
+  }
+  return token;
+}
+let TOKEN = loadToken();
+let refreshing = null;
+
+// Gặp 401/403 giữa chừng (upload lâu quá 1 giờ) thì gia hạn 1 lần rồi thử lại.
+async function renewToken(usedToken) {
+  if (process.env.CLOUDFLARE_API_TOKEN) return false;
+  if (TOKEN !== usedToken) return true; // luồng khác đã gia hạn xong
+  if (!refreshing) {
+    refreshing = Promise.resolve().then(() => { TOKEN = loadToken({ forceRefresh: true }); }).finally(() => { refreshing = null; });
+  }
+  try { await refreshing; } catch { return false; }
+  return TOKEN !== usedToken;
+}
+const AUTH_ERROR = 'Token Cloudflare hết hạn / thiếu quyền R2. Chạy: npx wrangler login';
 
 function walk(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -49,8 +90,12 @@ async function listRemote() {
   let cursor = '';
   do {
     const url = `${API}/objects?prefix=${encodeURIComponent(PREFIX)}&per_page=1000${cursor ? `&cursor=${cursor}` : ''}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
-    if (res.status === 401 || res.status === 403) throw Object.assign(new Error('Token Cloudflare hết hạn / thiếu quyền R2. Chạy: npx wrangler login'), { fatal: true });
+    const usedToken = TOKEN;
+    let res = await fetch(url, { headers: { Authorization: `Bearer ${usedToken}` } });
+    if ((res.status === 401 || res.status === 403) && await renewToken(usedToken)) {
+      res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+    }
+    if (res.status === 401 || res.status === 403) throw Object.assign(new Error(AUTH_ERROR), { fatal: true });
     if (!res.ok) throw new Error(`Không liệt kê được bucket: HTTP ${res.status}`);
     const data = await res.json();
     for (const o of data.result || []) remote.set(o.key, String(o.etag || '').replace(/"/g, ''));
@@ -63,12 +108,16 @@ async function putObject(key, body, type, cacheControl, expectedMd5) {
   const url = `${API}/objects/${encodeURIComponent(key)}`;
   for (let attempt = 1; attempt <= 5; attempt++) {
     try {
+      const usedToken = TOKEN;
       const res = await fetch(url, {
         method: 'PUT',
-        headers: { Authorization: `Bearer ${TOKEN}`, 'Content-Type': type, 'Cache-Control': cacheControl },
+        headers: { Authorization: `Bearer ${usedToken}`, 'Content-Type': type, 'Cache-Control': cacheControl },
         body
       });
-      if (res.status === 401 || res.status === 403) throw Object.assign(new Error('Token Cloudflare hết hạn / thiếu quyền R2. Chạy: npx wrangler login'), { fatal: true });
+      if (res.status === 401 || res.status === 403) {
+        if (attempt < 5 && await renewToken(usedToken)) continue;
+        throw Object.assign(new Error(AUTH_ERROR), { fatal: true });
+      }
       if (res.ok) {
         // API có lúc trả OK mà không ghi: đối chiếu etag trong response (= MD5 với upload 1 phần).
         const data = await res.json().catch(() => null);
@@ -89,7 +138,13 @@ async function putObject(key, body, type, cacheControl, expectedMd5) {
 // trên R2 để lần cập nhật từ máy không xoá mất chúng. Trùng tên file gốc thì bỏ
 // (ảnh đó đã được tải về máy và build lại).
 async function keepWebSyncedImages(local) {
-  const res = await fetch(`${API}/objects/${encodeURIComponent(PREFIX + 'manifest.json')}`, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  const url = `${API}/objects/${encodeURIComponent(PREFIX + 'manifest.json')}`;
+  const usedToken = TOKEN;
+  let res = await fetch(url, { headers: { Authorization: `Bearer ${usedToken}` } });
+  if ((res.status === 401 || res.status === 403) && await renewToken(usedToken)) {
+    res = await fetch(url, { headers: { Authorization: `Bearer ${TOKEN}` } });
+  }
+  if (res.status === 401 || res.status === 403) throw new Error(AUTH_ERROR);
   if (res.status === 404) return 0;
   if (!res.ok) throw new Error(`Không đọc được manifest trên R2: HTTP ${res.status} - manifest.json CHƯA được cập nhật.`);
   const remote = JSON.parse(await res.text());
