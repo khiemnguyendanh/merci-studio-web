@@ -1,7 +1,8 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "mercistudio-cloud",
-  "main": ".open-next/worker.js",
+  // custom-worker.ts bọc .open-next/worker.js: cache HTML ở biên + chặn bot dò lỗ hổng.
+  "main": "custom-worker.ts",
   "compatibility_date": "2026-07-29",
   "compatibility_flags": [
     "nodejs_compat",
@@ -18,6 +19,10 @@
       "bucket_name": "merci-photos"
     }
   ],
+  // ID phiên bản deploy, dùng làm khoá cache HTML (deploy mới tự bỏ cache cũ).
+  "version_metadata": {
+    "binding": "CF_VERSION_METADATA"
+  },
   "observability": {
     "enabled": true
   }

@@ -1,5 +1,7 @@
 import 'server-only';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { cachedJson } from './edge-cache';
+import { MANIFEST_KEY } from './photo-manifest';
 import { albumIntro } from '@/lib/album-copy';
 
 type FirestoreValue = { stringValue?: string; integerValue?: string; doubleValue?: number };
@@ -32,7 +34,8 @@ type ManifestAlbum = {
 // phải cache ở biên, nếu không mỗi lượt xem = ~150 lượt đọc Firestore.
 const METADATA_CACHE_SECONDS = 3600;
 // Album hiển thị trên web lấy từ manifest R2 (không còn từ Firestore merci_albums).
-const MANIFEST_CACHE_SECONDS = 600;
+// 1 giờ: mỗi lần hết hạn phải tải + parse manifest ~800 KB (vài trăm ms CPU).
+const MANIFEST_CACHE_SECONDS = 3600;
 const PHOTOS_BASE = (process.env.NEXT_PUBLIC_PHOTOS_BASE || 'https://img.mercistudio.net/photos').replace(/\/+$/, '');
 
 function field(document: FirestoreDocument, name: string) {
@@ -64,12 +67,28 @@ async function fetchCollection(collection: string, masks: string[]): Promise<Fir
   return data ?? [];
 }
 
+// Đọc thẳng từ binding R2 (không qua mạng tới img.mercistudio.net — đường đó hay lỗi
+// và phải chờ subrequest); chỉ fetch công khai khi không có binding (next dev).
+async function readManifest(): Promise<{ albums?: ManifestAlbum[] } | null> {
+  try {
+    const { env } = await getCloudflareContext({ async: true });
+    const bucket = (env as unknown as { PHOTOS?: R2Bucket }).PHOTOS;
+    if (bucket) {
+      const object = await bucket.get(MANIFEST_KEY);
+      return object ? await object.json() : null;
+    }
+  } catch {
+    // không có Cloudflare context -> dùng fetch bên dưới
+  }
+  const response = await fetch(`${PHOTOS_BASE}/manifest.json`, { cache: 'no-store' });
+  return response.ok ? await response.json() : null;
+}
+
 // Chỉ giữ trường cần cho SEO để bản cache nhỏ (manifest gốc ~800 KB vì có danh sách ảnh).
 async function fetchManifestAlbums(): Promise<ManifestAlbum[]> {
   const { data } = await cachedJson<ManifestAlbum[]>('metadata/photos-manifest-v2', MANIFEST_CACHE_SECONDS, async () => {
-    const response = await fetch(`${PHOTOS_BASE}/manifest.json`, { cache: 'no-store' });
-    if (!response.ok) return null;
-    const json = await response.json() as { albums?: ManifestAlbum[] };
+    const json = await readManifest();
+    if (!json) return null;
     if (!Array.isArray(json.albums)) return null;
     return json.albums.map((a) => ({
       id: a.id,
