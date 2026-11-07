@@ -68,7 +68,7 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
                 </div>
             </div>
 
-            <div role="tablist" aria-label="Nhóm dịch vụ" className="no-scrollbar" style={{ display: 'flex', gap: 8, overflowX: 'auto', paddingBottom: 4, marginBottom: 'clamp(20px, 3vw, 28px)' }}>
+            <div role="tablist" aria-label="Nhóm dịch vụ" className="pricing-tabs no-scrollbar" style={{ marginBottom: 'clamp(20px, 3vw, 28px)' }}>
                 {groups.map((g) => (
                     <button key={g.id} role="tab" aria-selected={g.id === active} type="button" onClick={() => { setActive(g.id); setOpen(null); }} style={chip(g.id === active)}>
                         {tabLabel[g.id] || g.title}
