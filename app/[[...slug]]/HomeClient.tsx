@@ -5682,8 +5682,10 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
             {/* Menu Header */}
             {activeTab !== 'home' && (
                 <header className="relative md:sticky md:top-0 z-40 bg-[#faf7f1]/90 backdrop-blur-md border-b border-slate-200 py-2.5 px-3 md:px-4 md:py-3">
-                    <div className="max-w-[1480px] mx-auto flex flex-col md:flex-row justify-between items-center gap-2 md:gap-3">
-                        <div className="flex justify-between items-center w-full md:w-auto">
+                    {/* Dưới 1440px: logo + nút tài khoản ở hàng 1, menu xuống hàng 2 (tự xuống dòng nếu vẫn thiếu chỗ);
+                        từ 1440px gộp 1 hàng. Mốc 1440 đo theo menu admin (thêm mục Thống kê). */}
+                    <div className="max-w-[1480px] mx-auto flex flex-col md:flex-row md:flex-wrap min-[90rem]:flex-nowrap justify-between items-center gap-2 md:gap-x-3 md:gap-y-1 min-[90rem]:gap-3">
+                        <div className="flex justify-between items-center w-full md:w-auto md:shrink-0">
                             <div className="flex items-center gap-2 cursor-pointer group" onClick={() => {
                                 setActiveTab('home');
                                 setActiveAlbumId(null);
@@ -5711,8 +5713,9 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             </div>
                         </div>
 
-                        <div className="hidden md:block w-full min-w-0 md:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
-                            <nav className="flex gap-0.5 md:gap-1 w-max md:w-full md:justify-center">
+                        {/* w-max + mx-auto ở chế độ 1 hàng: thiếu chỗ thì cuộn ngang từ mục đầu (justify-center sẽ cắt mất 2 đầu) */}
+                        <div className="hidden md:block w-full min-w-0 md:order-last md:basis-full min-[90rem]:order-none min-[90rem]:basis-auto min-[90rem]:flex-1 overflow-x-auto no-scrollbar pb-1 md:pb-0">
+                            <nav className="flex gap-0.5 md:gap-1 md:flex-wrap md:justify-center min-[90rem]:flex-nowrap min-[90rem]:justify-start min-[90rem]:w-max mx-auto">
                                 {[
                                     { id: 'home', label: 'Trang chủ' },
                                     { id: 'collection', label: 'Bộ sưu tập' },
@@ -5732,17 +5735,23 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             </nav>
                         </div>
 
-                        <div className="hidden md:flex items-center gap-2">
-                            <button onClick={() => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login')} className={`btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-5 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}>
-                                <User size={18} /> {user ? `${user.email || 'Tài khoản'}${isAdmin ? ' · Admin' : ''}` : 'Đăng nhập'}
+                        <div className="hidden md:flex items-center gap-2 shrink-0">
+                            <button
+                                onClick={() => user ? (isAdmin ? undefined : setShowClientProfileModal(true)) : openClientAuth('login')}
+                                title={user?.email || undefined}
+                                className={`btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] whitespace-nowrap px-3 lg:px-4 py-2.5 rounded-none border transition-colors ${isAdmin ? 'bg-slate-800 text-white border-slate-800 hover:bg-slate-900' : 'text-slate-800 bg-transparent border-slate-300 hover:bg-slate-100'}`}
+                            >
+                                <User size={18} className="shrink-0" /> {user ? (isAdmin ? 'Admin' : 'Tài khoản') : 'Đăng nhập'}
                             </button>
                             {user && (
                                 <button
                                     type="button"
                                     onClick={isAdmin ? handleLogout : handleClientLogout}
-                                    className="btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] px-4 py-2.5 rounded-none border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                                    title="Đăng xuất"
+                                    aria-label="Đăng xuất"
+                                    className="btn-3d flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.12em] whitespace-nowrap px-3 py-2.5 rounded-none border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
                                 >
-                                    <LogOut size={17} /> Đăng xuất
+                                    <LogOut size={17} className="shrink-0" /> <span className="md:inline min-[90rem]:hidden min-[100rem]:inline">Đăng xuất</span>
                                 </button>
                             )}
                         </div>
