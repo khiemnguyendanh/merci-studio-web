@@ -1,6 +1,6 @@
 {
-  "source": "E:\\Mẫu\\Bao Gia 2026 (file JSON gốc)",
-  "updated": "2026",
+  "source": "E:\\Mẫu\\Bao Gia 2026 (file JSON gốc) — ảnh báo giá: TAT CA BAO GIA 2026\\JPG web",
+  "updated": "2026-11",
   "groups": [
     {
       "id": "prewedding",
@@ -38,7 +38,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/10-prewedding-studio-1.jpg"
         },
         {
           "name": "STUDIO 2A",
@@ -83,7 +84,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/11-prewedding-studio-2a.jpg"
         },
         {
           "name": "STUDIO 2B",
@@ -129,7 +131,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/12-prewedding-studio-2b.jpg"
         },
         {
           "name": "STUDIO 3",
@@ -175,7 +178,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/13-prewedding-studio-3.jpg"
         },
         {
           "name": "STUDIO 4",
@@ -221,7 +225,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/14-prewedding-studio-4.jpg"
         },
         {
           "name": "STUDIO 5",
@@ -267,7 +272,8 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/15-prewedding-studio-5.jpg"
         },
         {
           "name": "STUDIO 6",
@@ -313,6 +319,166 @@
                 "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/16-prewedding-studio-6.jpg"
+        }
+      ],
+      "footnote": [
+        "Giá trên chưa bao gồm chi phí đi lại cho ekip, vé vào cửa và các chi phí phát sinh tại điểm chụp.",
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "prewedding-hanoi",
+      "title": "Chụp ảnh cưới — Merci Hanoi",
+      "packages": [
+        {
+          "name": "STUDIO 1",
+          "price": "5.500.000",
+          "note": "Merci Hanoi · chụp tại studio",
+          "image": "https://img.mercistudio.net/bao-gia-2026/17-hanoi-studio-1.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90",
+                "02 ảnh để bàn ép gỗ 13 × 18",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Nâng cấp thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "PHIM TRƯỜNG",
+          "price": "7.500.000",
+          "note": "Merci Hanoi · chụp tại phim trường",
+          "image": "https://img.mercistudio.net/bao-gia-2026/18-hanoi-phim-truong.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 áo dài hoặc đồ thường",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
+                "02 ảnh phóng 60 × 90",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "Bộ khung Hàn Quốc 5 khung",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 áo dài cô dâu dòng Luxury Merci Bridal"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Nâng cấp thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "PHIM TRƯỜNG + NGOẠI CẢNH",
+          "price": "9.500.000",
+          "note": "Merci Hanoi · phim trường + ngoại cảnh",
+          "image": "https://img.mercistudio.net/bao-gia-2026/19-hanoi-phim-truong-ngoai-canh.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc đồ thường",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
+                "02 ảnh phóng pha lê 60 × 90",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "Bộ khung Hàn Quốc 9 khung",
+                "30 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 áo dài cô dâu dòng Luxury Merci Bridal"
+              ]
+            },
+            {
+              "title": "Quà tặng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Nâng cấp thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
           ]
         }
       ],
@@ -352,7 +518,8 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/01-psc-c1.jpg"
         },
         {
           "name": "GÓI C2",
@@ -381,7 +548,8 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/02-psc-c2.jpg"
         },
         {
           "name": "GÓI C3",
@@ -410,7 +578,8 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/03-psc-c3.jpg"
         },
         {
           "name": "GÓI C4",
@@ -440,7 +609,8 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/04-psc-c4.jpg"
         },
         {
           "name": "GÓI C5",
@@ -470,7 +640,8 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/05-psc-c5.jpg"
         }
       ],
       "footnote": [
@@ -509,7 +680,8 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/06-film-basic.jpg"
         },
         {
           "name": "GÓI F1",
@@ -539,7 +711,8 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/07-film-f1.jpg"
         },
         {
           "name": "GÓI F2",
@@ -570,7 +743,8 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/08-film-f2.jpg"
         },
         {
           "name": "GÓI F3",
@@ -601,7 +775,8 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/09-film-f3.jpg"
         }
       ],
       "footnote": [
@@ -755,7 +930,8 @@
                 "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/20-gia-dinh-studio.jpg"
         },
         {
           "name": "GIA ĐÌNH — NGOẠI CẢNH",
@@ -790,7 +966,8 @@
                 "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/21-gia-dinh-ngoai-canh.jpg"
         },
         {
           "name": "CHỤP SỰ KIỆN 2",
@@ -820,7 +997,8 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/22-su-kien-chup-2.jpg"
         },
         {
           "name": "QUAY PHIM SỰ KIỆN 1",
@@ -848,7 +1026,8 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/23-su-kien-quay-1.jpg"
         },
         {
           "name": "QUAY PHIM SỰ KIỆN 2",
@@ -876,7 +1055,8 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/24-su-kien-quay-2.jpg"
         },
         {
           "name": "QUAY PHIM TRUYỀN THỐNG",
@@ -904,11 +1084,233 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ]
+          ],
+          "image": "https://img.mercistudio.net/bao-gia-2026/25-su-kien-quay-truyen-thong.jpg"
         }
       ],
       "footnote": [
         "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "ky-yeu",
+      "title": "Chụp ảnh kỷ yếu",
+      "packages": [
+        {
+          "name": "GÓI M1",
+          "price": "160.000",
+          "unit": "/ mỗi bạn",
+          "note": "Chụp tại trường 1 buổi — lựa chọn tiết kiệm cho lớp đông",
+          "image": "https://img.mercistudio.net/bao-gia-2026/26-ky-yeu-m1.jpg",
+          "sections": [
+            {
+              "title": "Trang phục",
+              "items": [
+                "Mỗi bạn 01 bộ cử nhân",
+                "Cà vạt cho nam"
+              ]
+            },
+            {
+              "title": "Ekip",
+              "items": [
+                "01 photographer",
+                "Chụp không giới hạn file (Đầy đủ ảnh tập thể, ảnh nhóm và ảnh cá nhân)",
+                "Chụp thoải mái cùng người thân và bạn bè"
+              ]
+            },
+            {
+              "title": "Phụ kiện",
+              "items": [
+                "Giấy màu viết ước mơ",
+                "01 chùm bóng bay"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Chỉnh sửa toàn bộ file ảnh",
+                "Trả toàn bộ file gốc sau khi hoàn thiện",
+                "Mỗi bạn 01 ảnh lụa 13 × 18 cm",
+                "Tặng lớp 01 ảnh tập thể 30 × 45 cm",
+                "Trả ảnh qua Google Drive"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI M2",
+          "price": "220.000",
+          "unit": "/ mỗi bạn",
+          "note": "Chụp tại trường 1 buổi — thêm ảnh design theo concept riêng",
+          "image": "https://img.mercistudio.net/bao-gia-2026/27-ky-yeu-m2.jpg",
+          "sections": [
+            {
+              "title": "Trang phục",
+              "items": [
+                "Mỗi bạn 01 bộ cử nhân",
+                "Cà vạt cho nam"
+              ]
+            },
+            {
+              "title": "Ekip",
+              "items": [
+                "20 bạn / 01 photographer",
+                "Chụp không giới hạn file (Đầy đủ ảnh tập thể, ảnh nhóm và ảnh cá nhân)",
+                "Chụp thoải mái cùng người thân và bạn bè"
+              ]
+            },
+            {
+              "title": "Phụ kiện",
+              "items": [
+                "Giấy màu viết ước mơ",
+                "01 chùm bóng bay"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Chỉnh sửa toàn bộ file ảnh",
+                "Trả toàn bộ file gốc sau khi hoàn thiện",
+                "Design 05 ảnh theo concept",
+                "Mỗi bạn 02 ảnh lụa 13 × 18 cm",
+                "Tặng lớp 01 ảnh tập thể 30 × 45 cm",
+                "Trả ảnh qua Google Drive và USB"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "GÓI M3",
+          "price": "260.000",
+          "unit": "/ mỗi bạn",
+          "note": "Chụp tại trường 1 buổi — tỉ lệ thợ cao nhất, chăm sóc kỹ từng bạn",
+          "image": "https://img.mercistudio.net/bao-gia-2026/28-ky-yeu-m3.jpg",
+          "sections": [
+            {
+              "title": "Trang phục",
+              "items": [
+                "Mỗi bạn 01 bộ cử nhân",
+                "Cà vạt cho nam"
+              ]
+            },
+            {
+              "title": "Ekip",
+              "items": [
+                "15 bạn / 01 photographer",
+                "Chụp không giới hạn file (Đầy đủ ảnh tập thể, ảnh nhóm và ảnh cá nhân)",
+                "Chụp thoải mái cùng người thân và bạn bè"
+              ]
+            },
+            {
+              "title": "Phụ kiện",
+              "items": [
+                "Giấy màu viết ước mơ",
+                "01 chùm bóng bay",
+                "Chong chóng"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Chỉnh sửa toàn bộ file ảnh",
+                "Trả toàn bộ file gốc sau khi hoàn thiện",
+                "Design 05 ảnh theo concept",
+                "Mỗi bạn 03 ảnh lụa 13 × 18 cm",
+                "Tặng lớp 01 ảnh tập thể 30 × 45 cm",
+                "Trả ảnh qua Google Drive và USB"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Báo giá tính theo số lượng học sinh thực tế tham gia buổi chụp. Lịch chụp được giữ sau khi lớp đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "makeup",
+      "title": "Makeup & làm tóc",
+      "packages": [
+        {
+          "name": "MAKEUP CÔ DÂU",
+          "price": "",
+          "note": "",
+          "image": "https://img.mercistudio.net/bao-gia-2026/29-makeup.jpg",
+          "rows": [
+            {
+              "text": "Makeup & làm tóc cô dâu ngày cưới",
+              "price": "1.500.000"
+            },
+            {
+              "text": "Makeup & làm tóc cô dâu ăn hỏi",
+              "price": "1.300.000"
+            },
+            {
+              "text": "Makeup & làm tóc cô dâu đãi khách / tiệc tối",
+              "price": "1.000.000"
+            },
+            {
+              "text": "Makeup cô dâu test trước ngày cưới",
+              "price": "1.000.000"
+            },
+            {
+              "text": "Dặm lại, thay váy và thay tóc",
+              "price": "500.000"
+            },
+            {
+              "text": "Take care váy cưới",
+              "price": "500.000"
+            }
+          ],
+          "sections": []
+        },
+        {
+          "name": "MAKEUP MẸ & NGƯỜI NHÀ",
+          "price": "",
+          "note": "",
+          "image": "https://img.mercistudio.net/bao-gia-2026/29-makeup.jpg",
+          "rows": [
+            {
+              "text": "Makeup & làm tóc mẹ cô dâu / chú rể",
+              "price": "700.000"
+            },
+            {
+              "text": "Makeup & làm tóc người nhà nhẹ nhàng",
+              "price": "400.000"
+            },
+            {
+              "text": "Dặm lại và thay tóc mẹ",
+              "price": "300.000"
+            }
+          ],
+          "sections": []
+        },
+        {
+          "name": "MAKEUP CÁ NHÂN",
+          "price": "",
+          "note": "",
+          "image": "https://img.mercistudio.net/bao-gia-2026/29-makeup.jpg",
+          "rows": [
+            {
+              "text": "Makeup & làm tóc dự tiệc, sinh nhật, chụp ảnh",
+              "price": "400.000"
+            },
+            {
+              "text": "Makeup & làm tóc kỷ yếu",
+              "price": "400.000"
+            },
+            {
+              "text": "Makeup & làm tóc kỷ yếu nhóm từ 3 người",
+              "price": "350.000",
+              "note": "Đơn giá mỗi người"
+            }
+          ],
+          "sections": []
+        }
+      ],
+      "footnote": [
+        "Báo giá chưa bao gồm phụ phí makeup tại nhà và chi phí đi lại cho ekip.",
+        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch makeup được giữ sau khi khách đặt cọc."
       ]
     }
   ]

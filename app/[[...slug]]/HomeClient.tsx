@@ -6330,7 +6330,6 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             >
                                                 <div className="aspect-[4/5] rounded-2xl md:rounded-2xl overflow-hidden mb-2 md:mb-3 bg-slate-200 relative shadow-md group-hover:shadow-2xl transition-all duration-500">
                                                     <img src={a.coverUrl || (a.coverId ? getDriveThumbUrl(a.coverId, 'w1200') : DEFAULT_COVER)} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt={a.title} loading="lazy" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.src = a.coverId ? getDriveThumbUrl(a.coverId, 'w600') : DEFAULT_COVER; }} />
-                                                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-70 group-hover:opacity-90 transition-opacity"></div>
                                                     <span aria-hidden="true" className="tilt-glare" />
                                                     <div className="absolute top-2 md:top-6 left-2 md:left-6 z-10 flex flex-col items-start gap-1 max-w-[88%]">
                                                         <span className="bg-white/95 backdrop-blur-md px-2 md:px-3 py-0.5 md:py-1.5 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-slate-900 shadow-sm">
@@ -6355,13 +6354,12 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         </div>
                                                     )}
 
-                                                    <div className="absolute bottom-3 md:bottom-8 left-3 md:left-8 right-3 md:right-8 text-white">
-                                                        <h3 className="text-base md:text-3xl font-semibold font-serif mb-1 md:mb-2 leading-tight">{a.title}</h3>
-                                                        <div className="flex items-center justify-between">
-                                                            <p className="text-[8px] md:text-xs font-medium opacity-90 uppercase tracking-widest"><span>{a.images?.length || 0} tác phẩm</span></p>
-                                                            {a.sub && <p className="hidden md:block text-xs opacity-70 truncate max-w-[50%]">{a.sub}</p>}
-                                                        </div>
-                                                    </div>
+                                                </div>
+
+                                                {/* Tên album nằm dưới ảnh bìa để không che mặt cô dâu chú rể */}
+                                                <div className="px-1 md:px-2 mb-2 md:mb-3">
+                                                    <h3 className="text-base md:text-2xl font-semibold font-serif text-slate-900 leading-snug line-clamp-2" title={a.title}>{a.title}</h3>
+                                                    <p className="mt-0.5 text-[10px] md:text-xs font-medium uppercase tracking-widest text-slate-500">{a.images?.length || 0} tác phẩm</p>
                                                 </div>
 
                                                 {getAlbumHashtags(a).length > 0 && (

@@ -1,22 +1,34 @@
 'use client';
 
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useState, type CSSProperties } from 'react';
 import pricing from '@/lib/pricing-2026.json';
 
 // Bảng giá 2026 - dữ liệu lấy từ file báo giá gốc của tiệm (lib/pricing-2026.json).
 const serif = "'Cormorant Garamond', Georgia, serif";
 const INK = '#2b241e', SUB = '#5c5044', LINE = '#d9d0c3', TAN = '#7d6a52', BROWN = '#7a5c44', DARK = '#3d2f26', CREAM = '#faf7f1';
 
-type Pkg = { name: string; price: string; note: string; sections: { title: string; items: string[] }[] };
+type Row = { text: string; price: string; note?: string };
+type Pkg = {
+    name: string;
+    price: string;
+    unit?: string;
+    note: string;
+    image?: string;
+    rows?: Row[]; // bảng giá lẻ (makeup): mỗi dòng 1 dịch vụ + giá
+    sections: { title: string; items: string[] }[];
+};
 type Group = { id: string; title: string; packages: Pkg[]; footnote: string[] };
 
 const groups = pricing.groups as Group[];
 const tabLabel: Record<string, string> = {
-    prewedding: 'Ảnh cưới',
+    prewedding: 'Ảnh cưới Merci House',
+    'prewedding-hanoi': 'Ảnh cưới Merci Hanoi',
     'phong-su': 'Phóng sự cưới',
     film: 'Quay phim cưới',
     concept: 'Concept · Baby',
-    'gia-dinh-su-kien': 'Gia đình · Sự kiện'
+    'gia-dinh-su-kien': 'Gia đình · Sự kiện',
+    'ky-yeu': 'Kỷ yếu',
+    makeup: 'Makeup'
 };
 
 function zaloLink(pkg: string) {
@@ -26,7 +38,15 @@ function zaloLink(pkg: string) {
 export default function PricingSection({ onBook }: { onBook: () => void }) {
     const [active, setActive] = useState(groups[0].id);
     const [open, setOpen] = useState<string | null>(null);
+    const [preview, setPreview] = useState<{ src: string; alt: string } | null>(null);
     const group = groups.find((g) => g.id === active) || groups[0];
+
+    useEffect(() => {
+        if (!preview) return;
+        const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setPreview(null); };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [preview]);
 
     const chip = (on: boolean): CSSProperties => ({
         padding: '10px 18px', fontSize: 12, letterSpacing: 1.6, cursor: 'pointer', fontFamily: 'inherit',
@@ -57,16 +77,34 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
             </div>
 
             <div className="pricing-grid" style={{ display: 'grid', gap: 14 }}>
-                {group.packages.map((p) => {
+                {group.packages.map((p, i) => {
                     const key = `${group.id}:${p.name}`;
                     const isOpen = open === key;
+                    // Các thẻ dùng chung 1 ảnh báo giá (makeup) chỉ hiện nút xem ảnh ở thẻ đầu.
+                    const showImage = p.image && group.packages.findIndex((x) => x.image === p.image) === i;
                     return (
-                        <div key={key} className="card-3d" style={{ background: CREAM, border: `1px solid ${isOpen ? BROWN : LINE}`, padding: 'clamp(14px, 2.4vw, 26px)', display: 'flex', flexDirection: 'column', gap: 8, gridColumn: isOpen ? '1 / -1' : undefined, minWidth: 0 }}>
+                        <div key={key} className="card-3d" style={{ background: CREAM, border: `1px solid ${isOpen ? BROWN : LINE}`, padding: 'clamp(14px, 2.4vw, 26px)', display: 'flex', flexDirection: 'column', gap: 8, gridColumn: isOpen || p.rows ? '1 / -1' : undefined, minWidth: 0 }}>
                             <div style={{ fontSize: 11, letterSpacing: 2, color: TAN }}>{p.name}</div>
-                            <div style={{ fontFamily: serif, fontSize: 'clamp(23px, 3vw, 34px)', fontWeight: 600, color: DARK, lineHeight: 1 }}>
-                                {p.price}<span style={{ fontSize: 15, fontWeight: 500, marginLeft: 4 }}>đ</span>
-                            </div>
+                            {p.price && (
+                                <div style={{ fontFamily: serif, fontSize: 'clamp(23px, 3vw, 34px)', fontWeight: 600, color: DARK, lineHeight: 1 }}>
+                                    {p.price}<span style={{ fontSize: 15, fontWeight: 500, marginLeft: 4 }}>đ</span>
+                                    {p.unit && <span style={{ fontFamily: 'inherit', fontSize: 13, fontWeight: 400, color: SUB, marginLeft: 6 }}>{p.unit}</span>}
+                                </div>
+                            )}
                             {p.note && <div style={{ fontSize: 13, fontWeight: 300, lineHeight: 1.6, color: SUB }}>{p.note}</div>}
+                            {p.rows && (
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                    {p.rows.map((r) => (
+                                        <div key={r.text} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 16, padding: '9px 0', borderBottom: `1px dashed ${LINE}` }}>
+                                            <span style={{ fontSize: 13.5, lineHeight: 1.5, color: INK, fontWeight: 300 }}>
+                                                {r.text}
+                                                {r.note && <span style={{ color: TAN, fontSize: 12 }}> · {r.note}</span>}
+                                            </span>
+                                            <span style={{ fontFamily: serif, fontSize: 19, fontWeight: 600, color: DARK, whiteSpace: 'nowrap' }}>{r.price}<span style={{ fontSize: 12, fontWeight: 500, marginLeft: 2 }}>đ</span></span>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
                             {isOpen && (
                                 <div style={{ marginTop: 6, borderTop: `1px solid ${LINE}`, paddingTop: 12, display: 'flex', flexDirection: 'column', gap: 12 }}>
                                     {p.sections.map((s) => (
@@ -80,9 +118,16 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
                                 </div>
                             )}
                             <div style={{ marginTop: 'auto', paddingTop: 10, display: 'flex', flexWrap: 'wrap', gap: '8px 14px', fontSize: 12, letterSpacing: 1.6 }}>
-                                <button type="button" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: BROWN, fontFamily: 'inherit', letterSpacing: 1.6, fontSize: 12 }}>
-                                    {isOpen ? 'THU GỌN ↑' : 'XEM CHI TIẾT ↓'}
-                                </button>
+                                {p.sections.length > 0 && (
+                                    <button type="button" onClick={() => setOpen(isOpen ? null : key)} aria-expanded={isOpen} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: BROWN, fontFamily: 'inherit', letterSpacing: 1.6, fontSize: 12 }}>
+                                        {isOpen ? 'THU GỌN ↑' : 'XEM CHI TIẾT ↓'}
+                                    </button>
+                                )}
+                                {showImage && (
+                                    <button type="button" onClick={() => setPreview({ src: p.image!, alt: `Báo giá ${tabLabel[group.id] || group.title} - ${p.name}` })} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: BROWN, fontFamily: 'inherit', letterSpacing: 1.6, fontSize: 12 }}>
+                                        XEM BÁO GIÁ ẢNH
+                                    </button>
+                                )}
                                 <a href={zaloLink(`${tabLabel[group.id] || group.title} - ${p.name}`)} target="_blank" rel="noreferrer" style={{ color: DARK, textDecoration: 'none', fontWeight: 600 }}>
                                     TƯ VẤN GÓI NÀY →
                                 </a>
@@ -102,6 +147,20 @@ export default function PricingSection({ onBook }: { onBook: () => void }) {
                     ĐẶT LỊCH TƯ VẤN MIỄN PHÍ
                 </button>
             </div>
+
+            {preview && (
+                <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={preview.alt}
+                    onClick={() => setPreview(null)}
+                    style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(20,16,12,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'clamp(8px, 3vw, 32px)', cursor: 'zoom-out' }}
+                >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={preview.src} alt={preview.alt} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', boxShadow: '0 20px 60px rgba(0,0,0,.5)', background: CREAM }} />
+                    <button type="button" aria-label="Đóng" onClick={() => setPreview(null)} style={{ position: 'fixed', top: 14, right: 14, width: 42, height: 42, borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,.92)', color: DARK, fontSize: 22, lineHeight: 1, cursor: 'pointer' }}>×</button>
+                </div>
+            )}
         </section>
     );
 }
