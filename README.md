@@ -105,6 +105,14 @@ Luồng: `scripts/build-photos.mjs` nén vào `.cache/photos/` → `scripts/uplo
 Upload dùng token của `npx wrangler login`; token hết hạn thì login lại.
 Xoá `.cache/` thì lần sau nén lại toàn bộ (vài phút) nhưng chỉ upload file khác MD5.
 
+### Ảnh feedback khách
+
+Ảnh trong `E:\Mẫu\ANH WEB\Feedback\` (không tạo thư mục con) là bộ feedback hiện
+trên trang chủ và trang Feedback, xếp theo tên file. Thêm / xoá / thay ảnh rồi bấm
+**"Cap nhat anh Merci"**: web hiện đúng các ảnh đang có trong thư mục (thay ảnh
+trùng tên vẫn đổi theo vì tên file trên R2 theo nội dung ảnh). `public/home/feedback`
+chỉ là bộ dự phòng khi manifest chưa tải được.
+
 ### Nạp ảnh từ Google Drive
 
 Double-click `CAP-NHAT-ANH-TU-DRIVE.bat` (shortcut **"Cap nhat anh tu Drive"**),

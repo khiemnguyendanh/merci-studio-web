@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react';
 import { Reveal, TiltCard } from '@/components/Motion';
 import { feedbackImages, type FeedbackImage } from '@/lib/feedback';
 
-export default function FeedbackPage() {
+export default function FeedbackPage({ images = feedbackImages }: { images?: FeedbackImage[] }) {
     const [activeFeedback, setActiveFeedback] = useState<FeedbackImage | null>(null);
 
     useEffect(() => {
@@ -36,7 +36,7 @@ export default function FeedbackPage() {
             </header>
 
             <div className="feedback-page-grid">
-                {feedbackImages.map((feedback, index) => (
+                {images.map((feedback, index) => (
                     <Reveal key={feedback.src} delay={(index % 3) * 90}>
                         <TiltCard as="button" type="button" onClick={() => setActiveFeedback(feedback)} className="feedback-card" style={{ width: '100%' }} aria-label={`Xem phản hồi khách hàng ${index + 1}`} maxTilt={5} lift={8}>
                             <span className="feedback-card-number">{String(index + 1).padStart(2, '0')}</span>

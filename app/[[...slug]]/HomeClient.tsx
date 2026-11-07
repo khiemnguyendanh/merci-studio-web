@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
+import { feedbackImages, feedbackFromManifest, type FeedbackImage } from '@/lib/feedback';
 import { TiltCard } from '@/components/Motion';
 import QuickChat from '@/components/QuickChat';
 import DriveR2Sync from '@/components/DriveR2Sync';
@@ -879,6 +880,7 @@ export default function Home() {
     const [albumsReady, setAlbumsReady] = useState(false);
     const [blogsReady, setBlogsReady] = useState(false);
     const [videosReady, setVideosReady] = useState(false);
+    const [feedbackList, setFeedbackList] = useState<FeedbackImage[]>(feedbackImages);
 
     // Sync Albums state
     const [showSyncModal, setShowSyncModal] = useState(false);
@@ -1407,6 +1409,8 @@ export default function Home() {
             .then(async manifest => {
                 if (cancelled) return;
                 const staticAlbums = manifest && Array.isArray(manifest.albums) ? manifest.albums.map(withOrder) : [];
+                const manifestFeedback = feedbackFromManifest(manifest?.feedback);
+                if (manifestFeedback) setFeedbackList(manifestFeedback);
                 if (staticAlbums.length) {
                     staticAlbums.sort((a: any, b: any) => (b.order || 0) - (a.order || 0));
                     setAlbums(staticAlbums);
@@ -5784,10 +5788,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                             openAlbum={openAlbumView}
                             videos={videos}
                             openVideo={(youtubeId) => setVideoModal({ isOpen: true, youtubeId })}
+                            feedback={feedbackList}
                         />
                     )}
 
-                    {activeTab === 'feedback' && <FeedbackPage />}
+                    {activeTab === 'feedback' && <FeedbackPage images={feedbackList} />}
 
                     {activeTab === 'tool' && (
                         <div className="mb-3 md:mb-8 bg-white border border-slate-100 rounded-xl md:rounded-2xl p-2.5 md:p-4 shadow-sm">

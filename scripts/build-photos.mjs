@@ -244,16 +244,52 @@ async function main() {
   }
 
   albums.sort((a, b) => b.order - a.order);
+  const feedback = await buildFeedback(stats, failures);
   const manifest = {
     generatedAt: new Date().toISOString(),
     baseUrl: 'https://mercistudio.net',
     photosBase: PUBLIC_BASE,
     categories: [...new Set(albums.map((a) => a.category))],
-    albums
+    albums,
+    ...(feedback ? { feedback } : {})
   };
   fs.writeFileSync(path.join(OUT_ROOT, 'manifest.json'), JSON.stringify(manifest));
   console.log('\nXONG:', stats, '\nmanifest:', path.join(OUT_ROOT, 'manifest.json'));
   if (failures.length) console.log('\nFile lỗi (bỏ qua):\n' + failures.join('\n'));
+}
+
+// Ảnh feedback khách: <nguồn>\Feedback\*.png|jpg -> feedback/<md5 8 ký tự>.webp (+ _t).
+// Tên file theo nội dung ảnh nên thay ảnh trùng tên vẫn ra URL mới (R2 cache 1 năm);
+// web hiện đúng các ảnh đang có trong thư mục, theo thứ tự tên file.
+// Không có thư mục Feedback -> trả null, web dùng bộ ảnh cố định trong public/home/feedback.
+async function buildFeedback(stats, failures) {
+  const folder = listDirs(SOURCE).find((name) => folderKey(name) === 'feedback');
+  if (!folder) return null;
+  const dir = path.join(SOURCE, folder);
+  const outDir = path.join(OUT_ROOT, 'feedback');
+  fs.mkdirSync(outDir, { recursive: true });
+  const tasks = listImages(dir).map((file) => async () => {
+    const src = path.join(dir, file);
+    const hash = crypto.createHash('md5').update(fs.readFileSync(src)).digest('hex').slice(0, 8);
+    const webPath = path.join(outDir, `${hash}.webp`);
+    const thumbPath = path.join(outDir, `${hash}_t.webp`);
+    try {
+      const result = fs.existsSync(webPath) && fs.existsSync(thumbPath)
+        ? { skipped: true }
+        : await processImage(src, webPath, thumbPath);
+      result.skipped ? stats.skipped++ : stats.processed++;
+      return { name: file, src: `${PUBLIC_BASE}/feedback/${hash}.webp`, thumb: `${PUBLIC_BASE}/feedback/${hash}_t.webp` };
+    } catch (error) {
+      stats.failed++;
+      failures.push(`${folder}/${file}: ${error.message}`);
+      return null;
+    }
+  });
+  const items = (await runPool(tasks, CONCURRENCY)).filter(Boolean);
+  const keep = new Set(items.flatMap((it) => [path.basename(it.src), path.basename(it.thumb)]));
+  for (const old of fs.readdirSync(outDir)) if (!keep.has(old)) fs.unlinkSync(path.join(outDir, old));
+  console.log(`✓ Feedback: ${items.length} ảnh`);
+  return items.length ? items : null;
 }
 
 main().catch((error) => {

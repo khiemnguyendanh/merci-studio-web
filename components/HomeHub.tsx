@@ -52,6 +52,7 @@ type HomeHubProps = {
     openAlbum?: (album: HomeAlbum) => void;
     videos?: HomeVideo[];
     openVideo?: (youtubeId: string) => void;
+    feedback?: FeedbackImage[];
 };
 
 // Ảnh tĩnh: next/image không resize trên Workers -> phục vụ thẳng file WebP đã nén sẵn.
@@ -75,7 +76,7 @@ type DestinationCard = {
     img: StaticImageData;
 };
 
-export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, navigateToDress, openClientAuth, handleClientLogout, setShowClientProfileModal, latestAlbums = [], openAlbum, videos = [], openVideo }: HomeHubProps) {
+export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, navigateToDress, openClientAuth, handleClientLogout, setShowClientProfileModal, latestAlbums = [], openAlbum, videos = [], openVideo, feedback: feedbackList = feedbackImages }: HomeHubProps) {
     const [activeFeedback, setActiveFeedback] = useState<FeedbackImage | null>(null);
     const [openFaq, setOpenFaq] = useState<number | null>(0);
 
@@ -429,7 +430,7 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                 </Reveal>
 
                 <div className="feedback-rail" aria-label="Phản hồi của khách hàng Merci Studio">
-                    {feedbackImages.map((feedback, index) => (
+                    {feedbackList.map((feedback, index) => (
                         <TiltCard
                             as="button"
                             type="button"
