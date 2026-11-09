@@ -3,6 +3,7 @@ import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { cachedJson } from './edge-cache';
 import { MANIFEST_KEY } from './photo-manifest';
 import { albumIntro } from '@/lib/album-copy';
+import { publicBlogs } from './blogs';
 
 type FirestoreValue = { stringValue?: string; integerValue?: string; doubleValue?: number };
 type FirestoreDocument = { name: string; fields?: Record<string, FirestoreValue> };
@@ -132,8 +133,14 @@ function blogToContent(document: FirestoreDocument, slug?: string): PublicConten
   };
 }
 
-function fetchBlogs() {
-  return fetchCollection('merci_blogs', ['title', 'slug', 'metaDesc', 'coverUrl']);
+// Dung chung ban cache voi trang Blog (lib/server/blogs.ts): mot lan doc
+// Firestore moi gio cho ca khach lan bot/sitemap.
+async function fetchBlogs(): Promise<FirestoreDocument[]> {
+  const { blogs } = await publicBlogs();
+  return blogs.map((b) => ({
+    name: 'merci_blogs/' + b.id,
+    fields: { title: { stringValue: b.title }, slug: { stringValue: b.slug }, metaDesc: { stringValue: b.metaDesc }, coverUrl: { stringValue: b.coverUrl } },
+  }));
 }
 
 export async function findPublicContent(slug: string): Promise<PublicContentMetadata | null> {

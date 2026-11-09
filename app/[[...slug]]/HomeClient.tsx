@@ -1452,6 +1452,22 @@ export default function Home() {
         if (!mounted || !db) return;
         if (activeTab !== 'blog' && !pendingSlug && !isAdmin) return;
 
+        // Khách: lấy qua /api/public-blogs (cache ở biên 1 giờ) — trước đây mỗi lượt
+        // mở Blog đọc toàn bộ bài từ Firestore, nhiều bài sẽ vượt hạn mức miễn phí.
+        // Admin vẫn nghe realtime để sửa/xoá thấy ngay.
+        if (!isAdmin) {
+            let cancelled = false;
+            fetch('/api/public-blogs')
+                .then(res => (res.ok ? res.json() : null))
+                .catch(() => null)
+                .then(data => {
+                    if (cancelled) return;
+                    if (data && Array.isArray(data.blogs)) setBlogs(data.blogs);
+                    setBlogsReady(true);
+                });
+            return () => { cancelled = true; };
+        }
+
         const unsubBlogs = onSnapshot(collection(db, 'merci_blogs'), (snapshot) => {
             const fetched = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             fetched.sort((a, b) => b.createdAt - a.createdAt);

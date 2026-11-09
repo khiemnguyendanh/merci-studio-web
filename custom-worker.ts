@@ -25,7 +25,7 @@ const NO_CACHE_PAGES = new Set(['/tool', '/tao-trang', '/chon-anh', '/loc-anh', 
 
 // API công khai, dữ liệu chung cho mọi khách (public-content ~1,7 MB JSON: parse lại
 // ở mỗi lượt vào trang tốn CPU nhất). Thời gian cache lấy theo s-maxage route tự đặt.
-const PUBLIC_API = new Set(['/api/public-content', '/api/tv-albums', '/api/album-layout']);
+const PUBLIC_API = new Set(['/api/public-content', '/api/public-blogs', '/api/tv-albums', '/api/album-layout']);
 
 function cacheable(request: Request, url: URL) {
   if (request.method !== 'GET') return false;
