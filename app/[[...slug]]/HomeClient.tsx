@@ -9,7 +9,7 @@ import {
     MapPin, Phone, Plus, X, Folder, FolderDown, AlertCircle, User,
     Link as LinkIcon, Edit, Trash2, Star, PlayCircle, ArrowUp, ArrowDown, Mail, Eye,
     BookOpen, FileText, Calendar, ChevronDown, ChevronUp, MessageSquare, LogOut,
-    Home as HomeIcon, Images, Shirt, CalendarDays, Menu
+    Home as HomeIcon, Images, Shirt, CalendarDays, Menu, ScanFace
 } from 'lucide-react';
 import HomeHub from '@/components/HomeHub';
 import FeedbackPage from '@/components/FeedbackPage';
@@ -857,6 +857,9 @@ export default function Home() {
     // Nhóm khuôn mặt do scripts/face-groups.py quét sẵn, đọc từ R2 (faces/<folderId>/people.json).
     const [facePeople, setFacePeople] = useState([]);
     const [activeFaceId, setActiveFaceId] = useState('');
+    // Tiến độ job "Quét mặt" admin vừa gửi cho máy studio (null = không có job đang theo dõi).
+    const [faceScan, setFaceScan] = useState(null);
+    const [faceReload, setFaceReload] = useState(0);
     const [selectedImages, setSelectedImages] = useState(new Set());
     const [allSelections, setAllSelections] = useState([]);
     const [selectedFilter, setSelectedFilter] = useState('mine'); // 'mine', 'all', or specific userKey
@@ -4151,6 +4154,47 @@ export default function Home() {
         }
     };
 
+    // Gửi việc quét mặt cho máy studio (agent face-agent.mjs nhận và chạy), rồi theo dõi tiến độ.
+    const handleFaceScan = async () => {
+        const folderId = activeClientFolderId || currentFolderId;
+        if (!folderId) return alert('Chưa xác định được folder cần quét.');
+        if (!auth?.currentUser) return alert('Hãy đăng nhập admin trước.');
+        try {
+            const token = await auth.currentUser.getIdToken();
+            const res = await fetch('/api/admin/face-scan', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
+                body: JSON.stringify({ action: 'enqueue', folderId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+            setFaceScan(data.job);
+            if (data.alreadyQueued) alert('Folder này đang được quét. Máy studio sẽ xử lý xong trong ít phút.');
+        } catch (e) {
+            alert('Không gửi được yêu cầu quét mặt: ' + e.message);
+        }
+    };
+
+    useEffect(() => {
+        if (!faceScan || (faceScan.status !== 'queued' && faceScan.status !== 'running')) return;
+        let cancelled = false;
+        const tick = async () => {
+            try {
+                if (!auth?.currentUser) return;
+                const token = await auth.currentUser.getIdToken();
+                const res = await fetch(`/api/admin/face-scan?action=status&folderId=${encodeURIComponent(faceScan.folderId)}`, {
+                    headers: { authorization: `Bearer ${token}` }
+                });
+                const data = await res.json().catch(() => ({}));
+                if (cancelled || !res.ok || !data.job) return;
+                setFaceScan(data.job);
+                if (data.job.status === 'done') setFaceReload(n => n + 1);
+            } catch { /* mạng chập chờn thì lần poll sau thử lại */ }
+        };
+        const timer = setInterval(tick, 8000);
+        return () => { cancelled = true; clearInterval(timer); };
+    }, [faceScan?.folderId, faceScan?.status]);
+
     const handleRefreshClientPage = async () => {
         if (!currentSelectionKey) return alert("Không tìm thấy thông tin trang để làm mới.");
 
@@ -4640,7 +4684,7 @@ export default function Home() {
                 setFacePeople(data.people);
             });
         return () => { cancelled = true; };
-    }, [activeClientFolderId]);
+    }, [activeClientFolderId, faceReload]);
 
     useEffect(() => {
         setSelectedFilter('mine');
@@ -6804,6 +6848,15 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                         </div>
                                     )}
 
+                                    {isAdmin && faceScan && faceScan.folderId === (activeClientFolderId || currentFolderId) && (
+                                        <div className={`rounded-xl px-3 py-2 text-xs md:text-sm font-semibold ${faceScan.status === 'error' ? 'bg-red-50 text-red-700' : faceScan.status === 'done' ? 'bg-green-50 text-green-700' : 'bg-blue-50 text-blue-700'}`}>
+                                            {faceScan.status === 'queued' && 'Đã gửi yêu cầu quét mặt. Máy studio sẽ tự nhận trong ít giây (máy phải đang bật).'}
+                                            {faceScan.status === 'running' && 'Máy studio đang quét khuôn mặt... (vài phút tuỳ số ảnh)'}
+                                            {faceScan.status === 'done' && `Quét xong: ${faceScan.detail || `${faceScan.people} người`}. Thanh "Lọc theo người" đã cập nhật.`}
+                                            {faceScan.status === 'error' && `Quét mặt lỗi: ${faceScan.detail || 'không rõ nguyên nhân'}. Bấm "Quét mặt" để thử lại.`}
+                                        </div>
+                                    )}
+
                                     {/* Control Bar */}
                                     <div className="sticky top-2 md:top-20 z-30 bg-white/95 backdrop-blur-xl p-2 md:p-4 border border-slate-100 rounded-xl md:rounded-2xl flex flex-col justify-between gap-2 md:gap-4 shadow-xl">
                                         <div className="flex flex-row items-center justify-between w-full md:w-auto gap-2">
@@ -6869,6 +6922,16 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                             {currentSelectionKey && (
                                                 <button onClick={handleRefreshClientPage} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                     <RefreshCcw className="w-3.5 h-3.5 mr-1.5 text-blue-600 animate-pulse" /> <span>Làm mới Drive</span>
+                                                </button>
+                                            )}
+                                            {isAdmin && (activeClientFolderId || currentFolderId) && (
+                                                <button
+                                                    onClick={handleFaceScan}
+                                                    disabled={faceScan && (faceScan.status === 'queued' || faceScan.status === 'running') && faceScan.folderId === (activeClientFolderId || currentFolderId)}
+                                                    title="Máy studio ở nhà sẽ tự quét khuôn mặt và gom theo từng người"
+                                                    className="bg-slate-100 hover:bg-slate-200 disabled:opacity-60 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start"
+                                                >
+                                                    <ScanFace className="w-3.5 h-3.5 mr-1.5 text-blue-600" /> <span>Quét mặt</span>
                                                 </button>
                                             )}
                                             <button onClick={() => {
