@@ -117,6 +117,11 @@ Tương đương lệnh: `python scripts/face-groups.py <link folder Drive>`
 Tuỳ chọn: `--threshold 0.42` (cao hơn = gom chặt hơn), `--min-faces 3`
 (nhóm ít ảnh hơn mức này thì bỏ), `--limit N` (thử nhanh), `--no-upload`.
 
+Trong ô **"Thư mục ảnh gốc trên máy"** trên trang admin, có thể nhập đường dẫn
+ví dụ `E:\Mẫu\ANH WEB\Váy cưới\Váy cưới Signature`. Agent sẽ khớp tên file
+với danh sách Drive và đọc ảnh gốc trên máy; file nào không khớp tên vẫn tải
+thumbnail từ Drive. Bỏ trống ô này thì dùng Drive toàn bộ như trước.
+
 Cần một lần: `python -m pip install insightface`. Thêm ảnh mới vào folder Drive
 thì chạy lại để quét bổ sung.
 

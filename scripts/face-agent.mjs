@@ -42,9 +42,11 @@ async function api(key, method, query, body) {
   return data;
 }
 
-function runScan(folderId) {
+function runScan(folderId, sourcePath) {
   return new Promise((resolve) => {
-    const child = spawn('python', ['scripts/face-groups.py', folderId], { cwd: ROOT, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
+    const args = ['scripts/face-groups.py', folderId];
+    if (sourcePath) args.push('--source-path', sourcePath);
+    const child = spawn('python', args, { cwd: ROOT, env: { ...process.env, PYTHONIOENCODING: 'utf-8' } });
     let output = '';
     const collect = (chunk) => { output = (output + chunk.toString()).slice(-4000); };
     child.stdout.on('data', collect);
@@ -80,7 +82,7 @@ async function main() {
       const { job } = await api(key, 'GET', 'action=claim');
       if (job?.folderId) {
         log(`Nhận job: ${job.folderId}`);
-        const result = await runScan(job.folderId);
+        const result = await runScan(job.folderId, job.sourcePath);
         log(result.ok ? `Xong: ${result.detail}` : `Lỗi: ${result.detail}`);
         await api(key, 'POST', '', { action: 'done', folderId: job.folderId, ...result });
         if (once) return;

@@ -17,6 +17,7 @@ const STALE_MS = 30 * 60 * 1000; // job "running" quá 30 phút coi như agent c
 
 type Job = {
   folderId: string;
+  sourcePath?: string;
   status: 'queued' | 'running' | 'done' | 'error';
   requestedAt: number;
   startedAt?: number;
@@ -56,7 +57,8 @@ function publicJob(job: Job) {
   return {
     folderId: job.folderId, status: job.status, requestedAt: job.requestedAt,
     startedAt: job.startedAt || 0, finishedAt: job.finishedAt || 0,
-    detail: job.detail || '', people: job.people || 0, faceCount: job.faceCount || 0
+    detail: job.detail || '', people: job.people || 0, faceCount: job.faceCount || 0,
+    sourcePath: job.sourcePath || ''
   };
 }
 
@@ -80,7 +82,7 @@ export async function GET(request: Request) {
       job.startedAt = now;
       job.detail = '';
       await writeQueue(bucket, queue);
-      return Response.json({ job: { folderId: job.folderId } });
+      return Response.json({ job: { folderId: job.folderId, sourcePath: job.sourcePath || '' } });
     }
 
     await requireAdmin(request);
@@ -124,6 +126,10 @@ export async function POST(request: Request) {
 
     const folderId = extractDriveFolderId(String(body.folderId || ''));
     if (!folderId) throw new ApiError(400, 'Link hoặc id folder Google Drive không hợp lệ.');
+    const sourcePath = String(body.sourcePath || '').trim().slice(0, 1000);
+    if (sourcePath && !/^[a-zA-Z]:[\\/]|^\\\\/.test(sourcePath)) {
+      throw new ApiError(400, 'Đường dẫn ảnh trên máy không hợp lệ.');
+    }
 
     const queue = await readQueue(bucket);
     const now = Date.now();
@@ -131,7 +137,7 @@ export async function POST(request: Request) {
     if (job && (job.status === 'queued' || job.status === 'running') && now - (job.startedAt || job.requestedAt) < STALE_MS) {
       return Response.json({ job: publicJob(job), alreadyQueued: true });
     }
-    job = { folderId, status: 'queued', requestedAt: now, by: String(admin.email || '') };
+    job = { folderId, sourcePath, status: 'queued', requestedAt: now, by: String(admin.email || '') };
     queue.jobs = [job, ...queue.jobs.filter((j) => j.folderId !== folderId)].slice(0, 100);
     await writeQueue(bucket, queue);
     return Response.json({ job: publicJob(job), alreadyQueued: false });

@@ -36,7 +36,7 @@ BUCKET = os.environ.get('R2_BUCKET', 'merci-photos')
 PREFIX = 'faces/'
 PUBLIC_BASE = os.environ.get('PHOTOS_PUBLIC_BASE_ROOT', 'https://img.mercistudio.net')
 
-DOWNLOAD_WORKERS = 8
+DOWNLOAD_WORKERS = 16
 DET_SIZE = (960, 960)          # ảnh cưới nhiều mặt nhỏ ở xa -> để lớn hơn mặc định 640
 MIN_FACE_PX = 34               # bỏ mặt quá nhỏ: nhiễu, gom nhóm hay sai
 MIN_DET_SCORE = 0.60
@@ -86,7 +86,7 @@ def drive_list(api_key, fid):
             return files
 
 
-def download(file_id, size='w1600'):
+def download(file_id, size='w1200'):
     url = f'https://drive.google.com/thumbnail?id={file_id}&sz={size}'
     for attempt in range(3):
         try:
@@ -97,6 +97,16 @@ def download(file_id, size='w1600'):
             pass
         time.sleep(0.6 * (attempt + 1))
     return None
+
+
+def local_image_map(source_path):
+    if not source_path:
+        return {}
+    root = Path(source_path)
+    if not root.exists() or not root.is_dir():
+        raise RuntimeError(f'Không tìm thấy thư mục ảnh trên máy: {source_path}')
+    exts = {'.jpg', '.jpeg', '.png', '.webp', '.heic', '.heif'}
+    return {p.name.casefold(): p for p in root.iterdir() if p.is_file() and p.suffix.lower() in exts}
 
 
 # --- Gom nhóm ---------------------------------------------------------------
@@ -234,26 +244,66 @@ def scan_folder(app, fid, args, token):
     if not files:
         log(f'  {fid}: không có ảnh (kiểm tra quyền chia sẻ)')
         return None
-    log(f'  Tải và quét {len(files)} ảnh...')
+    local_files = local_image_map(args.source_path)
+    log(f'  {"Đọc ảnh gốc trên máy" if local_files else "Tải thumbnail từ Google Drive"}: {len(files)} ảnh...')
 
+    out = CACHE / fid
+    out.mkdir(parents=True, exist_ok=True)
+    detection_cache = out / 'detections.json'
+    cached = {}
+    if detection_cache.exists():
+        try:
+            cached = json.loads(detection_cache.read_text(encoding='utf-8'))
+        except Exception:
+            cached = {}
     records, images, started = [], {}, time.time()
+    changed_cache = False
+    def get_blob(meta):
+        local = local_files.get(str(meta.get('name', '')).casefold())
+        if local:
+            try:
+                return local.read_bytes()
+            except OSError:
+                return None
+        return download(meta['id'])
+
     with futures.ThreadPoolExecutor(max_workers=DOWNLOAD_WORKERS) as pool:
-        for index, (meta, blob) in enumerate(zip(files, pool.map(lambda f: download(f['id']), files)), 1):
+        for index, (meta, blob) in enumerate(zip(files, pool.map(get_blob, files)), 1):
             if blob is None:
                 continue
             image = cv2.imdecode(np.frombuffer(blob, np.uint8), cv2.IMREAD_COLOR)
             if image is None:
                 continue
+            cached_faces = cached.get(meta['id'])
+            if cached_faces is not None:
+                images[meta['id']] = image
+                for item in cached_faces:
+                    item = dict(item)
+                    item['emb'] = np.asarray(item['emb'], dtype=np.float32)
+                    item['kps'] = np.asarray(item['kps'], dtype=np.float32) if item.get('kps') is not None else None
+                    records.append(item)
+                if index % 100 == 0 or index == len(files):
+                    log(f'    {index}/{len(files)} ảnh · dùng cache · {time.time() - started:.0f}s')
+                continue
+            detected_for_file = []
             for face in app.get(image):
                 x1, y1, x2, y2 = face.bbox
                 if min(x2 - x1, y2 - y1) < MIN_FACE_PX or face.det_score < MIN_DET_SCORE:
                     continue
                 emb = face.normed_embedding.astype(np.float32)
-                records.append({'fileId': meta['id'], 'name': meta['name'], 'emb': emb,
+                item = {'fileId': meta['id'], 'name': meta['name'], 'emb': emb,
                                 'bbox': face.bbox, 'score': float(face.det_score),
                                 'kps': getattr(face, 'kps', None),
-                                'area': float((x2 - x1) * (y2 - y1))})
+                                'area': float((x2 - x1) * (y2 - y1))}
+                records.append(item)
+                detected_for_file.append({**item, 'emb': emb.tolist(),
+                                          'bbox': face.bbox.tolist(),
+                                          'kps': item['kps'].tolist() if item['kps'] is not None else None})
                 images[meta['id']] = image
+            cached[meta['id']] = detected_for_file
+            changed_cache = True
+            if changed_cache and (index % 25 == 0 or index == len(files)):
+                detection_cache.write_text(json.dumps(cached), encoding='utf-8')
             if index % 50 == 0 or index == len(files):
                 log(f'    {index}/{len(files)} ảnh · {len(records)} khuôn mặt · {time.time() - started:.0f}s')
 
@@ -291,8 +341,8 @@ def scan_folder(app, fid, args, token):
     result = {'folderId': fid, 'generatedAt': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
               'imageCount': len(files), 'faceCount': len(records), 'people': people}
 
-    out = CACHE / fid
-    out.mkdir(parents=True, exist_ok=True)
+    # Cache detections is deliberately kept: rerunning after a network failure
+    # only downloads/analyses files that were not completed last time.
     (out / 'people.json').write_text(json.dumps(result, ensure_ascii=False), encoding='utf-8')
     for key, data in assets:
         (out / Path(key).name).write_bytes(data)
@@ -318,6 +368,7 @@ def main():
     parser.add_argument('--threshold', type=float, default=0.42)
     parser.add_argument('--limit', type=int, default=0)
     parser.add_argument('--no-upload', action='store_true')
+    parser.add_argument('--source-path', default='', help='Thư mục ảnh gốc trên máy; khớp theo tên file với Drive')
     args = parser.parse_args()
 
     load_env()

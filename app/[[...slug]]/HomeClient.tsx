@@ -860,6 +860,7 @@ export default function Home() {
     // Tiến độ job "Quét mặt" admin vừa gửi cho máy studio (null = không có job đang theo dõi).
     const [faceScan, setFaceScan] = useState(null);
     const [faceReload, setFaceReload] = useState(0);
+    const [faceSourcePath, setFaceSourcePath] = useState('');
     const [selectedImages, setSelectedImages] = useState(new Set());
     const [allSelections, setAllSelections] = useState([]);
     const [selectedFilter, setSelectedFilter] = useState('mine'); // 'mine', 'all', or specific userKey
@@ -4164,7 +4165,7 @@ export default function Home() {
             const res = await fetch('/api/admin/face-scan', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
-                body: JSON.stringify({ action: 'enqueue', folderId })
+                body: JSON.stringify({ action: 'enqueue', folderId, sourcePath: faceSourcePath })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
@@ -6923,6 +6924,15 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                 <button onClick={handleRefreshClientPage} className="bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-lg md:px-4 md:py-2 md:rounded-xl text-xs md:text-sm font-bold transition-all text-slate-700 shadow-sm flex items-center justify-center flex-shrink-0 snap-start">
                                                     <RefreshCcw className="w-3.5 h-3.5 mr-1.5 text-blue-600 animate-pulse" /> <span>Làm mới Drive</span>
                                                 </button>
+                                            )}
+                                            {isAdmin && (activeClientFolderId || currentFolderId) && (
+                                                <input
+                                                    value={faceSourcePath}
+                                                    onChange={(e) => setFaceSourcePath(e.target.value)}
+                                                    placeholder="Thư mục ảnh gốc trên máy (tuỳ chọn)"
+                                                    title="Nếu agent trên máy có ảnh gốc, nhập đường dẫn để quét ảnh gốc thay vì tải thumbnail Drive"
+                                                    className="min-w-[220px] bg-white border border-slate-200 px-3 py-1.5 rounded-lg md:px-3 md:py-2 md:rounded-xl text-xs font-medium outline-none focus:border-blue-500 flex-shrink-0"
+                                                />
                                             )}
                                             {isAdmin && (activeClientFolderId || currentFolderId) && (
                                                 <button
