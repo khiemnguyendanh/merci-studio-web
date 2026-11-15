@@ -3600,8 +3600,11 @@ export default function Home() {
         return guestId;
     };
 
+    // Danh sách lựa chọn của mọi người trong folder: Firestore Rules chỉ cho admin
+    // liệt kê client_selections (khách không được xem khách khác đã chọn gì), nên
+    // khách gọi là chắc chắn lỗi quyền — bỏ qua luôn cho nhanh và sạch console.
     const fetchAllSelectionsForFolder = async (folderId) => {
-        if (!db || !folderId) return;
+        if (!db || !folderId || !isAdmin) return;
         try {
             const q = query(collection(db, 'client_selections'), where('folderId', '==', folderId));
             const querySnapshot = await getDocs(q);
@@ -3611,7 +3614,7 @@ export default function Home() {
             });
             setAllSelections(list);
         } catch (e) {
-            console.error('Error fetching all selections:', e);
+            console.warn('Không đọc được danh sách lựa chọn:', e?.code || e);
         }
     };
 
