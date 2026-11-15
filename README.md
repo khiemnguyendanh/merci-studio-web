@@ -105,6 +105,21 @@ Luồng: `scripts/build-photos.mjs` nén vào `.cache/photos/` → `scripts/uplo
 Upload dùng token của `npx wrangler login`; token hết hạn thì login lại.
 Xoá `.cache/` thì lần sau nén lại toàn bộ (vài phút) nhưng chỉ upload file khác MD5.
 
+### Lọc ảnh theo người trong trang chọn ảnh
+
+Sau khi tạo trang chọn ảnh cho khách, double-click `QUET-MAT-TRANG-CHON-ANH.bat`
+và dán link folder Drive của trang đó. Máy quét khuôn mặt bằng InsightFace
+(GPU nếu có), gom theo từng người rồi đẩy kết quả lên R2 (`faces/<folderId>/`).
+Khách mở trang sẽ thấy thanh **"Lọc theo người"** — bấm một khuôn mặt để chỉ xem
+ảnh có người đó. Khách không phải xử lý gì, trang vẫn mở nhanh như trước.
+
+Tương đương lệnh: `python scripts/face-groups.py <link folder Drive>`
+Tuỳ chọn: `--threshold 0.42` (cao hơn = gom chặt hơn), `--min-faces 3`
+(nhóm ít ảnh hơn mức này thì bỏ), `--limit N` (thử nhanh), `--no-upload`.
+
+Cần một lần: `python -m pip install insightface`. Thêm ảnh mới vào folder Drive
+thì chạy lại để quét bổ sung.
+
 ### Ảnh feedback khách
 
 Ảnh trong `E:\Mẫu\ANH WEB\Feedback\` (không tạo thư mục con) là bộ feedback hiện

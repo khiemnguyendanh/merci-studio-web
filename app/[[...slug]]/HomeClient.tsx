@@ -854,6 +854,9 @@ export default function Home() {
     const [clientLink, setClientLink] = useState('');
     const [savedClientPages, setSavedClientPages] = useState([]);
     const [loadedImages, setLoadedImages] = useState([]);
+    // Nhóm khuôn mặt do scripts/face-groups.py quét sẵn, đọc từ R2 (faces/<folderId>/people.json).
+    const [facePeople, setFacePeople] = useState([]);
+    const [activeFaceId, setActiveFaceId] = useState('');
     const [selectedImages, setSelectedImages] = useState(new Set());
     const [allSelections, setAllSelections] = useState([]);
     const [selectedFilter, setSelectedFilter] = useState('mine'); // 'mine', 'all', or specific userKey
@@ -4590,7 +4593,13 @@ export default function Home() {
         return found && found.imageNotes ? found.imageNotes : {};
     })();
 
-    const displayedImages = showOnlySelected ? loadedImages.filter(img => effectiveSelectedImages.has(img.id)) : loadedImages;
+    const activeFaceFileIds = activeFaceId
+        ? new Set(facePeople.find(p => p.id === activeFaceId)?.fileIds || [])
+        : null;
+    const faceFilteredImages = activeFaceFileIds
+        ? loadedImages.filter(img => activeFaceFileIds.has(img.id))
+        : loadedImages;
+    const displayedImages = showOnlySelected ? faceFilteredImages.filter(img => effectiveSelectedImages.has(img.id)) : faceFilteredImages;
     const currentViewBlog = blogs.find(b => b.id === activeBlogId);
 
     const IMAGES_PER_PAGE = 50;
@@ -4612,7 +4621,23 @@ export default function Home() {
 
     useEffect(() => {
         setGalleryPage(1);
-    }, [currentFolderId, showOnlySelected, loadedImages.length]);
+    }, [currentFolderId, showOnlySelected, loadedImages.length, activeFaceId]);
+
+    // Nhóm khuôn mặt của folder đang xem (có thì hiện thanh "Lọc theo người").
+    useEffect(() => {
+        setActiveFaceId('');
+        setFacePeople([]);
+        if (!activeClientFolderId) return;
+        let cancelled = false;
+        fetch(`${PHOTOS_BASE.replace(/\/photos$/, '')}/faces/${activeClientFolderId}/people.json`)
+            .then(res => (res.ok ? res.json() : null))
+            .catch(() => null)
+            .then(data => {
+                if (cancelled || !data || !Array.isArray(data.people)) return;
+                setFacePeople(data.people);
+            });
+        return () => { cancelled = true; };
+    }, [activeClientFolderId]);
 
     useEffect(() => {
         setSelectedFilter('mine');
@@ -6727,6 +6752,49 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         className={`px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold whitespace-nowrap transition-all ${activeClientFolderId === folder.id ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
                                                     >
                                                         {folder.name || `Folder ${index + 1}`}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Lọc ảnh theo từng người (nhóm mặt quét sẵn) */}
+                                    {facePeople.length > 0 && (
+                                        <div className="bg-white border border-slate-100 rounded-2xl p-2.5 md:p-4 shadow-sm">
+                                            <div className="flex items-center justify-between gap-3 mb-2.5 md:mb-3">
+                                                <div>
+                                                    <h3 className="text-sm md:text-base font-bold text-slate-900">Lọc theo người</h3>
+                                                    <p className="hidden sm:block text-xs text-slate-500">Bấm vào một khuôn mặt để chỉ xem ảnh có người đó.</p>
+                                                </div>
+                                                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full whitespace-nowrap">{facePeople.length} người</span>
+                                            </div>
+                                            <div className="flex gap-2 md:gap-3 overflow-x-auto no-scrollbar pb-1">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setActiveFaceId('')}
+                                                    className={`shrink-0 px-3 py-1.5 rounded-lg text-xs md:text-sm font-bold whitespace-nowrap transition-all self-center ${!activeFaceId ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                                                >
+                                                    Tất cả
+                                                </button>
+                                                {facePeople.map(person => (
+                                                    <button
+                                                        key={person.id}
+                                                        type="button"
+                                                        onClick={() => setActiveFaceId(activeFaceId === person.id ? '' : person.id)}
+                                                        title={`${person.label} · ${person.count} ảnh`}
+                                                        className="shrink-0 flex flex-col items-center gap-1 w-16 md:w-20 group/face"
+                                                    >
+                                                        <img
+                                                            src={person.thumb}
+                                                            alt={person.label}
+                                                            loading="lazy"
+                                                            decoding="async"
+                                                            referrerPolicy="no-referrer"
+                                                            className={`w-14 h-14 md:w-16 md:h-16 rounded-full object-cover transition-all ${activeFaceId === person.id ? 'ring-[3px] ring-blue-600 ring-offset-2' : 'ring-1 ring-slate-200 group-hover/face:ring-blue-300'}`}
+                                                        />
+                                                        <span className={`text-[10px] md:text-xs font-bold leading-tight text-center truncate w-full ${activeFaceId === person.id ? 'text-blue-600' : 'text-slate-500'}`}>
+                                                            {person.count} ảnh
+                                                        </span>
                                                     </button>
                                                 ))}
                                             </div>
