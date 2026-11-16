@@ -1,500 +1,17 @@
 {
-  "source": "E:\\Mẫu\\Bao Gia 2026 (file JSON gốc) — ảnh báo giá: TAT CA BAO GIA 2026\\JPG web",
-  "updated": "2026-11",
+  "source": "C:\\Users\\lanht\\Desktop\\BAO GIA MERCI 2026\\File goc (sua duoc)\\all.json",
+  "updated": "2026-11-16",
   "groups": [
     {
-      "id": "prewedding",
-      "title": "Chụp ảnh cưới (Pre-wedding)",
-      "packages": [
-        {
-          "name": "STUDIO 1",
-          "price": "3.500.000",
-          "note": "Merci House",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "01 váy cưới cô dâu",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng gỗ Laminate 60 × 90",
-                "02 ảnh để bàn ép gỗ 13 × 18",
-                "10 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/10-prewedding-studio-1.jpg"
-        },
-        {
-          "name": "STUDIO 2A",
-          "price": "5.250.000",
-          "note": "Merci House",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "01 váy cưới cô dâu",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng gỗ Laminate 60 × 90 cao cấp",
-                "04 ảnh để bàn ép gỗ 15 × 21",
-                "10 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Merci Bridal",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/11-prewedding-studio-2a.jpg"
-        },
-        {
-          "name": "STUDIO 2B",
-          "price": "6.000.000",
-          "note": "Merci House",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "01 váy cưới cô dâu",
-                "01 bộ vest chú rể",
-                "01 áo dài hoặc váy thường concept",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
-                "04 ảnh để bàn ép gỗ 15 × 21",
-                "20 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Merci Bridal",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/12-prewedding-studio-2b.jpg"
-        },
-        {
-          "name": "STUDIO 3",
-          "price": "6.900.000",
-          "note": "Merci House",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "02 váy cưới cô dâu",
-                "02 bộ vest chú rể",
-                "01 áo dài hoặc váy thường concept",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
-                "10 ảnh khung Hàn Quốc",
-                "20 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Merci Bridal",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/13-prewedding-studio-3.jpg"
-        },
-        {
-          "name": "STUDIO 4",
-          "price": "8.000.000",
-          "note": "Merci House + Ngoại cảnh",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "02 váy cưới cô dâu",
-                "02 bộ vest chú rể",
-                "01 áo dài hoặc váy thường concept",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
-                "15 ảnh khung Hàn Quốc",
-                "25 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Merci Bridal",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/14-prewedding-studio-4.jpg"
-        },
-        {
-          "name": "STUDIO 5",
-          "price": "11.000.000",
-          "note": "Merci House + Ngoại cảnh",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "02 váy cưới cô dâu",
-                "02 bộ vest chú rể",
-                "01 áo dài hoặc váy thường concept",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng tráng gương 60 × 90 kèm khung cao cấp",
-                "15 ảnh khung Hàn Quốc",
-                "30 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Luxury",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/15-prewedding-studio-5.jpg"
-        },
-        {
-          "name": "STUDIO 6",
-          "price": "12.000.000",
-          "note": "Hà Nội / Ninh Bình / Quảng Ninh / Hải Phòng / Vĩnh Phúc",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "02 váy cưới cô dâu",
-                "02 bộ vest chú rể",
-                "01 áo dài hoặc váy thường concept",
-                "01 lần makeup & làm tóc",
-                "01 thợ chụp + 01 thợ phụ",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
-                "15 ảnh khung Hàn Quốc",
-                "35 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu dòng Luxury",
-                "01 áo dài cô dâu dòng Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
-                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
-                "07 cặp áo bê tráp nhà trai và nhà gái"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "Giảm 50% gói chụp bầu và chụp trẻ em",
-                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
-                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
-              ]
-            }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/16-prewedding-studio-6.jpg"
-        }
-      ],
-      "footnote": [
-        "Giá trên chưa bao gồm chi phí đi lại cho ekip, vé vào cửa và các chi phí phát sinh tại điểm chụp.",
-        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
-      ]
-    },
-    {
-      "id": "prewedding-hanoi",
-      "title": "Chụp ảnh cưới — Merci Hanoi",
-      "packages": [
-        {
-          "name": "STUDIO 1",
-          "price": "5.500.000",
-          "note": "Merci Hanoi · chụp tại studio",
-          "image": "https://img.mercistudio.net/bao-gia-2026/17-hanoi-studio-1.jpg",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "01 váy cưới cô dâu",
-                "01 bộ vest chú rể",
-                "01 lần makeup & làm tóc đi theo",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc",
-                "02 ảnh phóng gỗ Laminate 60 × 90",
-                "02 ảnh để bàn ép gỗ 13 × 18",
-                "10 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "01 voucher giảm 30% vest ADAM",
-                "01 voucher giảm 20% vest Tuxedo",
-                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
-              ]
-            },
-            {
-              "title": "Nâng cấp thêm",
-              "items": [
-                "Thêm khung ảnh và chất liệu tráng gương",
-                "Nâng cấp thêm album ảnh",
-                "Thêm váy hoặc vest concept chụp"
-              ]
-            }
-          ]
-        },
-        {
-          "name": "PHIM TRƯỜNG",
-          "price": "7.500.000",
-          "note": "Merci Hanoi · chụp tại phim trường",
-          "image": "https://img.mercistudio.net/bao-gia-2026/18-hanoi-phim-truong.jpg",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "01 váy cưới cô dâu",
-                "01 bộ vest chú rể",
-                "01 áo dài hoặc đồ thường",
-                "01 lần makeup & làm tóc đi theo",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
-                "02 ảnh phóng 60 × 90",
-                "04 ảnh để bàn ép gỗ 15 × 21",
-                "Bộ khung Hàn Quốc 5 khung",
-                "20 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 áo dài cô dâu dòng Luxury Merci Bridal"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "01 voucher giảm 30% vest ADAM",
-                "01 voucher giảm 20% vest Tuxedo",
-                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
-              ]
-            },
-            {
-              "title": "Nâng cấp thêm",
-              "items": [
-                "Thêm khung ảnh và chất liệu tráng gương",
-                "Nâng cấp thêm album ảnh",
-                "Thêm váy hoặc vest concept chụp"
-              ]
-            }
-          ]
-        },
-        {
-          "name": "PHIM TRƯỜNG + NGOẠI CẢNH",
-          "price": "9.500.000",
-          "note": "Merci Hanoi · phim trường + ngoại cảnh",
-          "image": "https://img.mercistudio.net/bao-gia-2026/19-hanoi-phim-truong-ngoai-canh.jpg",
-          "sections": [
-            {
-              "title": "Nội dung",
-              "items": [
-                "02 váy cưới cô dâu",
-                "02 bộ vest chú rể",
-                "01 áo dài hoặc đồ thường",
-                "01 lần makeup & làm tóc đi theo",
-                "01 thợ chụp",
-                "Hoa lụa cầm tay và phụ kiện"
-              ]
-            },
-            {
-              "title": "Sản phẩm",
-              "items": [
-                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
-                "02 ảnh phóng pha lê 60 × 90",
-                "04 ảnh để bàn ép gỗ 15 × 21",
-                "Bộ khung Hàn Quốc 9 khung",
-                "30 ảnh chỉnh sửa Photoshop"
-              ]
-            },
-            {
-              "title": "Ưu đãi ngày cưới",
-              "items": [
-                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
-                "01 bộ vest chú rể",
-                "01 áo dài cô dâu dòng Luxury Merci Bridal"
-              ]
-            },
-            {
-              "title": "Quà tặng",
-              "items": [
-                "01 voucher giảm 30% vest ADAM",
-                "01 voucher giảm 20% vest Tuxedo",
-                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
-              ]
-            },
-            {
-              "title": "Nâng cấp thêm",
-              "items": [
-                "Thêm khung ảnh và chất liệu tráng gương",
-                "Nâng cấp thêm album ảnh",
-                "Thêm váy hoặc vest concept chụp"
-              ]
-            }
-          ]
-        }
-      ],
-      "footnote": [
-        "Giá trên chưa bao gồm chi phí đi lại cho ekip, vé vào cửa và các chi phí phát sinh tại điểm chụp.",
-        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
-      ]
-    },
-    {
       "id": "phong-su",
-      "title": "Chụp phóng sự cưới",
+      "title": "Phóng sự cưới",
       "packages": [
         {
           "name": "GÓI C1",
           "price": "2.900.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Phù hợp cho lễ ăn hỏi hoặc tiệc cưới trong 1 buổi",
+          "image": "https://img.mercistudio.net/bao-gia-2026/01-psc-c1.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -518,13 +35,14 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/01-psc-c1.jpg"
+          ]
         },
         {
           "name": "GÓI C2",
           "price": "4.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Chụp song song hai đầu nhà trai và nhà gái trong cùng 1 buổi",
+          "image": "https://img.mercistudio.net/bao-gia-2026/02-psc-c2.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -548,13 +66,14 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/02-psc-c2.jpg"
+          ]
         },
         {
           "name": "GÓI C3",
           "price": "5.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Trọn vẹn cả lễ ăn hỏi và ngày cưới",
+          "image": "https://img.mercistudio.net/bao-gia-2026/03-psc-c3.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -578,13 +97,14 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/03-psc-c3.jpg"
+          ]
         },
         {
           "name": "GÓI C4",
           "price": "6.700.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Hai thợ trong ngày cưới, kèm ảnh phóng ép gỗ cao cấp",
+          "image": "https://img.mercistudio.net/bao-gia-2026/04-psc-c4.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -609,13 +129,14 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/04-psc-c4.jpg"
+          ]
         },
         {
           "name": "GÓI C5",
           "price": "8.200.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Ekip đầy đủ nhất — hai thợ cho cả ăn hỏi và ngày cưới",
+          "image": "https://img.mercistudio.net/bao-gia-2026/05-psc-c5.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -640,22 +161,24 @@
                 "Chi phí di chuyển ngoại tỉnh & chụp thêm tiệc (Báo giá riêng theo thỏa thuận trước ngày chụp)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/05-psc-c5.jpg"
+          ]
         }
       ],
       "footnote": [
-        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
       ]
     },
     {
       "id": "film",
-      "title": "Quay phim cưới (Wedding Film)",
+      "title": "Quay phim cưới",
       "packages": [
         {
           "name": "GÓI BASIC",
           "price": "4.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Clip phóng sự cưới cho một buổi quay duy nhất",
+          "image": "https://img.mercistudio.net/bao-gia-2026/06-film-basic.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -680,13 +203,14 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/06-film-basic.jpg"
+          ]
         },
         {
           "name": "GÓI F1",
           "price": "7.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Quay trọn cả lễ ăn hỏi và ngày cưới",
+          "image": "https://img.mercistudio.net/bao-gia-2026/07-film-f1.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -711,13 +235,14 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/07-film-f1.jpg"
+          ]
         },
         {
           "name": "GÓI F2",
           "price": "11.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Hai thợ quay ngày cưới, kèm clip truyền thống đầy đủ",
+          "image": "https://img.mercistudio.net/bao-gia-2026/08-film-f2.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -743,13 +268,14 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/08-film-f2.jpg"
+          ]
         },
         {
           "name": "GÓI F3",
           "price": "14.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Ekip cao cấp nhất, có nhân sự take care riêng cho cô dâu chú rể",
+          "image": "https://img.mercistudio.net/bao-gia-2026/09-film-f3.jpg",
           "sections": [
             {
               "title": "Ekip",
@@ -775,123 +301,508 @@
                 "Chi phí di chuyển ngoại tỉnh (Báo giá riêng theo thỏa thuận trước ngày quay)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/09-film-f3.jpg"
+          ]
         }
       ],
       "footnote": [
-        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
       ]
     },
     {
-      "id": "concept",
-      "title": "Concept · Beauty · Couple · Baby",
+      "id": "prewedding",
+      "title": "Ảnh cưới Merci House",
       "packages": [
         {
-          "name": "CHỤP BEAUTY",
-          "price": "1.500.000",
-          "note": "Báo giá áp dụng cho 1 người",
+          "name": "STUDIO 1",
+          "price": "3.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House",
+          "image": "https://img.mercistudio.net/bao-gia-2026/10-prewedding-studio-1.jpg",
           "sections": [
             {
-              "title": "Dịch vụ bao gồm",
+              "title": "Nội dung",
               "items": [
-                "01 trang phục theo concept hoặc khách tự chuẩn bị",
-                "Miễn phí studio của Merci",
-                "05 ảnh Photoshop",
-                "Trả toàn bộ ảnh gốc",
-                "Hướng dẫn tạo dáng theo concept"
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
               ]
             },
             {
-              "title": "Quà tặng",
+              "title": "Sản phẩm",
               "items": [
-                "Ưu đãi book thêm chụp bé chỉ với 300k",
-                "Đi cùng bạn giảm thêm 100k / người",
-                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90",
+                "02 ảnh để bàn ép gỗ 13 × 18",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
           ]
         },
         {
-          "name": "CHỤP CONCEPT CÁ NHÂN",
-          "price": "2.200.000",
-          "note": "Báo giá áp dụng cho 1 người",
+          "name": "STUDIO 2A",
+          "price": "5.250.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House",
+          "image": "https://img.mercistudio.net/bao-gia-2026/11-prewedding-studio-2a.jpg",
           "sections": [
             {
-              "title": "Dịch vụ bao gồm",
+              "title": "Nội dung",
               "items": [
-                "01 trang phục theo concept hoặc khách tự chuẩn bị",
-                "Miễn phí studio của Merci",
-                "10 ảnh Photoshop",
-                "Trả toàn bộ ảnh gốc",
-                "Hướng dẫn tạo dáng theo concept",
-                "Tặng ảnh phóng cao cấp hoặc ảnh để bàn nếu up ảnh tag Merci Studio ở chế độ công khai"
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
               ]
             },
             {
-              "title": "Quà tặng",
+              "title": "Sản phẩm",
               "items": [
-                "Ưu đãi book thêm concept thứ 2 chỉ với 500k",
-                "Đi cùng bạn giảm thêm 100k / người",
-                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90 cao cấp",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
           ]
         },
         {
-          "name": "CHỤP COUPLE",
-          "price": "2.500.000",
-          "note": "Báo giá áp dụng cho 1 cặp đôi",
+          "name": "STUDIO 2B",
+          "price": "6.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House",
+          "image": "https://img.mercistudio.net/bao-gia-2026/12-prewedding-studio-2b.jpg",
           "sections": [
             {
-              "title": "Dịch vụ bao gồm",
+              "title": "Nội dung",
               "items": [
-                "01 trang phục theo concept hoặc khách tự chuẩn bị",
-                "Miễn phí studio của Merci",
-                "10 ảnh Photoshop",
-                "Trả toàn bộ ảnh gốc",
-                "Hướng dẫn tạo dáng theo concept",
-                "Tặng ảnh phóng cao cấp hoặc ảnh để bàn nếu up ảnh tag Merci Studio ở chế độ công khai"
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
               ]
             },
             {
-              "title": "Quà tặng",
+              "title": "Sản phẩm",
               "items": [
-                "Ưu đãi book thêm concept thứ 2 chỉ với 500k",
-                "Tặng thêm chụp beauty cho 1 bạn nữ",
-                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)"
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
           ]
         },
         {
-          "name": "CHỤP BABY",
-          "price": "500.000",
-          "note": "Báo giá áp dụng cho 1 concept / buổi",
+          "name": "STUDIO 3",
+          "price": "6.900.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House",
+          "image": "https://img.mercistudio.net/bao-gia-2026/13-prewedding-studio-3.jpg",
           "sections": [
             {
-              "title": "Dịch vụ bao gồm",
+              "title": "Nội dung",
               "items": [
-                "01 bé",
-                "Makeup nhẹ cho bé",
-                "05 ảnh Photoshop",
-                "Trả toàn bộ ảnh gốc",
-                "Hướng dẫn tạo dáng theo concept",
-                "02 ảnh bản 15 × 21"
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
               ]
             },
             {
-              "title": "Quà tặng",
+              "title": "Sản phẩm",
               "items": [
-                "Ưu đãi book thêm concept thứ 2 chỉ với 400k",
-                "Chụp ngoại cảnh phụ thu 500k / concept (chưa bao gồm chi phí ra vào địa điểm nếu có)",
-                "Ưu đãi in ảnh sau khi chụp"
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "10 ảnh khung Hàn Quốc",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 4",
+          "price": "8.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House + Ngoại cảnh",
+          "image": "https://img.mercistudio.net/bao-gia-2026/14-prewedding-studio-4.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "25 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Merci Bridal",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 5",
+          "price": "11.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci House + Ngoại cảnh",
+          "image": "https://img.mercistudio.net/bao-gia-2026/15-prewedding-studio-5.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 kèm khung cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "30 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Luxury",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "STUDIO 6",
+          "price": "12.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Hà Nội / Ninh Bình / Quảng Ninh / Hải Phòng / Vĩnh Phúc",
+          "image": "https://img.mercistudio.net/bao-gia-2026/16-prewedding-studio-6.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc váy thường concept",
+                "01 lần makeup & làm tóc",
+                "01 thợ chụp + 01 thợ phụ",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng tráng gương 60 × 90 cao cấp",
+                "15 ảnh khung Hàn Quốc",
+                "35 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu dòng Luxury",
+                "01 áo dài cô dâu dòng Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc cô dâu ngày ăn hỏi tại studio",
+                "01 lần makeup & làm tóc cô dâu ngày cưới tại studio",
+                "07 cặp áo bê tráp nhà trai và nhà gái"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "Giảm 50% gói chụp bầu và chụp trẻ em",
+                "01 voucher giảm 50% váy cưới, áo dài Merci Bridal",
+                "01 voucher giảm giá mua vest tại ADAM / Tuxedo"
               ]
             }
           ]
         }
       ],
-      "footnote": []
+      "footnote": [
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
+    },
+    {
+      "id": "prewedding-hanoi",
+      "title": "Ảnh cưới Merci Hanoi",
+      "packages": [
+        {
+          "name": "STUDIO 1",
+          "price": "5.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci Hanoi",
+          "image": "https://img.mercistudio.net/bao-gia-2026/17-hanoi-studio-1.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc",
+                "02 ảnh phóng gỗ Laminate 60 × 90",
+                "02 ảnh để bàn ép gỗ 13 × 18",
+                "10 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Dịch vụ thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "PHIM TRƯỜNG",
+          "price": "7.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci Hanoi",
+          "image": "https://img.mercistudio.net/bao-gia-2026/18-hanoi-phim-truong.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "01 váy cưới cô dâu",
+                "01 bộ vest chú rể",
+                "01 áo dài hoặc đồ thường",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
+                "02 ảnh phóng 60 × 90",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "Bộ khung Hàn Quốc 5 khung",
+                "20 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 áo dài cô dâu dòng Luxury Merci Bridal"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Dịch vụ thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "PHIM TRƯỜNG + NGOẠI CẢNH",
+          "price": "9.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
+          "note": "Merci Hanoi",
+          "image": "https://img.mercistudio.net/bao-gia-2026/19-hanoi-phim-truong-ngoai-canh.jpg",
+          "sections": [
+            {
+              "title": "Nội dung",
+              "items": [
+                "02 váy cưới cô dâu",
+                "02 bộ vest chú rể",
+                "01 áo dài hoặc đồ thường",
+                "01 lần makeup & làm tóc đi theo",
+                "01 thợ chụp",
+                "Hoa lụa cầm tay và phụ kiện"
+              ]
+            },
+            {
+              "title": "Sản phẩm",
+              "items": [
+                "Bàn giao toàn bộ file ảnh gốc và slide ảnh",
+                "02 ảnh phóng pha lê 60 × 90",
+                "04 ảnh để bàn ép gỗ 15 × 21",
+                "Bộ khung Hàn Quốc 9 khung",
+                "30 ảnh chỉnh sửa Photoshop"
+              ]
+            },
+            {
+              "title": "Dịch vụ ngày cưới",
+              "items": [
+                "01 váy cưới cô dâu thương hiệu độc quyền Merci Bridal",
+                "01 bộ vest chú rể",
+                "01 áo dài cô dâu dòng Luxury Merci Bridal"
+              ]
+            },
+            {
+              "title": "Ưu đãi khách hàng",
+              "items": [
+                "01 voucher giảm 30% vest ADAM",
+                "01 voucher giảm 20% vest Tuxedo",
+                "01 voucher giảm 50% váy cưới và áo dài Merci Bridal"
+              ]
+            },
+            {
+              "title": "Dịch vụ thêm",
+              "items": [
+                "Thêm khung ảnh và chất liệu tráng gương",
+                "Nâng cấp thêm album ảnh",
+                "Thêm váy hoặc vest concept chụp"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": [
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+      ]
     },
     {
       "id": "gia-dinh-su-kien",
@@ -900,7 +811,9 @@
         {
           "name": "GIA ĐÌNH — STUDIO",
           "price": "2.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Chụp trọn buổi tại studio, có sẵn trang phục và makeup",
+          "image": "https://img.mercistudio.net/bao-gia-2026/20-gia-dinh-studio.jpg",
           "sections": [
             {
               "title": "Nội dung",
@@ -930,13 +843,14 @@
                 "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/20-gia-dinh-studio.jpg"
+          ]
         },
         {
           "name": "GIA ĐÌNH — NGOẠI CẢNH",
           "price": "3.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Chụp ngoài trời, sản phẩm nâng cấp ảnh tráng gương khổ lớn",
+          "image": "https://img.mercistudio.net/bao-gia-2026/21-gia-dinh-ngoai-canh.jpg",
           "sections": [
             {
               "title": "Nội dung",
@@ -966,13 +880,14 @@
                 "Các hạng mục phát sinh được ưu đãi hơn bảng giá lẻ (Thêm váy chụp, thêm lượt makeup, in thêm ảnh hoặc phóng lên khổ lớn)"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/21-gia-dinh-ngoai-canh.jpg"
+          ]
         },
         {
           "name": "CHỤP SỰ KIỆN 2",
           "price": "4.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Hai máy chụp, phù hợp sự kiện cần nhiều góc máy",
+          "image": "https://img.mercistudio.net/bao-gia-2026/22-su-kien-chup-2.jpg",
           "sections": [
             {
               "title": "Dịch vụ bao gồm",
@@ -997,13 +912,14 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/22-su-kien-chup-2.jpg"
+          ]
         },
         {
           "name": "QUAY PHIM SỰ KIỆN 1",
           "price": "4.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Một máy quay, clip highlight chuẩn 4K",
+          "image": "https://img.mercistudio.net/bao-gia-2026/23-su-kien-quay-1.jpg",
           "sections": [
             {
               "title": "Dịch vụ bao gồm",
@@ -1026,13 +942,14 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/23-su-kien-quay-1.jpg"
+          ]
         },
         {
           "name": "QUAY PHIM SỰ KIỆN 2",
           "price": "8.000.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Hai máy quay, bao quát nhiều góc trong cùng sự kiện",
+          "image": "https://img.mercistudio.net/bao-gia-2026/24-su-kien-quay-2.jpg",
           "sections": [
             {
               "title": "Dịch vụ bao gồm",
@@ -1055,13 +972,14 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/24-su-kien-quay-2.jpg"
+          ]
         },
         {
           "name": "QUAY PHIM TRUYỀN THỐNG",
           "price": "6.500.000",
+          "unit": "Trọn gói — đã bao gồm hậu kỳ",
           "note": "Ghi hình trọn vẹn diễn biến sự kiện theo dòng thời gian",
+          "image": "https://img.mercistudio.net/bao-gia-2026/25-su-kien-quay-truyen-thong.jpg",
           "sections": [
             {
               "title": "Dịch vụ bao gồm",
@@ -1084,22 +1002,22 @@
                 "Vui lòng liên hệ để được tư vấn chi tiết hơn"
               ]
             }
-          ],
-          "image": "https://img.mercistudio.net/bao-gia-2026/25-su-kien-quay-truyen-thong.jpg"
+          ]
         }
       ],
       "footnote": [
-        "Báo giá có hiệu lực trong 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
       ]
     },
     {
       "id": "ky-yeu",
-      "title": "Chụp ảnh kỷ yếu",
+      "title": "Kỷ yếu",
       "packages": [
         {
           "name": "GÓI M1",
           "price": "160.000",
-          "unit": "/ mỗi bạn",
+          "unit": "Đơn giá mỗi bạn — đã bao gồm hậu kỳ",
           "note": "Chụp tại trường 1 buổi — lựa chọn tiết kiệm cho lớp đông",
           "image": "https://img.mercistudio.net/bao-gia-2026/26-ky-yeu-m1.jpg",
           "sections": [
@@ -1140,7 +1058,7 @@
         {
           "name": "GÓI M2",
           "price": "220.000",
-          "unit": "/ mỗi bạn",
+          "unit": "Đơn giá mỗi bạn — đã bao gồm hậu kỳ",
           "note": "Chụp tại trường 1 buổi — thêm ảnh design theo concept riêng",
           "image": "https://img.mercistudio.net/bao-gia-2026/27-ky-yeu-m2.jpg",
           "sections": [
@@ -1182,7 +1100,7 @@
         {
           "name": "GÓI M3",
           "price": "260.000",
-          "unit": "/ mỗi bạn",
+          "unit": "Đơn giá mỗi bạn — đã bao gồm hậu kỳ",
           "note": "Chụp tại trường 1 buổi — tỉ lệ thợ cao nhất, chăm sóc kỹ từng bạn",
           "image": "https://img.mercistudio.net/bao-gia-2026/28-ky-yeu-m3.jpg",
           "sections": [
@@ -1224,8 +1142,119 @@
         }
       ],
       "footnote": [
-        "Báo giá tính theo số lượng học sinh thực tế tham gia buổi chụp. Lịch chụp được giữ sau khi lớp đặt cọc tối thiểu 1.000.000 VNĐ."
+        "Giá chưa bao gồm chi phí đi lại cho ekip và vé vào cửa điểm chụp (nếu có).",
+        "Báo giá có hiệu lực 30 ngày kể từ ngày gửi. Lịch chụp được giữ sau khi khách đặt cọc tối thiểu 1.000.000 VNĐ."
       ]
+    },
+    {
+      "id": "concept",
+      "title": "Concept ┬À Beauty ┬À Couple ┬À Baby",
+      "packages": [
+        {
+          "name": "CHß╗ñP BEAUTY",
+          "price": "1.500.000",
+          "note": "B├ío gi├í ├íp dß╗Ñng cho 1 ngã░ß╗Øi",
+          "sections": [
+            {
+              "title": "Dß╗ïch vß╗Ñ bao gß╗ôm",
+              "items": [
+                "01 trang phß╗Ñc theo concept hoß║Àc kh├ích tß╗▒ chuß║®n bß╗ï",
+                "Miß╗àn ph├¡ studio cß╗ºa Merci",
+                "05 ß║únh Photoshop",
+                "Trß║ú to├án bß╗Ö ß║únh gß╗æc",
+                "Hã░ß╗øng dß║½n tß║ío d├íng theo concept"
+              ]
+            },
+            {
+              "title": "Qu├á tß║Àng",
+              "items": [
+                "ã»u ─æ├úi book th├¬m chß╗Ñp b├® chß╗ë vß╗øi 300k",
+                "─Éi c├╣ng bß║ín giß║úm th├¬m 100k / ngã░ß╗Øi",
+                "Chß╗Ñp ngoß║íi cß║únh phß╗Ñ thu 500k / concept (chã░a bao gß╗ôm chi ph├¡ ra v├áo ─æß╗ïa ─æiß╗âm nß║┐u c├│)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHß╗ñP CONCEPT C├ü NH├éN",
+          "price": "2.200.000",
+          "note": "B├ío gi├í ├íp dß╗Ñng cho 1 ngã░ß╗Øi",
+          "sections": [
+            {
+              "title": "Dß╗ïch vß╗Ñ bao gß╗ôm",
+              "items": [
+                "01 trang phß╗Ñc theo concept hoß║Àc kh├ích tß╗▒ chuß║®n bß╗ï",
+                "Miß╗àn ph├¡ studio cß╗ºa Merci",
+                "10 ß║únh Photoshop",
+                "Trß║ú to├án bß╗Ö ß║únh gß╗æc",
+                "Hã░ß╗øng dß║½n tß║ío d├íng theo concept",
+                "Tß║Àng ß║únh ph├│ng cao cß║Ñp hoß║Àc ß║únh ─æß╗â b├án nß║┐u up ß║únh tag Merci Studio ß╗ƒ chß║┐ ─æß╗Ö c├┤ng khai"
+              ]
+            },
+            {
+              "title": "Qu├á tß║Àng",
+              "items": [
+                "ã»u ─æ├úi book th├¬m concept thß╗® 2 chß╗ë vß╗øi 500k",
+                "─Éi c├╣ng bß║ín giß║úm th├¬m 100k / ngã░ß╗Øi",
+                "Chß╗Ñp ngoß║íi cß║únh phß╗Ñ thu 500k / concept (chã░a bao gß╗ôm chi ph├¡ ra v├áo ─æß╗ïa ─æiß╗âm nß║┐u c├│)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHß╗ñP COUPLE",
+          "price": "2.500.000",
+          "note": "B├ío gi├í ├íp dß╗Ñng cho 1 cß║Àp ─æ├┤i",
+          "sections": [
+            {
+              "title": "Dß╗ïch vß╗Ñ bao gß╗ôm",
+              "items": [
+                "01 trang phß╗Ñc theo concept hoß║Àc kh├ích tß╗▒ chuß║®n bß╗ï",
+                "Miß╗àn ph├¡ studio cß╗ºa Merci",
+                "10 ß║únh Photoshop",
+                "Trß║ú to├án bß╗Ö ß║únh gß╗æc",
+                "Hã░ß╗øng dß║½n tß║ío d├íng theo concept",
+                "Tß║Àng ß║únh ph├│ng cao cß║Ñp hoß║Àc ß║únh ─æß╗â b├án nß║┐u up ß║únh tag Merci Studio ß╗ƒ chß║┐ ─æß╗Ö c├┤ng khai"
+              ]
+            },
+            {
+              "title": "Qu├á tß║Àng",
+              "items": [
+                "ã»u ─æ├úi book th├¬m concept thß╗® 2 chß╗ë vß╗øi 500k",
+                "Tß║Àng th├¬m chß╗Ñp beauty cho 1 bß║ín nß╗»",
+                "Chß╗Ñp ngoß║íi cß║únh phß╗Ñ thu 500k / concept (chã░a bao gß╗ôm chi ph├¡ ra v├áo ─æß╗ïa ─æiß╗âm nß║┐u c├│)"
+              ]
+            }
+          ]
+        },
+        {
+          "name": "CHß╗ñP BABY",
+          "price": "500.000",
+          "note": "B├ío gi├í ├íp dß╗Ñng cho 1 concept / buß╗òi",
+          "sections": [
+            {
+              "title": "Dß╗ïch vß╗Ñ bao gß╗ôm",
+              "items": [
+                "01 b├®",
+                "Makeup nhß║╣ cho b├®",
+                "05 ß║únh Photoshop",
+                "Trß║ú to├án bß╗Ö ß║únh gß╗æc",
+                "Hã░ß╗øng dß║½n tß║ío d├íng theo concept",
+                "02 ß║únh bß║ún 15 ├ù 21"
+              ]
+            },
+            {
+              "title": "Qu├á tß║Àng",
+              "items": [
+                "ã»u ─æ├úi book th├¬m concept thß╗® 2 chß╗ë vß╗øi 400k",
+                "Chß╗Ñp ngoß║íi cß║únh phß╗Ñ thu 500k / concept (chã░a bao gß╗ôm chi ph├¡ ra v├áo ─æß╗ïa ─æiß╗âm nß║┐u c├│)",
+                "ã»u ─æ├úi in ß║únh sau khi chß╗Ñp"
+              ]
+            }
+          ]
+        }
+      ],
+      "footnote": []
     },
     {
       "id": "makeup",
