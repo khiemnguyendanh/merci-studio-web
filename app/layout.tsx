@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Be_Vietnam_Pro, Cormorant_Garamond } from 'next/font/google';
 import AnalyticsConsent from '@/components/AnalyticsConsent';
 import PwaRegister from '@/components/PwaRegister';
+import { STUDIO_LOCATIONS } from '@/lib/locations';
 import './globals.css';
 
 const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://mercistudio.net').replace(/\/$/, '');
@@ -96,46 +97,87 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const openingHoursSpecification = [
+    {
+      '@type': 'OpeningHoursSpecification',
+      dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+      opens: '08:30',
+      closes: '21:30'
+    }
+  ];
+
+  const sameAs = [
+    'https://www.facebook.com/merciwedding.vn',
+    'https://www.instagram.com/merciwedding.vn/',
+    'https://www.tiktok.com/@mercistudiovn'
+  ];
+
   const structuredData = {
     '@context': 'https://schema.org',
-    '@type': ['LocalBusiness', 'PhotographyBusiness'],
-    '@id': `${siteUrl}/#business`,
-    name: 'Merci Wedding Studio',
-    url: siteUrl,
-    image: `${siteUrl}/og-merci-studio-v2.png`,
-    logo: `${siteUrl}/merci-logo-watermark.png`,
-    description: siteDescription,
-    knowsAbout: [
-      'Chụp ảnh cưới',
-      'Ảnh cưới đẹp',
-      'Phóng sự đám cưới',
-      'Váy cưới Douyin',
-      'Váy cưới Hà Nội',
-      'Makeup cô dâu'
-    ],
-    email: 'vaycuoidouyin@gmail.com',
-    telephone: '+84888999545',
-    priceRange: '$$',
-    sameAs: [
-      'https://www.facebook.com/merciwedding.vn',
-      'https://www.instagram.com/merciwedding.vn/',
-      'https://www.tiktok.com/@mercistudiovn'
-    ],
-    address: [
+    '@graph': [
       {
-        '@type': 'PostalAddress',
-        streetAddress: '244 Đội Cấn',
-        addressLocality: 'Ba Đình',
-        addressRegion: 'Hà Nội',
-        addressCountry: 'VN'
+        '@type': 'WebSite',
+        '@id': `${siteUrl}/#website`,
+        name: 'Merci Studio',
+        alternateName: 'Merci Wedding Studio',
+        url: siteUrl,
+        inLanguage: 'vi-VN',
+        publisher: { '@id': `${siteUrl}/#business` }
       },
       {
-        '@type': 'PostalAddress',
-        streetAddress: '650 Thân Nhân Trung',
-        addressLocality: 'Việt Yên',
-        addressRegion: 'Bắc Ninh',
-        addressCountry: 'VN'
-      }
+        '@type': ['Organization', 'LocalBusiness', 'PhotographyBusiness'],
+        '@id': `${siteUrl}/#business`,
+        name: 'Merci Wedding Studio',
+        alternateName: ['Merci Studio', 'Merci Bridal'],
+        url: siteUrl,
+        image: `${siteUrl}/og-merci-studio-v2.png`,
+        logo: `${siteUrl}/merci-logo-watermark.png`,
+        description: siteDescription,
+        knowsAbout: [
+          'Chụp ảnh cưới',
+          'Ảnh cưới đẹp',
+          'Phóng sự đám cưới',
+          'Váy cưới Douyin',
+          'Váy cưới thiết kế cao cấp',
+          'Váy cưới Hà Nội',
+          'Chụp ảnh cưới Việt Yên Bắc Ninh',
+          'Makeup cô dâu'
+        ],
+        email: 'vaycuoidouyin@gmail.com',
+        telephone: '+84888999545',
+        priceRange: '$$',
+        sameAs,
+        department: STUDIO_LOCATIONS.map((loc) => ({ '@id': `${siteUrl}/#${loc.id}` }))
+      },
+      ...STUDIO_LOCATIONS.map((loc) => ({
+        '@type': ['LocalBusiness', 'PhotographyBusiness'],
+        '@id': `${siteUrl}/#${loc.id}`,
+        name: loc.name,
+        url: siteUrl,
+        image: `${siteUrl}/og-merci-studio-v2.png`,
+        logo: `${siteUrl}/merci-logo-watermark.png`,
+        telephone: loc.telephone,
+        email: 'vaycuoidouyin@gmail.com',
+        priceRange: '$$',
+        hasMap: loc.mapsUrl,
+        areaServed: { '@type': 'AdministrativeArea', name: loc.areaServed },
+        openingHoursSpecification,
+        sameAs,
+        parentOrganization: { '@id': `${siteUrl}/#business` },
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: loc.streetAddress,
+          addressLocality: loc.addressLocality,
+          addressRegion: loc.addressRegion,
+          postalCode: loc.postalCode,
+          addressCountry: 'VN'
+        },
+        geo: {
+          '@type': 'GeoCoordinates',
+          latitude: loc.lat,
+          longitude: loc.lng
+        }
+      }))
     ]
   };
 

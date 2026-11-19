@@ -63,7 +63,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   }
 }
 
-// JSON-LD theo trang: FAQ ở trang chủ, ImageGallery + breadcrumb ở trang album.
+// JSON-LD theo trang: FAQ ở trang chủ, BlogPosting ở bài viết, ImageGallery ở album, BreadcrumbList ở trang con.
 function structuredDataFor(slug: string, content: PublicContentMetadata | null) {
   if (slug === '') {
     return {
@@ -72,8 +72,49 @@ function structuredDataFor(slug: string, content: PublicContentMetadata | null) 
       mainEntity: faqs.map((f) => ({ '@type': 'Question', name: f.q, acceptedAnswer: { '@type': 'Answer', text: f.a } }))
     };
   }
-  if (!content || content.type !== 'album') return null;
+  const reserved = reservedMetadata[slug];
+  if (reserved && !reserved.noIndex) {
+    return {
+      '@context': 'https://schema.org',
+      '@type': 'BreadcrumbList',
+      itemListElement: [
+        { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: siteUrl },
+        { '@type': 'ListItem', position: 2, name: reserved.title, item: `${siteUrl}/${slug}` }
+      ]
+    };
+  }
+  if (!content) return null;
   const url = `${siteUrl}/${slug}`;
+  if (content.type === 'blog') {
+    const datePublished = content.publishedAt ? new Date(content.publishedAt).toISOString() : undefined;
+    const dateModified = (content.updatedAt || content.publishedAt) ? new Date(content.updatedAt || content.publishedAt!).toISOString() : undefined;
+    return [
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BlogPosting',
+        headline: content.title,
+        description: content.description,
+        url,
+        mainEntityOfPage: { '@type': 'WebPage', '@id': url },
+        image: content.coverUrl || defaultImage,
+        inLanguage: 'vi-VN',
+        datePublished,
+        dateModified,
+        author: { '@id': `${siteUrl}/#business` },
+        publisher: { '@id': `${siteUrl}/#business` }
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Trang chủ', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Kinh nghiệm cưới', item: `${siteUrl}/blog` },
+          { '@type': 'ListItem', position: 3, name: content.title, item: url }
+        ]
+      }
+    ];
+  }
+  if (content.type !== 'album') return null;
   return [
     {
       '@context': 'https://schema.org',

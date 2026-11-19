@@ -16,6 +16,8 @@ export type PublicContentMetadata = {
   coverUrl: string;
   imageCount?: number;
   category?: string;
+  publishedAt?: number;
+  updatedAt?: number;
 };
 
 type ManifestAlbum = {
@@ -124,12 +126,16 @@ function albumToContent(album: ManifestAlbum): PublicContentMetadata {
 function blogToContent(document: FirestoreDocument, slug?: string): PublicContentMetadata {
   const title = field(document, 'title');
   const canonicalSlug = slug || field(document, 'slug') || createSlug(title) || document.name.split('/').pop() || '';
+  const publishedAt = Number(document.fields?.createdAt?.integerValue ?? document.fields?.createdAt?.doubleValue ?? 0) || undefined;
+  const updatedAt = Number(document.fields?.updatedAt?.integerValue ?? document.fields?.updatedAt?.doubleValue ?? 0) || undefined;
   return {
     type: 'blog',
     title,
     slug: canonicalSlug,
     description: field(document, 'metaDesc') || title,
-    coverUrl: field(document, 'coverUrl')
+    coverUrl: field(document, 'coverUrl'),
+    publishedAt,
+    updatedAt
   };
 }
 
@@ -139,7 +145,14 @@ async function fetchBlogs(): Promise<FirestoreDocument[]> {
   const { blogs } = await publicBlogs();
   return blogs.map((b) => ({
     name: 'merci_blogs/' + b.id,
-    fields: { title: { stringValue: b.title }, slug: { stringValue: b.slug }, metaDesc: { stringValue: b.metaDesc }, coverUrl: { stringValue: b.coverUrl } },
+    fields: {
+      title: { stringValue: b.title },
+      slug: { stringValue: b.slug },
+      metaDesc: { stringValue: b.metaDesc },
+      coverUrl: { stringValue: b.coverUrl },
+      createdAt: { doubleValue: b.createdAt || 0 },
+      updatedAt: { doubleValue: b.updatedAt || 0 },
+    },
   }));
 }
 

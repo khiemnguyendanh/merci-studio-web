@@ -5,6 +5,7 @@ import { Reveal, TiltCard } from '@/components/Motion';
 import PricingSection from '@/components/PricingSection';
 import { feedbackImages, type FeedbackImage } from '@/lib/feedback';
 import { faqs } from '@/lib/faq';
+import { STUDIO_LOCATIONS } from '@/lib/locations';
 import strip1 from '@/public/home/strip-1.webp';
 import strip2 from '@/public/home/strip-2.webp';
 import strip3 from '@/public/home/strip-3.webp';
@@ -521,6 +522,53 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                     ))}
                 </div>
             </div>
+            {/* studio locations & maps */}
+            <section style={{ padding: 'clamp(44px, 6vw, 76px) clamp(20px, 5vw, 64px)', borderBottom: `1px solid ${LINE}` }}>
+                <Reveal>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16, marginBottom: 'clamp(24px, 4vw, 38px)' }}>
+                        <div>
+                            <div style={kickerStyle()}>HỆ THỐNG CƠ SỞ · HÀ NỘI &amp; BẮC NINH</div>
+                            <h2 style={h2Style}>Ghé thăm <em style={{ fontWeight: 400 }}>Merci Studio</em></h2>
+                        </div>
+                        <p style={{ margin: 0, fontSize: 14, fontWeight: 300, color: SUB, maxWidth: 420, lineHeight: 1.7 }}>
+                            Mở cửa hàng ngày 08:30 – 21:30. Chọn cơ sở gần bạn nhất để xem chỉ đường trực tiếp trên Google Maps.
+                        </p>
+                    </div>
+                </Reveal>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(320px, 100%), 1fr))', gap: 'clamp(20px, 3vw, 32px)' }}>
+                    {STUDIO_LOCATIONS.map((loc) => (
+                        <div key={loc.id} style={{ background: '#ffffff', border: `1px solid ${LINE}`, borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+                            <div style={{ position: 'relative', width: '100%', height: 240, background: BAND }}>
+                                <iframe
+                                    title={`Bản đồ ${loc.name}`}
+                                    src={loc.embedUrl}
+                                    width="100%"
+                                    height="240"
+                                    style={{ border: 0, display: 'block' }}
+                                    loading="lazy"
+                                    referrerPolicy="no-referrer-when-downgrade"
+                                    allowFullScreen
+                                />
+                            </div>
+                            <div style={{ padding: '20px 22px', display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
+                                <div style={{ fontSize: 10.5, letterSpacing: 2.5, color: TAN, textTransform: 'uppercase' }}>{loc.shortLabel}</div>
+                                <div style={{ fontFamily: serif, fontSize: 22, fontWeight: 600, color: INK }}>{loc.name}</div>
+                                <div style={{ fontSize: 14, fontWeight: 300, color: SUB, lineHeight: 1.6 }}>{loc.fullAddress}</div>
+                                <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center' }}>
+                                    <a
+                                        href={loc.mapsUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        style={{ fontSize: 12, letterSpacing: 1.8, textTransform: 'uppercase', color: BROWN, fontWeight: 600, textDecoration: 'none' }}
+                                    >
+                                        Chỉ đường trên Google Maps ↗
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </section>
             {/* contact footer */}
             <Reveal style={{ padding: 'clamp(44px, 6vw, 72px) clamp(20px, 5vw, 64px)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(280px, 100%), 1fr))', gap: '40px 48px' }}>
                 <div>
@@ -531,8 +579,13 @@ export default function HomeHub({ user, isAdmin, navigateToTab, navigateToVest, 
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>ĐỊA CHỈ</div>
-                    <div><a className="footer-link" href="https://www.google.com/maps/search/?api=1&query=244+%C4%90%E1%BB%99i+C%E1%BA%A5n%2C+Ba+%C4%90%C3%ACnh%2C+H%C3%A0+N%E1%BB%99i" target="_blank" rel="noreferrer" style={{ color: SUB, textDecoration: 'none' }}>244 Đội Cấn, Ba Đình, Hà Nội ↗</a></div>
-                    <div><a className="footer-link" href="https://www.google.com/maps/search/?api=1&query=650+Th%C3%A2n+Nh%C3%A2n+Trung%2C+Vi%E1%BB%87t+Y%C3%AAn%2C+B%E1%BA%AFc+Ninh" target="_blank" rel="noreferrer" style={{ color: SUB, textDecoration: 'none' }}>650 Thân Nhân Trung, Việt Yên, Bắc Ninh ↗</a></div>
+                    {STUDIO_LOCATIONS.map((loc) => (
+                        <div key={loc.id}>
+                            <a className="footer-link" href={loc.mapsUrl} target="_blank" rel="noopener noreferrer" style={{ color: SUB, textDecoration: 'none' }}>
+                                {loc.fullAddress} ↗
+                            </a>
+                        </div>
+                    ))}
                 </div>
                 <div style={{ fontSize: 14, fontWeight: 300, lineHeight: 2.1, color: SUB }}>
                     <div style={{ fontSize: 12, letterSpacing: 3, color: TAN, marginBottom: 10 }}>LIÊN HỆ</div>

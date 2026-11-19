@@ -20,6 +20,7 @@ import DriveR2Sync from '@/components/DriveR2Sync';
 import { albumIntro } from '@/lib/album-copy';
 import { BOOKING_SERVICES, DEFAULT_BOOKING_SERVICE } from '@/lib/booking-services';
 import { apiFetch } from '@/lib/client/api';
+import { STUDIO_LOCATIONS } from '@/lib/locations';
 
 // === FIREBASE IMPORTS ===
 import { initializeApp, getApps } from 'firebase/app';
@@ -7334,11 +7335,11 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                                                         <div className="text-sm font-black text-slate-800 space-y-3 mt-1.5">
                                                             <div>
                                                                 <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Cơ sở 1</p>
-                                                                <p className="font-sans text-slate-700 font-bold text-xs mt-0.5">244 Đội Cấn - Ba Đình - Hà Nội</p>
+                                                                <a href={STUDIO_LOCATIONS[0].mapsUrl} target="_blank" rel="noopener noreferrer" className="font-sans text-slate-700 hover:text-blue-600 font-bold text-xs mt-0.5 inline-block transition-colors">244 Đội Cấn, Ba Đình, Hà Nội ↗</a>
                                                             </div>
                                                             <div>
                                                                 <p className="text-blue-600 text-[10px] font-black uppercase tracking-widest">Cơ sở 2</p>
-                                                                <p className="font-sans text-slate-700 font-bold text-xs mt-0.5">650 Thân Nhân Trung - Việt Yên - Bắc Ninh</p>
+                                                                <a href={STUDIO_LOCATIONS[1].mapsUrl} target="_blank" rel="noopener noreferrer" className="font-sans text-slate-700 hover:text-blue-600 font-bold text-xs mt-0.5 inline-block transition-colors">650 Thân Nhân Trung, Việt Yên, Bắc Ninh ↗</a>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -7460,8 +7461,8 @@ Photobooth tiệc cưới Bắc Ninh có đáng thuê không | photobooth tiệc
                         </div>
                         <div className="text-sm font-light text-slate-500 leading-loose">
                             <div className="text-xs tracking-[0.25em] text-slate-400 mb-2">ĐỊA CHỈ</div>
-                            <div>244 Đội Cấn, Ba Đình, Hà Nội</div>
-                            <div>650 Thân Nhân Trung, Việt Yên, Bắc Ninh</div>
+                            <div><a href={STUDIO_LOCATIONS[0].mapsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">244 Đội Cấn, Ba Đình, Hà Nội ↗</a></div>
+                            <div><a href={STUDIO_LOCATIONS[1].mapsUrl} target="_blank" rel="noopener noreferrer" className="hover:text-blue-600 transition-colors">650 Thân Nhân Trung, Việt Yên, Bắc Ninh ↗</a></div>
                         </div>
                         <div className="text-sm font-light text-slate-500 leading-loose">
                             <div className="text-xs tracking-[0.25em] text-slate-400 mb-2">LIÊN HỆ</div>

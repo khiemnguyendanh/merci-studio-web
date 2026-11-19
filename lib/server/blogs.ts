@@ -69,3 +69,13 @@ export async function publicBlogs(): Promise<{ blogs: PublicBlog[]; status: Cach
   const { data, status } = await cachedJson<PublicBlog[]>('public-content/blogs-v1', BLOG_CACHE_SECONDS, loadAll);
   return { blogs: data ?? [], status };
 }
+
+function slugifyBlog(value: string) {
+  return value.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/đ/g, 'd')
+    .replace(/\s+/g, '-').replace(/[^\w-]+/g, '').replace(/--+/g, '-').replace(/^-|-$/g, '');
+}
+
+export async function findPublicBlogBySlug(slug: string): Promise<PublicBlog | null> {
+  const { blogs } = await publicBlogs();
+  return blogs.find((b) => b.slug === slug || slugifyBlog(b.title) === slug || b.id === slug) || null;
+}

@@ -18,12 +18,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const content = await listPublicContent();
     const taken = new Set(staticRoutes.map((r) => r.url));
-    const dynamicRoutes: MetadataRoute.Sitemap = content.filter((item) => !taken.has(`${siteUrl}/${item.slug}`)).map((item) => ({
-      url: `${siteUrl}/${item.slug}`,
-      changeFrequency: item.type === 'blog' ? 'monthly' : 'weekly',
-      priority: item.type === 'blog' ? 0.7 : 0.8,
-      images: item.coverUrl ? [item.coverUrl] : undefined
-    }));
+    const dynamicRoutes: MetadataRoute.Sitemap = content.filter((item) => !taken.has(`${siteUrl}/${item.slug}`)).map((item) => {
+      const ts = item.updatedAt || item.publishedAt;
+      return {
+        url: `${siteUrl}/${item.slug}`,
+        lastModified: ts && ts > 0 ? new Date(ts) : undefined,
+        changeFrequency: item.type === 'blog' ? 'monthly' : 'weekly',
+        priority: item.type === 'blog' ? 0.7 : 0.8,
+        images: item.coverUrl ? [item.coverUrl] : undefined
+      };
+    });
     return [...staticRoutes, ...dynamicRoutes];
   } catch {
     return staticRoutes;
